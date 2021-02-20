@@ -33,10 +33,10 @@ function dig_rt(n, m)
     return out
 }
 
-//Factorial for floats
+//Factorial for Reals
 function Stirling(x) {return Math.sqrt(2 * Math.PI * x) * (x / Math.E)**x}
 
-//If "f" is truthy, it returns inverse
+//Fully iterative factorial. If "f" is truthy, it returns inverse F. If k > 1 returns corresponding multifactorial
 function IFact(n, k=1, f)
 {
     var x = 1;
@@ -45,6 +45,18 @@ function IFact(n, k=1, f)
     return x
 }
 
+//"Pseudo-recursive" (perhaps "semi-recursive") factorial with support for any number (except BigInt and Imaginary)
+function SFact(x)
+{
+    let out = [1], i = (x % 1) + Math.sign(x);
+    while (out.length <= Math.abs(x))
+    {
+        out.push(i * out[out.length - 1]); i += Math.sign(x)
+    }
+    return out
+}
+
+//Optimized recursive factorial with same number support as above
 var Factorials={}
 function RFact(x)
 {
