@@ -159,26 +159,26 @@ function Coolman(x, y)
     return y+1
 }
 
-var Ack_mem = [[], [], [], [], [], [], []];
+var Ack_mem = {};
 function Ackermann(m, n)
 {'use strict';
-    while (m !== 0)
+    while (m > 3)
     {
-        if (n === 0) {n = 1}
+        if (n === 0n) {n = 1n}
         else
             {
-                if (Ack_mem[m][n]) {return Ack_mem[m][n]}
+                if (Ack_mem[m + ',' + n]) {return Ack_mem[m + ',' + n]}
                 n--;
-                if (Ack_mem[m][n]) {n = Ack_mem[m][n]}
-                else {let out = Ackermann(m, n); Ack_mem[m][n] = out; n = out}
+                if (Ack_mem[m + ',' + n]) {n = Ack_mem[m + ',' + n]}
+                else {let out = Ackermann(m, n); Ack_mem[m + ',' + n] = out; n = out}
             }
         m--
     }
-    return n+1
+    return [n + 1n, n + 2n, 2n * n + 3n, (2n ** (n + 3n)) - 3n][m]
 }
 
 //"Inverse" Ackermann function
-function ack(m, n) {for (var i=1, x=0; x < Math.log2(n); i++) {x = Ackermann(i, Math.floor(m/n))}; return x}
+function ack_inv(m, n) {for (var i=1, x=0; x < Math.log2(n); i++) {x = Ackermann(i, BigInt(m / n))}; return x}
 
 //en.wikipedia.org/wiki/Amdahl%27s_law
 function Ams(p, s) {return 1/((1-p) + (p/s))}
