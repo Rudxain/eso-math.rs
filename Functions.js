@@ -178,7 +178,7 @@ function Ackermann(m, n)
 }
 
 //"Inverse" Ackermann function
-function ack_inv(m, n) {for (var i=1, x=0; x < Math.log2(n); i++) {x = Ackermann(i, BigInt(m / n))}; return x}
+function ack_inv(m, n) {for (var i=1, x=0; x < Math.log2(n); i++) {x = Ackermann(i, BigInt(Math.trunc(m / n)))}; return x}
 
 //en.wikipedia.org/wiki/Amdahl%27s_law
 function Ams(p, s) {return 1/((1-p) + (p/s))}
