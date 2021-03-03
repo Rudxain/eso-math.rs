@@ -56,16 +56,8 @@ function SFact(x)
     return out
 }
 
-//Optimized recursive factorial with same number support as above
-var Factorials={}
-function RFact(x)
-{
-    if (Math.abs(x) <= 2) {return (Math.abs(x) == 2 ? 2 : Math.abs(x) < 1 ? 1 : x)}
-    else if (Factorials[x]) {return Factorials[x]}
-    else {let y = x * RFact(x - Math.sign(x)); Factorials[x] = y; return y}
-}
-
-//"Additorial (Sumatorial)" Info: en.wikipedia.org/wiki/Triangular_number
+//"Termial/Additorial/Sumatorial"
+//Info: en.wikipedia.org/wiki/Triangular_number ; en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
 //If "f" is truthy, returns inverse
 function Addit(x, f) {return (f ? -1 + Math.sqrt(1+8*x) : x*(x+1)) / 2}
 
