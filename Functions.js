@@ -36,17 +36,8 @@ function dig_rt(n, m)
 //Factorial for Reals
 function Stirling(x) {return Math.sqrt(2 * Math.PI * x) * (x / Math.E)**x}
 
-//Fully iterative factorial. If "f" is truthy, it returns inverse F. If k > 1 returns corresponding multifactorial
-function IFact(n, k=1, f)
-{
-    var x = 1;
-    if (f) {while (n > 1) {x += k; n /= x}}
-    else {for (i = 1; i <= n; i += k) {x *= i}}
-    return x
-}
-
-//"Pseudo-recursive" (perhaps "semi-recursive") factorial with support for any number (except BigInt and Imaginary)
-function SFact(x)
+//"pseudo-recursive" (perhaps "semi-recursive") Fact with support for any number (except BigInt and Imaginary)
+function sFact(x)
 {
     let out = [1], i = (x % 1) + Math.sign(x);
     while (out.length <= Math.abs(x))
@@ -56,15 +47,36 @@ function SFact(x)
     return out
 }
 
-//"Termial/Additorial/Sumatorial"
+//Iterative inverse Fact. If k > 1 returns corresponding multifactorial
+function invFact(n, k=1)
+{
+    var x = 1;
+    while (n > 1) {x += k; n /= x}
+    return x
+}
+
+//"Termial/Additorial/Sumatorial" Fs
 //Info: en.wikipedia.org/wiki/Triangular_number ; en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
-//If "f" is truthy, returns inverse
-function Addit(x, f) {return (f ? -1 + Math.sqrt(1+8*x) : x*(x+1)) / 2}
+
+//Get Nth (x) "TriNumber" in O(1). If "f" is truthy, returns inverse
+function trinum(x, f) {return (f ? -1 + Math.sqrt(1 + 8*x) : x*(x+1)) / 2}
+
+//Get TriNums up to index x (inclusive)
+function triseq(x)
+{
+    let out = [0], i = (x % 1) + Math.sign(x);
+    while (out.length <= Math.abs(x))
+    {
+        out.push(i + out[out.length - 1]); i += Math.sign(x)
+    }
+    return out
+}
+
 
 //Info: en.wikipedia.org/wiki/Polygonal_number
-function PPolygNum(i, s=3) {return ((s - 2) * i**2 - (s - 4) * i) / 2}
-function IPolygNum(p, s=3) {return (Math.sqrt(8 * (s - 2) * p + (s - 4)**2) + (s - 4)) / (2 * (s - 2))}
-function SPolygNum(p, i=2) {return 2 + (2 / i) * ((p - i) / (i - 1))}
+function ppn(i, s=3) {return ((s - 2) * i**2 - (s - 4) * i) / 2}
+function ipn(p, s=3) {return (Math.sqrt(8 * (s - 2) * p + (s - 4)**2) + (s - 4)) / (2 * (s - 2))}
+function spn(p, i=2) {return 2 + (2 / i) * ((p - i) / (i - 1))}
 
 //Info: en.wikipedia.org/wiki/Lucas_sequence
 //If F is falsy (default) then "U", else "V"
@@ -75,77 +87,84 @@ function Lucas(n, P=1, Q=-1, F)
     return seq
 }
 
-n++}
-return out}
-
 //Riemann Zeta F
 function zeta(s, lim=512)
 {
-    var sum = 0, tmp = 0;
+    var sum = 0;
     if (s > 1)
     {
+        let tmp = 0;
         for (let n=1; true; n++)
         {
             sum += 1 / (n**s);
-            if (sum === tmp) {return sum}
+            if (sum === tmp) {break}
             tmp += 1 / (n**s)
         }
     }
-    else
-    {
-        for (let n=1; n<lim; n++) {sum += 1 / (n**s)}
-        return sum
-    }
+    else {for (let n=1; n<lim; n++) {sum += 1 / (n**s)}}
+    return sum
 }
 
 //Generalized Collatz
-function GenCol(n, len=1, a=[0.5,3], b=[0,1], P=2)
+//en.wikipedia.org/wiki/Collatz_conjecture#Undecidable_generalizations
+function genCol(n, k=2, a=[0.5,3], b=[0,1], P=2)
 {
-    var seq = [n], sel = 0;
-    for (i = 0; i < len; i++)
+    let seq = [n], i = 0;
+    while (seq.length < k)
     {
-        sel = (seq[i] % P) < 0 ? P + (seq[i] % P) : seq[i] % P;
-        seq.push(a[sel] * seq[i] + b[sel])
+        i = Math.abs(seq[seq.length - 1]) % P;
+        seq.push(a[i] * seq[seq.length - 1] + b[i])
     }
     return seq
 }
 
 /*
-Falsey s: Standard
+Returns (Hailstone) sequence of n. Supports signed integers.
+You can explicitly specify the k steps, or let the function detect known cycles.
+Falsy s: Standard
 Truthy s: "Shortcut" version
-len < 0: Inverse F
-STD returns array containing Hailstone Sequence with a length proportional to len
 "Shortcut" is like STD but skips some Even numbers
-Inverse F could return a tree-like array because of branching
+en.wikipedia.org/wiki/Collatz_conjecture
 */
-function Collatz(n, len=1, s)
+function Collatz(n, k, s)
 {
     var h = [n];
-    for (i=0; i<Math.abs(len); i++)
+    while (k ? h.length < k : !{0:true, 1:true, '-1':true, '-5':true, '-17':true}[h[h.length - 1]])
     {
-        if (len > 0) {h[i + 1] = h[i] & 1 ? (3 * h[i] + 1) / [1,2][s] : h[i + 1] = h[i] / 2}
-        else {/*This is where Inverse mode executes, but IDK how to do it yet lol*/}
+        h.push(h[h.length - 1] % 2 ? (3 * h[h.length - 1] + 1) / (s ? 2 : 1) : h[h.length - 1] / 2)
     }
     return h
+}
+
+//Unary-Numeral Ackermann
+function UAck(m, n)
+{
+    while (m.length > 3)
+    {
+        n = n.length ? UAck(m, n.slice(0, -1)) : '1';
+        m = m.slice(0, -1)
+    }
+    if (m.length == 3) {let len = n.length; while (n.length < 2**(len + 3) - 3) {n += '1'}}
+    else {n = [n + '1', n + '11', n + n + '111'][m.length]}
+    return n
 }
 
 function Madlatz(x, y)
 {
     while (x !== 1)
     {
-        if (y === 0) {y = 1}
-        else {y = Madlatz(x, y-1)}
-        x = ((x & 1) ? 3 * x + 1 : x / 2)
+        y = y === 0 ? 1 : Madlatz(x, y-1);
+        x = (x % 2 ? 3 * x + 1 : x / 2)
     }
     return y+1
 }
 
 function Coolman(x, y)
 {
-    while (x !== 0)
+    while (x)
     {
-        if (y <= 1) {y = 4}
-        else {let tmp = Coolman(x, y-1); y = ((tmp & 1) ? 3 * tmp + 1 : tmp / 2)}
+        if (y < 2) {y = 4}
+        else {let tmp = Coolman(x, y-1); y = tmp % 2 ? 3 * tmp + 1 : tmp / 2}
         x--
     }
     return y+1
@@ -156,7 +175,7 @@ function Ackermann(m, n)
 {'use strict';
     while (m > 3)
     {
-        if (n === 0n) {n = 1n}
+        if (!n) {n = 1n}
         else
             {
                 if (Ack_mem[m + ',' + n]) {return Ack_mem[m + ',' + n]}
