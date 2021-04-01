@@ -1,3 +1,9 @@
+Math.PHI = (1 + Math.sqrt(5)) / 2;
+
+function Big_sign(n) {return n == 0n ? 0n : (n < 0n ? -1n : 1n)}
+
+function Big_abs(n) {return n * Big_sign(n)}
+
 //Converts a number N into a numeral of base B using an alternative method
 function toNumeralAlt(N, B, charset=[`0`,`1`,`2`,`3`,`4`,`5`,`6`,`7`,`8`,`9`,`a`,`b`,`c`,`d`,`e`,`f`,`g`,`h`,`i`,`j`,`k`,`l`,`m`,`n`,`o`,`p`,`q`,`r`,`s`,`t`,`u`,`v`,`w`,`x`,`y`,`z`,`A`,`B`,`C`,`D`,`E`,`F`,`G`,`H`,`I`,`J`,`K`,`L`,`M`,`N`,`O`,`P`,`Q`,`R`,`S`,`T`,`U`,`V`,`W`,`X`,`Y`,`Z`])
 { 
@@ -21,15 +27,66 @@ function parseNumeral(numeral, B) {var n=0; for (d of numeral) {n = b * n + d} r
 //Convert the digits representation of a number from a base/radix to another
 function Base2Base(numeral, InB, OutB) {return toNumeral(parseNumeral(numeral, InB), OutB)}
 
-//Digital Root en.wikipedia.org/wiki/Digital_root
+//Digital Root. Returns the sequence of values for each iteration
+//If m is truthy, it usea multiplicative mode instead of additive
+//en.wikipedia.org/wiki/Digital_root
 function dig_rt(n, m)
 {
     var out = [], tmp = 0
     while (n.length > 1)
     {
         out.push(tmp + '' || n)
-        for (let i = 0; i < n.length; i++) {tmp = (m ? (i ? tmp : 1) * n[i] : (i ? tmp : 0) + n[i])}
+        for (let i = 0; i < n.length; i++) {tmp = (m ? (i ? tmp : 1) * n[i] : (i && tmp) + n[i])}
     }
+    return out
+}
+
+//elegant (no auxiliary var) GCD, with support for signeds
+function gcd(a, b)
+{
+    a = Math.abs(a); b = Math.abs(b);
+    let r = a > b ? [a, b] : [b, a];
+    while (r[1]) {r = [r[1], r[0] % r[1]]}
+    return r[0]
+}
+
+//GCD for BigInt, also supports signeds
+function Big_gcd(a, b)
+{
+    a = Big_abs(a); b = Big_abs(b);
+    let c = b;
+    if (a < b) {b = a; a = c}
+    while (b) {c = b; b = a % b; a = c}
+    return a
+}
+
+function lcm(a, b) {return ((typeof a == 'bigint' ? Big_abs(a) : Math.abs(a)) / gcd(a, b)) * (typeof b == 'bigint' ? Big_abs(b) : Math.abs(b))}
+
+var Pa = [2, 3, 5] // Array of Primes
+var Pd = {2:true, 3:true, 5:true} //Primality dictionary
+function addP()
+{
+    let x = Pa[Pa.length - 1] + 2, y = Math.sqrt(x);
+    for (let j = 1; true; x += 2, y = Math.sqrt(x))
+    {
+        if (y == Math.trunc(y)) {continue} //ignore squares because they are composite
+        j = 1;
+        while (Pa[j] <= y && (x % Pa[j])) {j++}
+        if (!(x % Pa[j])) {continue}
+        Pa.push(x); Pd[x] = true; break;
+    }
+}
+function factorize(n)
+{
+    n = Math.abs(n);
+    let m = n, i = 0, out = [];
+    while (Pa[i] <= Math.sqrt(n) && Pa[i] <= m && !Pd[m]) //Trust me, all 3 are necessary for speed
+    {
+        while (!(m % Pa[i])) {m /= Pa[i]; out.push(Pa[i])}
+        i++;
+        if (i >= Pa.length) {addP()} //Primes on-demand, like modern TV lol
+    }
+    if (m != 1){out.push(m); Pd[m] = true}
     return out
 }
 
@@ -37,7 +94,7 @@ function dig_rt(n, m)
 function Stirling(x) {return Math.sqrt(2 * Math.PI * x) * (x / Math.E)**x}
 
 //"pseudo-recursive" (perhaps "semi-recursive") Fact with support for any number (except BigInt and Imaginary)
-function sFact(x)
+function Fact(x)
 {
     let out = [1], i = (x % 1) + Math.sign(x);
     while (out.length <= Math.abs(x))
@@ -47,7 +104,7 @@ function sFact(x)
     return out
 }
 
-//Iterative inverse Fact. If k > 1 returns corresponding multifactorial
+//Iterative inverse Fact. If k > 1 returns corresponding inv multifactorial
 function invFact(n, k=1)
 {
     var x = 1;
@@ -78,8 +135,15 @@ function ppn(i, s=3) {return ((s - 2) * i**2 - (s - 4) * i) / 2}
 function ipn(p, s=3) {return (Math.sqrt(8 * (s - 2) * p + (s - 4)**2) + (s - 4)) / (2 * (s - 2))}
 function spn(p, i=2) {return 2 + (2 / i) * ((p - i) / (i - 1))}
 
+//Get Nth Fibonacci number in O(1)
+function Fib1(n) {return Math.round(Math.PHI ** n / Math.sqrt(5))}
+
+//Inverse Fib, returns the index of a Fib num
+function invFib(F) {return Math.floor(Math.log(F * Math.sqrt(5) + 0.5) / Math.log(Math.PHI))}
+
 //Info: en.wikipedia.org/wiki/Lucas_sequence
 //If F is falsy (default) then "U", else "V"
+//Default returns Fib seq
 function Lucas(n, P=1, Q=-1, F)
 {
     var seq = (F ? [2,P] : [0,1]);
