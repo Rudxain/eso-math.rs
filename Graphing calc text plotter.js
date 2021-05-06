@@ -10,3 +10,4 @@ function plot(xprA=`x`, xprB=`y`, scan=[-6, 4, 6, -4], step=1/8, pix=' +#')
     }
     out`)
 }
+//eval() is wrapping everything because evaling each expression in a loop has horrible performance
