@@ -191,7 +191,7 @@ function Triseq(x)
 
 
 //en.wikipedia.org/wiki/Polygonal_number
-function ppn(i, s=3) {return (s - 2) * i**2 - (s - 4) * i) / 2}
+function ppn(i, s=3) {return ((s - 2) * i*i - (s - 4) * i) / 2}
 function ipn(p, s=3) {return Math.sqrt(8 * (s - 2) * p + (s - 4)**2) + (s - 4)) / (2 * (s - 2))}
 function spn(p, i=2) {return 2 + (2 / i) * ((p - i) / (i - 1))}
 
