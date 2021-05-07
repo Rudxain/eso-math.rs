@@ -14,7 +14,6 @@ Math.LOGPHI_E = Math.logPHI(Math.E);
 Math.LOGPHI10 = Math.logPHI(10);
 
 function Big_sign(n) {return n ? (n < 0n ? -1n : 1n) : 0n}
-
 function Big_abs(n) {return n < 0n ? -n : n}
 
 //f < 0 = floor
@@ -27,7 +26,7 @@ function Big_div(a, b, f) {return a % b ? (f ? ((a + b - 1n) / b) + (f < 0n ? -1
 function Big_root(n, i=2n)
 {
     let sign = Big_sign(n);
-    if (sign === -1n && !(i & 1n)){return NaN} //NaN is placeholder for imaginary
+    if (sign === -1n && !(i % 2n)){return NaN} //NaN is placeholder for imaginary
     n = Big_abs(n);
     if (!n || n == 1n) {return n}
     let s = n + 1n;
@@ -67,6 +66,7 @@ function parseNumeral(numeral, B) {var n=0; for (d of numeral) {n = b * n + d} r
 
 //Convert the digits representation of a number from a base/radix to another
 function B2B(numeral, inpB, outB) {return toNumeral(parseNumeral(numeral, inpB), outB)}
+
 //End of "the following". The next "followings" are more useful:
 
 
@@ -77,7 +77,7 @@ function dig_rt_c(n, b){return n ? 1 + ((n - 1) % (b - 1)) : 0}
 function dig_sum(x, b)
 {
     let sum = 0;
-    while (x > 0) {sum += x % b; x = Math.trunc(x / b)}
+    while (x) {sum += x % b; x = Math.trunc(x / b)}
     return sum
 }
 
@@ -85,8 +85,8 @@ function dig_sum(x, b)
 function dig_rt_a(x, b)
 {
     let seen = [];
-    while (!(seen.includes(x))) {seen.push(x); x = dig_sum(x, b)}
-    return {'x': x, 'seen': seen} //FOR DEBUG
+    while (!seen.includes(x)) {seen.push(x); x = dig_sum(x, b)}
+    return [x, seen] //DEBUG. this is temporal
 }
 
 //en.wikipedia.org/wiki/Multiplicative_digital_root
@@ -94,7 +94,7 @@ function dig_prod(x, b)
 {
     if (!x) {return x}
     let prod = 1;
-    while x > 1
+    while (x > 1)
     {
         if (!(x % b)) {return 0}
         if (x % b > 1) {prod *= x % b}
@@ -106,34 +106,19 @@ function dig_prod(x, b)
 function dig_rt_m(x, b)
 {
     let seen = [];
-    while (!(seen.includes(x))) {seen.push(x); x = dig_prod(x, b)}
-    return {'x': x, 'seen': seen} //FOR DEBUG
+    while (!seen.includes(x)) {seen.push(x); x = dig_prod(x, b)}
+    return [x, seen] //DEBUG. this is temporal
 }
-
-//get non-integer part
-function frac_m(x) {return x % 1}
-//I have no idea which is better
-function frac_t(x) {return x - Math.trunc(x)}
 
 function gcd(a, b)
 {
-    a = Math.abs(a); b = Math.abs(b);
-    let r = a > b ? [a, b] : [b, a];
-    while (r[1]) {r = [r[1], r[0] % r[1]]}
-    return r[0]
-}
-
-function Big_gcd(a, b)
-{
-    a = Big_abs(a); b = Big_abs(b);
-    let c = b;
-    if (a < b) {b = a; a = c}
-    while (b) {c = b; b = a % b; a = c}
+    [a, b] = [typeof a === "bigint" ? Big_abs(a) : Math.abs(a), typeof b === "bigint" ? Big_abs(b) : Math.abs(b)];
+    if (a < b) {[a, b] = [b, a]}
+    while (b) {[a, b] = [b, a % b]}
     return a
 }
 
-function lcm(a, b) {return Math.abs(a) / gcd(a, b) * Math.abs(b)}
-function Big_lcm(a, b) {return Big_abs(a) / Big_gcd(a, b) * Big_abs(b)}
+function lcm(a, b) {return (typeof a === "bigint" ? Big_abs(a) : Math.abs(a)) / gcd(a, b) * (typeof b === "bigint" ? Big_abs(b) : Math.abs(b))}
 
 var Pa = [2, 3, 5]; // Array of Primes
 var Pd = new Map(); Pd.set(2); Pd.set(3); Pd.set(5) //Primality map/dictionary
@@ -144,7 +129,7 @@ function addP()
     for (let y = Math.sqrt(x), j; true; x += 2, y = Math.sqrt(x))
     {
         if (Pd.has(x)) {break}
-        if (Number.isInteger(y)) {continue} //ignore squares because they are composite
+        if (Number.isInteger(y)) {continue} //ignore perfect squares because they are composite
         j = 1;
         while (Pa[j] <= y) {if (x % Pa[j] === 0) {continue test} j++}
         Pd.set(x); break;
@@ -155,7 +140,7 @@ function factor(n) //get prime factorization of n
 {
     n = Math.abs(n);
     let m = n, i = 0, out = [];
-    while (Pa[i] <= Math.sqrt(n) && Pa[i] <= m && !(Pd.has(m))) //Trust me, all 3 are necessary for speed
+    while (Pa[i] <= Math.sqrt(n) && Pa[i] <= m && !Pd.has(m)) //Trust me, all 3 are necessary for speed
     {
         while (m % Pa[i] === 0) {m /= Pa[i]; out.push(Pa[i])}
         i++;
@@ -168,9 +153,7 @@ function factor(n) //get prime factorization of n
 //factorial approximation for non-integers
 function Stirling(x) {return Math.sqrt(Math.TAU * x) * (x / Math.E) ** x}
 
-//"pseudo-recursive" (perhaps "quasi-recursive") Fact with support for any number (except BigInt and Imaginary)
-//returns array because I still need to add a more efficient F to compute just 1 value
-//this is optimized for returning an array
+//co-recursive Fact with support for any number (except BigInt and Imaginary)
 function Fact(x)
 {
     let out = [1];
@@ -192,13 +175,13 @@ function invFact(n, k = 1)
 //en.wikipedia.org/wiki/Triangular_number ; en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
 
 //get Nth "TriNumber" in O(1)
-function trinum(x) {return x * (x + 1) / 2}
+function Trinum(x) {return x * (x + 1) / 2}
 
 //get index of a trinum
-function tri_inv(x) {return (Math.sqrt(8 * x + 1) - 1) / 2}
+function invTri(x) {return (Math.sqrt(8 * x + 1) - 1) / 2}
 
 //get TriNums up to index x (inclusive)
-function triseq(x)
+function Triseq(x)
 {
     let out = [0];
     for (let i = (x % 1) + Math.sign(x); out.length <= Math.abs(x); i += Math.sign(x))
@@ -230,9 +213,10 @@ function Lucas(n, P=1, Q=-1, F)
 //Riemann Zeta F
 function zeta(s, k=2)
 {
+	s = -s
     let sum = 1, n = 2;
-    if (s > 1 && k <= 2) {for (let tmp; sum !== tmp; n++) {tmp = sum; sum += 1 / n**s}}
-    else {while (n <= k) {sum += 1 / n**s; n++}}
+    if (s < -1 && k <= 2) {for (let tmp; sum !== tmp; n++) {tmp = sum; sum += n ** s}}
+    else {while (n <= k) {sum += n ** s; n++}}
     return sum
 }
 
@@ -262,7 +246,7 @@ function Collatz(n, k, s)
     let h = [n];
     const col_c = new Map(); col_c.set(0); col_c.set(1); col_c.set(-1); col_c.set(-5); col_c.set(-17);
     while (k ? h.length < k : !(col_c.has(h[h.length - 1])))
-    {h.push(h[h.length - 1] & 1 ? (3 * h[h.length - 1] + 1) / (s ? 2 : 1) : h[h.length - 1] / 2)}
+    {h.push(h[h.length - 1] % 2 ? (3 * h[h.length - 1] + 1) / (s ? 2 : 1) : h[h.length - 1] / 2)}
     return h
 }
 
@@ -284,7 +268,7 @@ function Madlatz(m, n)
     while (m > 1n)
     {
         if (n) {n = Madlatz(m, n-1n)} else {n = 1n}
-        m = (m & 1n ? 3n * m + 1n : m / 2n)
+        m = (m % 2n ? 3n * m + 1n : m / 2n)
     }
     return n+1n
 }
@@ -294,7 +278,7 @@ function Coolman(m, n)
     while (m)
     {
         if (n < 2n) {n = 4n}
-        else {let tmp = Coolman(m, n-1n); n = tmp & 1n ? 3n * tmp + 1n : tmp / 2n}
+        else {let tmp = Coolman(m, n-1n); n = tmp % 2n ? 3n * tmp + 1n : tmp / 2n}
         m--
     }
     return n+1
