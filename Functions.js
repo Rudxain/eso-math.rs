@@ -192,10 +192,10 @@ function Triseq(x)
 
 //en.wikipedia.org/wiki/Polygonal_number
 function ppn(i, s=3) {return ((s - 2) * i*i - (s - 4) * i) / 2}
-function ipn(p, s=3) {return Math.sqrt(8 * (s - 2) * p + (s - 4)**2) + (s - 4)) / (2 * (s - 2))}
+function ipn(p, s=3) {return (Math.sqrt(8 * (s - 2) * p + (s - 4)**2) + (s - 4)) / (2 * (s - 2))}
 function spn(p, i=2) {return 2 + (2 / i) * ((p - i) / (i - 1))}
 
-//get Nth Fibonacci in O(log(n))
+//get Nth Fibonacci faster than recursion
 function Fib(n) {return Math.round(Math.PHI ** n / Math.SQRT5)}
 
 //get index of a Fib num
@@ -206,15 +206,15 @@ function invFib(F) {return F <= 1 ? F : Math.floor(Math.logPHI(F * Math.SQRT5 + 
 function Lucas(n, P=1, Q=-1, F)
 {
     let seq = (F ? [2, P] : [0, 1]);
-    for (let i = 1; i < n; i++) {seq.push(P * seq[i] - Q * seq[i-1])}
+    while (seq.length <= n) {seq.push(P * seq[seq.length - 1] - Q * seq[seq.length - 2])}
     return seq
 }
 
 //Riemann Zeta F
 function zeta(s, k=2)
 {
-	s = -s
-    let sum = 1, n = 2;
+    s = -s;
+    let sum = 1, n = 2; //an offset of 1 is applied to skip 1 iteration, slightly decreasing latency
     if (s < -1 && k <= 2) {for (let tmp; sum !== tmp; n++) {tmp = sum; sum += n ** s}}
     else {while (n <= k) {sum += n ** s; n++}}
     return sum
