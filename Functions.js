@@ -120,6 +120,26 @@ function gcd(a, b)
 
 function lcm(a, b) {return (typeof a === "bigint" ? Big_abs(a) : Math.abs(a)) / gcd(a, b) * (typeof b === "bigint" ? Big_abs(b) : Math.abs(b))}
 
+//computes the Arithmetic-Geometric Mean at max precision
+function agm(a, g)
+{
+    var x;
+    do
+    {x = a; [a, g] = [(x + g) / 2, Math.sqrt(x * g)]}
+    while (a !== x)
+    return x
+}
+
+//returns non-trivial divisors of n
+function divisors(n)
+{
+    var m = Math.sqrt(n), out = [];
+    for (let i = 2; i <= m; i++) {if (!(n % i)) {out.push(i)}}
+    for (let i = out.length - (Number.isInteger(m) ? 2 : 1); i >= 0; i--)
+    {out.push(n / out[i])}
+    return out
+}
+
 var Pa = [2, 3, 5]; // Array of Primes
 var Pd = new Map(); Pd.set(2); Pd.set(3); Pd.set(5) //Primality map/dictionary
 function addP()
