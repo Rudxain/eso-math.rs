@@ -124,9 +124,8 @@ function lcm(a, b) {return (typeof a === "bigint" ? Big_abs(a) : Math.abs(a)) / 
 function agm(a, g)
 {
     var x;
-    do
-    {x = a; [a, g] = [(x + g) / 2, Math.sqrt(x * g)]}
-    while (a !== x)
+    do {x = a; [a, g] = [(x + g) / 2, Math.sqrt(x * g)]}
+    while (a !== x);
     return x
 }
 
