@@ -8,8 +8,7 @@ function plot(xprA = 'x', xprB = 'y', scan = [-6, 4, 6, -4], step = 1 / 8, pix =
    [xprA, xprB, scan, step, pix] = ['('+ xprA +')', '('+ xprB +')', scan.map(x => Number(x)), Number(step), String(pix)];
    return Function(`let out = '';
       for (let y = ${scan[1]}; y >= ${scan[3]}; y -= ${step})
-      {
-         for (let x = ${scan[0]}; x <= ${scan[2]}; x += ${step}) out += '${pix}'[(${xprB} + ${step} > ${xprA} && ${xprB} - ${step} < ${xprA}) + (${xprB} + ${step} / 2 > ${xprA} && ${xprB} - ${step} / 2 < ${xprA})] + (x < ${scan[2]} ? '' : '\\n');
-      }
+         for (let x = ${scan[0]}; x <= ${scan[2]}; x += ${step})
+            out += '${pix}'[(${xprB} + ${step} > ${xprA} && ${xprB} - ${step} < ${xprA}) + (${xprB} + ${step} / 2 > ${xprA} && ${xprB} - ${step} / 2 < ${xprA})] + (x < ${scan[2]} ? '' : '\\n');;
       return out`)()
 }
