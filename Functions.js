@@ -318,8 +318,7 @@ BigInt.isPow2 = function(n)
    if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
    return n > 0n && !(n & (n - 1n))
 };
-//0 isn't a power of 2, nor a Mersenne number,
-//that's why `!!n &&` is neccessary
+
 BigInt.isMersenne = function(n)
 {
    if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
