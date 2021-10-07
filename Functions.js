@@ -102,7 +102,6 @@ BigInt.min = function(...arg)
 };
 
 const anyMax = (...arg) => arg.map(toNumerical).reduce((m, n) => n > m ? n : m);
-//sort is slow, but it's correct
 const anyMin = (...arg) => arg.map(toNumerical).reduce((m, n) => n < m ? n : m);
 
 //negative r: floor
