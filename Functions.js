@@ -118,16 +118,8 @@ BigInt.div = function(n, d, r)
    )
 };
 
-//inspired by the division instruction in ISAs
-const CPU_DIV = (n, d) => {
-   if (isBigInt(n) && isBigInt(d)) return [n / d, n % d];
-   const t = Math.trunc;
-   [n, d] = [t(n), t(d)];
-   return [t(n / d), n % d]
-};
-
 //modulo. NOT remainder
-function mod(a, n) {return (a % n + n) % n};
+const mod = (a, n) => (a % n + n) % n;
 //the other definitions are missing (types of div)
 
 Math.mod = function(a, n) {return mod(+a, +n)};
@@ -147,11 +139,13 @@ such that they are comfortables with themselves.
 const anyMod = (a, n) => mod(toNumerical(a), toNumerical(n));
 //in a nutshell, you've learned the differences between methods of different objects
 
-Math.ctrz32 = function(n){return n | 0 ? 31 - Math.clz32(n & -n) : 32};
-//IDK if `n | 0` should be used instead of `n >>> 0`
+//the name "ctrz" is preferred over "ctz" in the MDN
+Math.ctrz32 = function(n) //count trailing zeros in binary
+   {return n |= 0 ? 31 - Math.clz32(n & -n) : 32};
+//maybe `>>>` should be used instead of `|`
 
-BigInt.ctrz = function(n) //count trailing zeros
-{//the name "ctrz" is preferred over "ctz" in the MDN
+BigInt.ctrz = function(n)
+{
    if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
    if (!n) throw new RangeError('return value is Infinity');
    const b = 0x80n; //optimized for 64bit CPUs. 0x40n is better for 32bit
@@ -175,10 +169,55 @@ const anyCtrz = n => {
    return c + Math.ctrz32(n)
 }
 
+const isDivisible = (n, m) => typeof n === typeof m && isInt(n) && isInt(m) && !(n % m);
+
+BigInt.isPow2 = function(n)
+{
+   if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
+   return n > 0n && !(n & (n - 1n))
+};
+
+BigInt.isMersenne = function(n)
+{
+   if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
+   return n > 0n && !(n & (n + 1n))
+};
+
+BigInt.bitParity = function(n)
+{
+   if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
+   let i = 1n;
+   while (n >> i) {n ^= n >> i; i <<= 1n}
+   return n & 1n
+};
+
+Math.popcnt32 = function(i)
+{//stackoverflow.com/a/109025
+   i |= 0; //maybe `>>>=` is correct
+   i -= (i >>> 1) & 0x55555555;
+   i = (i & 0x33333333) + ((i >>> 2) & 0x33333333);
+   i = (i + (i >>> 4)) & 0x0F0F0F0F;
+   return (i * 0x01010101) >>> 24;
+};
+
+const isSquare = n => {
+   if (n < 0) return false;
+   if (typeof n === 'number') return Number.isInteger(Math.sqrt(n));
+   //stackoverflow.com/a/18686659
+   if (!isBigInt(n) || BigInt.asIntN(64, 0xC840C04048404040n << n) >= 0n) return false;
+   if (n < 2n) return true; //prevent ctz error, and return early
+   const ctz = BigInt.ctrz(n);
+   if (ctz & 1n) return false;
+   n >>= ctz;
+   if ((n & 7n) !== 1n) return false;
+   return BigInt.sqrt(n) ** 2n === n
+};
+
 BigInt.sizeOf = function(n, b = 8n)
 {//b is the unit of measurement. 1: bit, 8: Byte, 16: word, 32: Dword, 64: Qword
    if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
-   [n, b] = [BigInt.abs(n), BigInt.abs(BigInt(b))];
+   n = BigInt.abs(n); b = BigInt.abs(BigInt(b));
+   if (!b) throw new RangeError('return value is Infinity');
    let i = 1n; //size cannot be 0
    while (n >>= b) i++;
    return i
@@ -188,8 +227,7 @@ BigInt.log2 = function(n) //lb(bigint)
 {
    if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
    if (n <= 0n) throw new RangeError('return value is -Infinity or NaN');
-   let b = 2n;
-   let i = 0n;
+   let b = 2n, i = 0n;
    while (n >= (1n << b)) {n >>= b; i += b; b <<= 1n}; //exponential loop unrolling
    while (n > 1n) {n >>= 1n; i++};
    return i
@@ -200,7 +238,6 @@ BigInt.logB = function(n, b = 3n)
    if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
    b = BigInt(b);
    if (n <= 0n || b <= 1n) throw new RangeError('return value is -Infinity or NaN');
-
    const d = BigInt.log2(n) - 52n;
    if (d > 0n) n >>= d;
    b = Number(b);
@@ -216,16 +253,16 @@ BigInt.logB = function(n, b = 3n)
 };
 
 const anyLogB = (x, b = 2) => {
-   [x, b] = [toNumerical(x), toNumerical(b)];
+   x = toNumerical(x); b = toNumerical(b);
    if (typeof x !== typeof b) throw new TypeError(['Arguments are not same-type', x, b]);
    return (isBigInt(x) ? BigInt : Math).logB(x, b)
 };
 
 const logStar = (x, b = 2) => {
-   [x, b] = [toNumerical(x), toNumerical(b)];
+   x = toNumerical(x); b = toNumerical(b);
    if (typeof x !== typeof b) throw new TypeError(['Arguments are not same-type', x, b]);
    let i = 0;
-   while (x > 1n) [x, i] = [anyLogB(x, b), i + 1];
+   while (x > 1n) {x = anyLogB(x, b); i++}
    return i
 };
 
@@ -243,9 +280,13 @@ BigInt.root = function(n, i = 2n)
    if (!n[1]) return 0n;
    const j = i - 1n;
    //a ^ (1 / k) = b ^ (log_b(a) / k)
-   let x0 = 2n << BigInt.log2(n[1]) / i, x1 = x0 * j / i + n[1] / (i * x0 ** j);
+   let x0 = 2n << BigInt.log2(n[1]) / i,
+       x1 = x0 * j / i + n[1] / (i * x0 ** j);
    while (x1 < x0)
-      [x0, x1] = [x1, x1 * j / i + n[1] / (i * x1 ** j)];
+   {
+      x0 = x1;
+      x1 = x1 * j / i + n[1] / (i * x1 ** j)
+   }
    return x0 * n[0]
 };
 
@@ -253,14 +294,18 @@ BigInt.sqrt = function(n)
 {//Heron's Method
    if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
    if (n < 2n) {if (n < 0n) {throw new RangeError('return value is Complex type')} else return n}
-   let x0 = 2n << (BigInt.log2(n) >> 1n), x1 = (x0 + n / x0) >> 1n;
+   let x0 = 2n << (BigInt.log2(n) >> 1n),
+       x1 = (x0 + n / x0) >> 1n;
    while (x1 < x0)
-      [x0, x1] = [x1, (x1 + n / x1) >> 1n];
+   {
+      x0 = x1;
+      x1 = (x1 + n / x1) >> 1n
+   }
    return x0;
 };
 
 const anyRoot = (x, n) => {
-   [x, n] = [toNumerical(x), toNumerical(n)];
+   x = toNumerical(x); n = toNumerical(n);
    if (typeof x !== typeof n) throw new TypeError(['Arguments are not same-type', x, n]);
    return (isBigInt(x) ? BigInt : Math).root(x, n)
 };
@@ -270,13 +315,11 @@ const anySqrt = x => (isBigInt(x = toNumerical(x)) ? BigInt : Math).sqrt(x);
 //returns correct values when inputs are rational numbers
 //whose denominators are any power of 2 (including 2**0)
 const gcd = (a, b) => {
-   //avoids tail-calling toNumerical twice and anyAbs once
-   [a, b] = [anyAbs(a), anyAbs(b)];
+   a = anyAbs(a); b = anyAbs(b); //avoids tail-calling toNumerical and anyAbs
    if (typeof a !== typeof b) throw new TypeError(['Arguments are not same-type', a, b]);
    if (isBigInt(a))
    {//Stein's Binary, because I don't understand Lehmer's
       if (!a) return b; if (!b) return a;
-    //if (!(a && b)) return BigInt.max(a, b);
       const i = BigInt.ctrz(a); a >>= i;
       const j = BigInt.ctrz(b); b >>= j;
       const k = BigInt.min(i, j);
@@ -297,56 +340,22 @@ const gcd = (a, b) => {
 };
 
 const lcm = (a, b) => {
-   //calling early probably allows removal of redundant calls in gcd
-   [a, b] = [anyAbs(a), anyAbs(b)];
-   return a / gcd(a, b) * b /*this ensures performance and low overflow probability
-   when compared to `a * b / gcd(a, b)`*/
+   //calling early allows optimization
+   a = anyAbs(a); b = anyAbs(b);
+   return a / gcd(a, b) * b
+   //better performance and lower overflow probability
+   //than `a * b / gcd(a, b)`
 };
 
 //Arithmetic-Geometric Mean
 const agm = (a, g) => {
-   [a, g] = [Number(a), Number(g)]; //BigInt pseudo-support
+   a = Number(a); g = Number(g); //BigInt pseudo-support
    if (a !== a || g !== g) return NaN; //prevent infinite loop
    let x;
    do [x, a, g] = [a, (a + g) / 2, Math.sqrt(a * g)]
    while (a !== x);
    //this condition allows max precision and prevents infinite loops caused by rounding errors
    return x
-};
-
-const isDivisible = (n, m) => typeof n === typeof m && isInt(n) && isInt(m) && !(n % m);
-
-const isSquare = n => {
-   if (n < 0) return false;
-   if (typeof n === 'number') return Number.isInteger(Math.sqrt(n));
-   //stackoverflow.com/a/18686659
-   if (!isBigInt(n) || BigInt.asIntN(64, 0xC840C04048404040n << n) >= 0n) return false;
-   if (n < 2n) return true; //prevent ctz error, and return early
-   const ctz = BigInt.ctrz(n);
-   if (ctz & 1n) return false;
-   n >>= ctz;
-   if ((n & 7n) !== 1n) return false;
-   return BigInt.sqrt(n) ** 2n === n
-};
-
-BigInt.isPow2 = function(n)
-{
-   if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
-   return n > 0n && !(n & (n - 1n))
-};
-
-BigInt.isMersenne = function(n)
-{
-   if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
-   return n > 0n && !(n & (n + 1n))
-};
-
-BigInt.bitParity = function(n)
-{
-   if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
-   let i = 1n;
-   while (n >> i) {n ^= n >> i; i <<= 1n}
-   return n & 1n
 };
 
 //returns non-trivial divisors (proper divs) of n
@@ -389,16 +398,17 @@ const Pfactor = function(n) //get prime factorization of n
    //returning `NaN` or `[]` is nonsense, `undefined` is "more correct"
    const out = new Map;
    if (n < 2) return out; //0 and 1 don't have factorization
-   let [rt, y] = [1, Math.sqrt(n)];
+   let rt = 1, y = Math.sqrt(n);
    //TO-DO: replace with a better root-degree-finding algorithm
-   while (isSquare(n)) [n, y, rt] = [y, Math.sqrt(y), rt * 2];
-   let [m, i] = [n, 1]; //i = 1, to skip trial division by 2
+   while (isSquare(n)) {n = y; y = Math.sqrt(y); rt *= 2}
+   let m = n, i = 0;
    const ctz = anyCtrz(m);
    //binary speed-hack
-   if (ctz) out.set(2, ctz * rt); m /= 2 ** ctz;
+   if (ctz) {out.set(2, ctz * rt); m /= 2 ** ctz}
    while (Pa[i] <= y && Pa[i] <= m && !Pd.has(m)) //all 3 are necessary for speed
    {
-      while (m % Pa[i] === 0) {m /= Pa[i]; out.set(Pa[i], (out.get(Pa[i]) || 0) + rt)}
+      while (m % Pa[i] === 0)
+         {m /= Pa[i]; out.set(Pa[i], (out.get(Pa[i]) || 0) + rt)}
       if (++i >= Pa.length) addP(); //Primes on-demand
    }
    if (m > 1) {out.set(m, (out.get(m) || 0) + rt); Pd.add(m)}
@@ -486,8 +496,8 @@ const addFrac = (f0 = [0, 1], f1 = [0, 1]) => {
 //en.wikipedia.org/wiki/Collatz_conjecture#Undecidable_generalizations
 const Collatz_gen = (n, k=2, a=[[1, 2], [3, 1]], b=[[0, 1], [1, 1]], P=2) => {
    n = toNumerical(n);
-   if (n !== n) return;//if NaN then undefined. `[]` is wrong
-   [k, P] = [Number(k), Math.trunc(P)];
+   if (n !== n) return; //if NaN then undefined. `[]` is wrong
+   k = Number(k); P = Math.trunc(P);
    const seq = [n]; let i, tmp;
    while (seq.length < k)
    {
@@ -529,13 +539,13 @@ const Collatz_std = (n, k, s) => {
 //the algorithm has been optimized to avoid searches by using more memory
 const VanEck_custom = function(n, seed = 0n, pad = 0n)
 {
-   const [VE, last] = [[seed], new Map];
+   const VE = [seed], last = new Map;
    while (VE.length <= n)
    {
       VE.push(last.has(VE.at(-1)) ? VE.length - 1 - last.get(VE.at(-1)) : pad)
       last.set(VE.at(-2), VE.length - 2)
    }
-   return VE.slice(1) //removes redundancy
+   return VE.slice(1)
 };
 
 //co-recursive algorithm to compute Golomb's seq
@@ -552,7 +562,7 @@ const Golomb = function(n)
 let Ack_mem = [[],[],[],[],[],[],[],[]]; //enough arrays for any value of "m"
 const Ackermann = function(m, n)
 {
-   [m, n] = [Math.trunc(m), BigInt(n)];
+   m = Math.trunc(Number(m)); n = BigInt(n);
    if (m !== m) return NaN;
    n = signSplit(n); //support for negatives
    while (m > 3)
@@ -573,9 +583,8 @@ const Ackermann = function(m, n)
 //"Inverse" Ackermann function
 const ack_inv = function(m, n)
 {
-   let [i, x] = [1, 0];
-   while (x < Math.log2(n))
-      {x = Ackermann(i, m / n); i++};
+   let i = 1, x = 0;
+   while (x < Math.log2(n)) x = Ackermann(i++, m / n);
    return x
 };
 
