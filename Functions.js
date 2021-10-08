@@ -147,6 +147,9 @@ such that they are comfortables with themselves.
 const anyMod = (a, n) => mod(toNumerical(a), toNumerical(n));
 //in a nutshell, you've learned the differences between methods of different objects
 
+Math.ctrz32 = function(n){return n | 0 ? 31 - Math.clz32(n & -n) : 32};
+//IDK if `n | 0` should be used instead of `n >>> 0`
+
 BigInt.ctrz = function(n) //count trailing zeros
 {//the name "ctrz" is preferred over "ctz" in the MDN
    if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
@@ -157,6 +160,20 @@ BigInt.ctrz = function(n) //count trailing zeros
    while (!(n & 1n)) {n >>= 1n; i++}; //TO-DO: replace with binary search
    return i
 };
+
+const anyCtrz = n => {
+   n = toNumerical(n);
+   if (isBigInt(n)) return n ? BigInt.ctrz(n) : Infinity;
+   n = Math.abs(Math.trunc(n));
+   if (!n) return Math.trunc(Math.log2(Number.MAX_VALUE));
+   if (n === Infinity) return NaN;
+   let c = 0;
+   const e = 31, w = 2 ** e;
+   //`e` can be any number that satisfies this condition:
+   //0 < e < 32 AND e = trunc(e)
+   while (!(n % w)) {n /= w; c += e}
+   return c + Math.ctrz32(n)
+}
 
 BigInt.sizeOf = function(n, b = 8n)
 {//b is the unit of measurement. 1: bit, 8: Byte, 16: word, 32: Dword, 64: Qword
@@ -346,10 +363,12 @@ const divisors = n => {
    return out
 };
 
-const Pa = [2, 3, 5]; //array of sorted Primes, no gaps (dense)
-const Pd = new Set(Pa); //Primality "dictionary", any order, gaps allowed (sparse)
+const Pa = [3, 5]; //2 is unnecessary
+//array of sorted Primes, no gaps (dense)
+const Pd = new Set(Pa);
+//Primality "dictionary", any order, gaps allowed (sparse)
 const addP = function()
-{
+{//find next prime and store it
    let x = Pa.at(-1) + 2;
    test:
    for (let y = Math.sqrt(x), j; true; x += 2, y = Math.sqrt(x))
@@ -365,15 +384,22 @@ const addP = function()
 
 const Pfactor = function(n) //get prime factorization of n
 {
-   n = Math.trunc(Math.abs(Number(n)));
-   if (n !== n || n === Infinity) return; //returning NaN or [] doesn't make sense, undefined is "more correct"
+   n = Math.trunc(Math.abs(Number(n))); //pseudo BigInt support
+   if (n !== n || n === Infinity) return;
+   //returning `NaN` or `[]` is nonsense, `undefined` is "more correct"
+   const out = new Map;
+   if (n < 2) return out; //0 and 1 don't have factorization
    let [rt, y] = [1, Math.sqrt(n)];
-   while (y === Math.trunc(y)) [n, y, rt] = [y, Math.sqrt(y), rt * 2];
-   let [m, i] = [n, 0]; const out = new Map;
-   while (Pa[i] <= y && Pa[i] <= m && !Pd.has(m)) //trust me, all 3 are necessary for speed
+   //TO-DO: replace with a better root-degree-finding algorithm
+   while (isSquare(n)) [n, y, rt] = [y, Math.sqrt(y), rt * 2];
+   let [m, i] = [n, 1]; //i = 1, to skip trial division by 2
+   const ctz = anyCtrz(m);
+   //binary speed-hack
+   if (ctz) out.set(2, ctz * rt); m /= 2 ** ctz;
+   while (Pa[i] <= y && Pa[i] <= m && !Pd.has(m)) //all 3 are necessary for speed
    {
       while (m % Pa[i] === 0) {m /= Pa[i]; out.set(Pa[i], (out.get(Pa[i]) || 0) + rt)}
-      if (i++ >= Pa.length) addP(); //Primes on-demand
+      if (++i >= Pa.length) addP(); //Primes on-demand
    }
    if (m > 1) {out.set(m, (out.get(m) || 0) + rt); Pd.add(m)}
    return out
