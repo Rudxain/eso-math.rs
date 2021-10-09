@@ -53,7 +53,7 @@ Math.PHI = Math.SQRT5 / 2 + 0.5; //this doesn't require parentheses haha
 
 //the 2nd solution to x**2 - x == 1
 Math.PSI = 1 - Math.PHI //simple and accurate
-//(1 - sqrt(5)) / 2 === 1 - phi && 0.5 - sqrt(5) / 2 === psi
+//(1 - sqrt(5)) / 2 = 1 - phi AND 0.5 - sqrt(5) / 2 = psi
 //`-1 / phi` is prone to rounding error, and it's slower to compute
 
 Math.logB = function(x, b = Math.E) {return Math.log2(x) / Math.log2(b)};
