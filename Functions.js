@@ -37,13 +37,7 @@ const raw2float = x => {
 const isBigInt = x => typeof x === 'bigint';
 const isNumerical = x => typeof x === 'number' || isBigInt(x);
 
-const toNumerical = x => {
-   if (isNumerical(x)) return x;
-   return(
-      Math.abs(x) <= Number.MAX_SAFE_INTEGER || (/\s*?[-+]?Infinity\s*?/.test(String(x)))
-         ? +x : BigInt(x)
-   )
-};
+const toNumerical = x => isNumerical(x) ? x : +x !== +x || Math.abs(x) <= Number.MAX_SAFE_INTEGER || /\s*?[-+]?Infinity\s*?/.test(x) ? +x : BigInt(x);
 
 const isInt = x => Number.isInteger(x) || isBigInt(x);
 
