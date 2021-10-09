@@ -191,7 +191,7 @@ const anyCtrz = n => {
    n = toNumerical(n);
    if (isBigInt(n)) return n ? BigInt.ctrz(n) : Infinity;
    n = Math.abs(Math.trunc(n));
-   if (n === Infinity || n !== n) return NaN;
+   if (n !== n || n === Infinity) return NaN;
    //`!n === (n === 0)` at this point
    if (!n) return 0x401; //Math.log2(Number.MAX_VALUE) + 1
    let c = 0;
@@ -291,7 +291,7 @@ const anyPopcnt = n => {
    if (isBigInt(n)) return n < 0n ? Infinity : BigInt.popcnt(n);
    const t = Math.trunc;
    n = Math.abs(t(n));
-   if (n === Infinity || n !== n) return NaN;
+   if (n !== n || n === Infinity) return NaN;
    let c = 0;
    const w = 2 ** 32;
    while (n)
@@ -314,7 +314,7 @@ const anyHdist = (a, b) => {
    const t = Math.trunc;
    a = Math.abs(t(a));
    b = Math.abs(t(b));
-   if (n === Infinity || n !== n) return NaN;
+   if (n !== n || n === Infinity) return NaN;
    let c = 0;
    const w = 2 ** 32;
    while (a || b)
@@ -327,26 +327,28 @@ const anyHdist = (a, b) => {
 };
 
 const isSquare = n => {
-   if (!isNumerical(n)) return false;
+   if (!(isNumerical(n) && isInt(n))) return false;
    if (n < 2) return n >= 0;
    //stackoverflow.com/a/18686659
-   if (typeof n === 'number')
+   const table = 0x840C04048404040n;
+   if (isBigInt(n))
    {
-      if (BigInt.asIntN(64, 0xC840C04048404040n << BigInt(n)) >= 0n) return false;
-      const ctz = anyCtrz(n);
-      if (ctz % 2) return false;
-      n /= 2 ** ctz;
-      if (n % 8 !== 1) return false;
-      return Number.isInteger(Math.sqrt(n))
-   }
-   else
-   {
-      if (BigInt.asIntN(64, 0xC840C04048404040n << n) >= 0n) return false;
+      if (BigInt.asIntN(64, table << n) >= 0n) return false;
       const ctz = BigInt.ctrz(n);
       if (ctz & 1n) return false;
       n >>= ctz;
       if ((n & 7n) !== 1n) return false;
       return BigInt.sqrt(n) ** 2n === n
+   }
+   else
+   {
+      if (n !== n || n === Infinity) return false;
+      if (BigInt.asIntN(64, table << BigInt(n)) >= 0n) return false;
+      const ctz = anyCtrz(n);
+      if (ctz % 2) return false;
+      n /= 2 ** ctz;
+      if (n % 8 !== 1) return false;
+      return Number.isInteger(Math.sqrt(n))
    }
 };
 
@@ -364,39 +366,33 @@ BigInt.log2 = function(n) //lb(bigint)
 {
    if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
    if (n <= 0n) throw new RangeError('return value is -Infinity or NaN');
-   let b = 2n, i = 0n;
-   //loop unrolling by exponential search
-   while (n >= (1n << b)) {n >>= b; i += b; b <<= 1n};
-   b = 64n; const w = (1n << b) - 1n;
+   let i = 0n;
+   //optimized for 64bit CPUs
+   const b = 64n;
    //linear Q-word search
-   while (n > w) {i += b; n >>= b};
+   while (n > (1n << b) - 1n) {i += b; n >>= b};
    //binary search
-   if (!(n & 0xFFFFFFFF00000000)) {i += 32n; n <<= 32n}
-   if (!(n & 0xFFFF000000000000)) {i += 16n; n <<= 16n}
-   if (!(n & 0xFF00000000000000)) {i += 8n; n <<= 8n}
-   if (!(n & 0xF000000000000000)) {i += 4n; n <<= 4n}
-   if (!(n & 0xC000000000000000)) {i += 2n; n <<= 2n}
-   if (!(n & 0x8000000000000000)) i += 1n;
+   if (n & 0xFFFFFFFF00000000n) {i += 32n; n >>= 32n}
+   if (n & 0xFFFF0000n) {i += 16n; n >>= 16n}
+   if (n & 0xFF00n) {i += 8n; n >>= 8n}
+   if (n & 0xF0n) {i += 4n; n >>= 4n}
+   if (n & 0xCn) {i += 2n; n >>= 2n}
+   if (n & 0x2n) i += 1n;
+   //IDK if the branches will be optimized
    return i
 };
 
 BigInt.logB = function(n, b = 3n)
 {
    if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
-   b = BigInt(b);
-   if (n <= 0n || b <= 1n) throw new RangeError('return value is -Infinity or NaN');
+   b = BigInt(b); //throw error if cannot coerce
+   if (b <= 1n) throw new RangeError('return value is -Infinity or NaN');
+   //stackoverflow.com/a/7982137
    const d = BigInt.log2(n) - 52n;
-   if (d > 0n) n >>= d;
+   if (d > 0n) n >>= d; //remove all bits BUT the most significant 53
    b = Number(b);
    return BigInt(Math.trunc(Math.logB(Number(n), b) + (d > 0n && (Number(d) * Math.logB(2, b)))));
-   /*
-   //TO-DO: try `BigInt.log2(b) + 1n`
-   let i = BigInt.log2(n) / BigInt.log2(b); n /= b ** i;
-   while (n > 1n) {n /= b; i++}
-   return i
-   //only works in base 2
-   //slightly off in other bases
-   */
+   //WARNING: this is log rounded, not truncated
 };
 
 const anyLogB = (x, b = 2) => {
