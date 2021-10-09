@@ -88,8 +88,14 @@ Math.LOG3E = Math.log3(Math.E);
 Math.LOG3_10 = Math.log3(10);
 Math.LOG3PHI = Math.log3(Math.PHI);
 
-Math.degToRad = function(d) {return d * (Math.PI / 180)};
-Math.radToDeg = function(r) {return r / (Math.PI / 180)};
+//converts degrees to radians by default
+//`norm` means "normalize"
+Math.angle2Rad = function(a, scale = 360, norm)
+   {return (norm ? a % scale : a) * (Math.PI / (scale / 2))};
+
+//converts radians to degrees by default
+Math.rad2Angle = function(r, scale = 360, norm)
+   {return (norm ? r % Math.TAU : r) / (Math.PI / (scale / 2))};
 
 //for consistency, no static method will be an arrow function
 BigInt.sign = function(n)
@@ -313,16 +319,27 @@ const anyHdist = (a, b) => {
 };
 
 const isSquare = n => {
-   if (n < 0) return false;
-   if (typeof n === 'number') return Number.isInteger(Math.sqrt(n));
+   if (!isNumerical(n)) return false;
+   if (n < 2) return n >= 0;
    //stackoverflow.com/a/18686659
-   if (!isBigInt(n) || BigInt.asIntN(64, 0xC840C04048404040n << n) >= 0n) return false;
-   if (n < 2n) return true; //prevent ctz error, and return early
-   const ctz = BigInt.ctrz(n);
-   if (ctz & 1n) return false;
-   n >>= ctz;
-   if ((n & 7n) !== 1n) return false;
-   return BigInt.sqrt(n) ** 2n === n
+   if (typeof n === 'number')
+   {
+      if (BigInt.asIntN(64, 0xC840C04048404040n << BigInt(n)) >= 0n) return false;
+      const ctz = anyCtrz(n);
+      if (ctz % 2) return false;
+      n /= 2 ** ctz;
+      if (n % 8 !== 1) return false;
+      return Number.isInteger(Math.sqrt(n))
+   }
+   else
+   {
+      if (BigInt.asIntN(64, 0xC840C04048404040n << n) >= 0n) return false;
+      const ctz = BigInt.ctrz(n);
+      if (ctz & 1n) return false;
+      n >>= ctz;
+      if ((n & 7n) !== 1n) return false;
+      return BigInt.sqrt(n) ** 2n === n
+   }
 };
 
 BigInt.sizeOf = function(n, b = 8n)
