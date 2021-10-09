@@ -16,14 +16,33 @@ for (const C of [Array, String, TypedArray])
    Object.defineProperty(C.prototype, "at",
       {value: at, writable: true, enumerable: false, configurable: true});
 
+//returns the internal bits of a number
+//the literal IEEE 754 representation
+const float2raw = x => {
+   let b = new ArrayBuffer(8);
+   let f = new Float64Array(b);
+   f[0] = x;
+   return (new BigUint64Array(b))[0];
+};
+
+//returns the numerical value of the BigInt
+//when interpreted as IEEE 754
+const raw2float = x => {
+   let b = new ArrayBuffer(8);
+   let i = new BigUint64Array(b);
+   i[0] = x;
+   return (new Float64Array(b))[0];
+};
+
 const isBigInt = x => typeof x === 'bigint';
 const isNumerical = x => typeof x === 'number' || isBigInt(x);
 
 const toNumerical = x => {
    if (isNumerical(x)) return x;
    return(
-      !(Math.abs(x) > Number.MAX_SAFE_INTEGER) || (typeof x === 'string' && /\s*?-?Infinity\s*?/.test(x))
-         ? +x : BigInt(x) )
+      Math.abs(x) <= Number.MAX_SAFE_INTEGER || (/\s*?[-+]?Infinity\s*?/.test(String(x)))
+         ? +x : BigInt(x)
+   )
 };
 
 const isInt = x => Number.isInteger(x) || isBigInt(x);
@@ -139,11 +158,9 @@ such that they are comfortables with themselves.
 const anyMod = (a, n) => mod(toNumerical(a), toNumerical(n));
 //in a nutshell, you've learned the differences between methods of different objects
 
+Math.ctrz32 = function(n) {return n | 0 ? 31 - Math.clz32(n & -n) : 32};
+//count trailing zeros in binary
 //the name "ctrz" is preferred over "ctz" in the MDN
-Math.ctrz32 = function(n) //count trailing zeros in binary
-   {return n |= 0 ? 31 - Math.clz32(n & -n) : 32};
-//maybe `>>>` should be used instead of `|`
-
 BigInt.ctrz = function(n)
 {
    if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
@@ -159,14 +176,25 @@ const anyCtrz = n => {
    n = toNumerical(n);
    if (isBigInt(n)) return n ? BigInt.ctrz(n) : Infinity;
    n = Math.abs(Math.trunc(n));
-   if (!n) return Math.trunc(Math.log2(Number.MAX_VALUE));
-   if (n === Infinity) return NaN;
+   if (n === Infinity || n !== n) return NaN;
+   //`!n === (n === 0)` at this point
+   if (!n) return 0x401; //Math.log2(Number.MAX_VALUE) + 1
+   //this works
    let c = 0;
-   const e = 31, w = 2 ** e;
-   //`e` can be any number that satisfies this condition:
-   //0 < e < 32 AND e = trunc(e)
+   //32 is fastest, and correct
+   const e = 32, w = 2 ** e;
    while (!(n % w)) {n /= w; c += e}
    return c + Math.ctrz32(n)
+   /*
+   //this binary hack doesn't work:
+   n = float2raw(n);
+   const ctz64 = n => {
+      n = Number(n);
+      let c = Math.ctrz32(n);
+      return BigInt(c + (c === 32 && Math.ctrz32(n / 2 ** 32)))
+   };
+   return Number(ctz64(n & ((1n << 53n) - 1n)) + ((n >> 53n) & 0x3ffn))
+   */
 }
 
 const isDivisible = (n, m) => typeof n === typeof m && isInt(n) && isInt(m) && !(n % m);
@@ -183,9 +211,30 @@ BigInt.isMersenne = function(n)
    return n > 0n && !(n & (n + 1n))
 };
 
-BigInt.bitParity = function(n)
-{
+//reverse the order of bits using "binary chop"
+Math.rev32 = function(n){
+   n  =   ((n & 0xffff0000) >>> 0x10) | ((n & 0x0000ffff) << 16);
+   n  =   ((n & 0xff00ff00) >>> 0x08) | ((n & 0x00ff00ff) << 8);
+   n  =   ((n & 0xf0f0f0f0) >>> 0x04) | ((n & 0x0f0f0f0f) << 4);
+   n  =   ((n & 0xcccccccc) >>> 0x02) | ((n & 0x33333333) << 2);
+   return ((n & 0xaaaaaaaa) >>> 0x01) | ((n & 0x55555555) << 1)
+   //beautiful alignment
+};
+
+Math.parity32 = function(n)
+{// === popcnt32(n) & 1
+   n ^= n >>> 1;
+   n ^= n >>> 2;
+   n ^= n >>> 4;
+   n ^= n >>> 8;
+   n ^= n >>> 16;
+   return n & 1
+};
+
+BigInt.parity = function(n)
+{// === popcnt(n) & 1n
    if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
+   if (n < 0n) throw new RangeError('return value is NaN');
    let i = 1n;
    while (n >> i) {n ^= n >> i; i <<= 1n}
    return n & 1n
@@ -195,9 +244,72 @@ Math.popcnt32 = function(i)
 {//stackoverflow.com/a/109025
    i |= 0; //maybe `>>>=` is correct
    i -= (i >>> 1) & 0x55555555;
-   i = (i & 0x33333333) + ((i >>> 2) & 0x33333333);
+   const m = 0x33333333;
+   i = (i & m) + ((i >>> 2) & m);
    i = (i + (i >>> 4)) & 0x0F0F0F0F;
    return (i * 0x01010101) >>> 24;
+};
+
+BigInt.popcnt = function(n)
+{
+   if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
+   if (n < 0n) throw new RangeError('return value is Infinity');
+   let c = 0n, w = new BigUint64Array(1); //TypedArray is faster because fixed-precision
+   const m = 0x3333333333333333n;
+   do {
+      w[0] = n; //copy least significant QWORD
+      n >>= 64n; //release memory ASAP
+      //en.wikipedia.org/wiki/Hamming_weight#Efficient_implementation
+      w[0] -= (w[0] >> 1n) & 0x5555555555555555n;
+      w[0] = (w[0] & m) + ((w[0] >> 2n) & m);
+      w[0] = (w[0] + (w[0] >> 4n)) & 0x0f0f0f0f0f0f0f0fn;
+      c += (w[0] * 0x0101010101010101n) >> 56n;
+   } while (n);/*
+   in most cases, n != 0, so 1 branch can be removed.
+   both `while` and `do while` will return the same value,
+   so this optimization is always correct
+   */
+   return c
+};
+
+const anyPopcnt = n => {
+   n = toNumerical(n);
+   if (isBigInt(n)) return n < 0n ? Infinity : BigInt.popcnt(n);
+   const t = Math.trunc;
+   n = Math.abs(t(n));
+   if (n === Infinity || n !== n) return NaN;
+   let c = 0;
+   const w = 2 ** 32;
+   while (n)
+   {
+      c += Math.popcnt32(n)
+      n = t(n / w);
+   }
+   return c
+};
+
+//32bit Hamming Distance
+Math.Hdist32 = function(a, b) {return Math.popcnt32(a ^ b)};
+
+BigInt.Hdist = function(a, b) {return BigInt.popcnt(a ^ b)};
+
+const anyHdist = (a, b) => {
+   a = toNumerical(a); b = toNumerical(b);
+   if (typeof a !== typeof b) throw new TypeError(['Arguments are not same-type', a, b]);
+   if (isBigInt(a)) return BigInt.Hdist(a, b);
+   const t = Math.trunc;
+   a = Math.abs(t(a));
+   b = Math.abs(t(b));
+   if (n === Infinity || n !== n) return NaN;
+   let c = 0;
+   const w = 2 ** 32;
+   while (a || b)
+   {
+      c += Math.Hdist32(a, b)
+      a = t(a / w);
+      b = t(b / w);
+   }
+   return c
 };
 
 const isSquare = n => {
@@ -323,7 +435,7 @@ const gcd = (a, b) => {
       const i = BigInt.ctrz(a); a >>= i;
       const j = BigInt.ctrz(b); b >>= j;
       const k = BigInt.min(i, j);
-      while (true)
+      while (1)
       {
          if (a > b) [a, b] = [b, a];
          b -= a;
