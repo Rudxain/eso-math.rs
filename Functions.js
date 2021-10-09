@@ -171,10 +171,19 @@ BigInt.ctrz = function(n)
 {
    if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
    if (!n) throw new RangeError('return value is Infinity');
-   const b = 0x80n; //optimized for 64bit CPUs. 0x40n is better for 32bit
+   //optimized for 64bit CPUs
+   const w = 0xFFFFFFFFFFFFFFFFn; //2 ** 64 - 1
    let i = 0n;
-   while (!(n & ((1n << b) - 1n))) {n >>= b; i += b}; //loop unrolling
-   while (!(n & 1n)) {n >>= 1n; i++}; //TO-DO: replace with binary search
+   //loop unrolling by linear Q-word search
+   while (!(n & w)) {i += 64n; n >>= 64n}
+   n &= w; //increase probability of optimization
+   //binary search
+   if (!(n & 0xFFFFFFFFn)) {i += 32n; n >>= 32n}
+   if (!(n & 0xFFFFn)) {i += 16n; n >>= 16n}
+   if (!(n & 0xFFn)) {i += 8n; n >>= 8n}
+   if (!(n & 0xFn)) {i += 4n; n >>= 4n}
+   if (!(n & 3n)) {i += 2n; n >>= 2n}
+   if (!(n & 1n)) i += 1n;
    return i
 };
 
@@ -185,14 +194,13 @@ const anyCtrz = n => {
    if (n === Infinity || n !== n) return NaN;
    //`!n === (n === 0)` at this point
    if (!n) return 0x401; //Math.log2(Number.MAX_VALUE) + 1
-   //this works
    let c = 0;
    //32 is fastest, and correct
    const e = 32, w = 2 ** e;
    while (!(n % w)) {n /= w; c += e}
    return c + Math.ctrz32(n)
    /*
-   //this binary hack doesn't work:
+   //I haven't found the bug in this bitwise hack:
    n = float2raw(n);
    const ctz64 = n => {
       n = Number(n);
@@ -228,7 +236,7 @@ Math.rev32 = function(n){
 };
 
 Math.parity32 = function(n)
-{// === popcnt32(n) & 1
+{// === popcnt32(n) % 2
    n ^= n >>> 1;
    n ^= n >>> 2;
    n ^= n >>> 4;
@@ -263,7 +271,7 @@ BigInt.popcnt = function(n)
    let c = 0n, w = new BigUint64Array(1); //TypedArray is faster because fixed-precision
    const m = 0x3333333333333333n;
    do {
-      w[0] = n; //copy least significant QWORD
+      w[0] = n; //copy least significant Q-word
       n >>= 64n; //release memory ASAP
       //en.wikipedia.org/wiki/Hamming_weight#Efficient_implementation
       w[0] -= (w[0] >> 1n) & 0x5555555555555555n;
@@ -343,7 +351,7 @@ const isSquare = n => {
 };
 
 BigInt.sizeOf = function(n, b = 8n)
-{//b is the unit of measurement. 1: bit, 8: Byte, 16: word, 32: Dword, 64: Qword
+{//b is the unit of measurement. 1: bit, 8: Byte, 16: word, 32: Dword, 64: Q-word
    if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
    n = BigInt.abs(n); b = BigInt.abs(BigInt(b));
    if (!b) throw new RangeError('return value is Infinity');
@@ -357,8 +365,18 @@ BigInt.log2 = function(n) //lb(bigint)
    if (!isBigInt(n)) throw new TypeError(['Expected BigInt', n]);
    if (n <= 0n) throw new RangeError('return value is -Infinity or NaN');
    let b = 2n, i = 0n;
-   while (n >= (1n << b)) {n >>= b; i += b; b <<= 1n}; //exponential loop unrolling
-   while (n > 1n) {n >>= 1n; i++};
+   //loop unrolling by exponential search
+   while (n >= (1n << b)) {n >>= b; i += b; b <<= 1n};
+   b = 64n; const w = (1n << b) - 1n;
+   //linear Q-word search
+   while (n > w) {i += b; n >>= b};
+   //binary search
+   if (!(n & 0xFFFFFFFF00000000)) {i += 32n; n <<= 32n}
+   if (!(n & 0xFFFF000000000000)) {i += 16n; n <<= 16n}
+   if (!(n & 0xFF00000000000000)) {i += 8n; n <<= 8n}
+   if (!(n & 0xF000000000000000)) {i += 4n; n <<= 4n}
+   if (!(n & 0xC000000000000000)) {i += 2n; n <<= 2n}
+   if (!(n & 0x8000000000000000)) i += 1n;
    return i
 };
 
