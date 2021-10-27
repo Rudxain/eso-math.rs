@@ -26,7 +26,7 @@ const assert = function(c, m, e) {if (!c) throw new (typeof e == 'function' ? e 
 
 //the main numeric object
 //the name is inspired by Ecmascript's `toNumeric` abstract function
-Object.defineProperty(globalThis, 'Numeric', {value: {}, writable: true, configurable: true});
+Object.defineProperty(this, 'Numeric', {value: {}, writable: true, configurable: true});
 //this is intended to work with any numerical value
 
 //returns the internal bits of a number
@@ -64,7 +64,7 @@ Numeric.to = function toNumeric(x)
 
 //check if int by coercion
 //JS should have this for consistency
-Object.defineProperty(globalThis, "isInteger", {value: function(x)
+Object.defineProperty(this, "isInteger", {value: function(x)
    {return BigInt.is(x) || Number.isInteger(+x)}, //to avoid throwing, order MUST be like this
    writable: true, configurable: true});
 
@@ -1091,7 +1091,7 @@ for (const O of [Number, Math, BigInt, Numeric])
 {
    //`=` operator is enumerable by default
    //and all these objects (except `Numeric`) have no enumerable properties by default
-   //thus, getting the keys returns all the custom property names
-   for (const k of Object.keys(O))
+   //thus, enumerable props = custom props
+   for (const k in O)
       Object.defineProperty(O, k, typeof O[k] == 'function' ? {enumerable: false} : {writable: false, enumerable: false, configurable: false});
 }
