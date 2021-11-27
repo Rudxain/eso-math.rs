@@ -349,19 +349,21 @@ Math.scale = function(x, inLow, inHigh, outLow, outHigh)
 //round towards unsigned (any) Infinity
 Math.roundInf = function(x) {return Math[+x < 0 ? 'floor' : 'ceil'](x)};
 
+//interval [0, n)
 BigInt.random = function(n)
 {
-   const b = BigInt.sizeOf(n, 1n);
-   let l = 1n, x = 0n;
-   const w = 32n;
-   while (l < b)
+   const b = BigInt.sizeOf(n = BigInt.to(n), 1n);
+   let l = 1n, x = 0n; //l = size of x
+   const w = 51, I = BigInt; //52 is probably biased, 51 guarantees randomness
+   while (l <= b)
    {
-      x <<= w;
-      l += w;
-      x |= BigInt(Math.trunc(Math.random() * 2 ** 32))
+      x <<= I(w);
+      l += I(w);
+      //getRandomValues is slower and overkill
+      x |= I(Math.floor(Math.random() * 2 ** w))
    }
-   //this is biased, sorry
-   return x % n
+   x >>= l - b - 1n; //reduce modulo bias, I guess?
+   return x % n //this is biased, sorry
 };
 
 //Euclidean division
