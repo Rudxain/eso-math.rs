@@ -352,18 +352,24 @@ Math.roundInf = function(x) {return Math[+x < 0 ? 'floor' : 'ceil'](x)};
 //interval [0, n)
 BigInt.random = function(n)
 {
-   const b = BigInt.sizeOf(n = BigInt.to(n), 1n);
+   const I = BigInt,
+      b = I.sizeOf(n = I.to(n), 1n),
+      w = 52;
    let l = 1n, x = 0n; //l = size of x
-   const w = 51, I = BigInt; //52 is probably biased, 51 guarantees randomness
    while (l <= b)
    {
       x <<= I(w);
       l += I(w);
       //getRandomValues is slower and overkill
-      x |= I(Math.floor(Math.random() * 2 ** w))
+      x |= I(Math.random() * 2 ** w)
    }
-   x >>= l - b - 1n; //reduce modulo bias, I guess?
-   return x % n //this is biased, sorry
+   const s = l - b - 1n;
+   //remove bias (seems like it doesn't work)
+   x >>= s; l -= s;
+   const MAX = ~(-1n << l);
+   while (x >= MAX - MAX % n)
+      x ^= I(Math.random() * 2 ** w);
+   return x % n
 };
 
 //Euclidean division
@@ -466,14 +472,13 @@ Numeric.ctz = function(n)
 {
    n = Numeric.to(n);
    if (BigInt.is(n)) return n ? BigInt.ctz(n) : Infinity;
-   n = Math.abs(Math.trunc(n));
+   n = Math.trunc(Math.abs(n));
    if (!isFinite(n)) return NaN;
-   //`!n === (n === 0)` at this point
    if (!n) return 0x400; //(rounded) `Math.log2(Number.MAX_VALUE)` = (truncated) ilb(2 ^ 1024 - 1) + 1
    if (n % 2) return 0;
    n = Number.toRaw(n);
    const e = ((n >> 52n) & 0x3ffn) - 51n; //abs(exponent), unbiased
-   n &= (1n << 52n) - 1n; //mantissa
+   n &= ~(-1n << 52n); //mantissa
    //to account for denormalized numbers,
    //this must do ctz on the mantissa
    return Number((n ? BigInt.ctz(n) : 52n) + e)
@@ -485,6 +490,22 @@ Numeric.ctz = function(n)
    return (c > 0 && c) + Math.ctz32(n) + (n >= 2 ** 32 && Math.ctz32(n / 2 ** 32))
    */
 };
+
+{
+   const ctz = n =>
+   {
+      let i = 0;
+      while (n % 2 == 0) {n /= 2; i++}
+      return i
+   };
+   let x = Math.random() * 2 ** 52;
+   assert(x % 1 == 0, 'expected 52 random bits, but got 53')
+   //random mantissa and exponent
+   do x = Math.random() * 2 ** 52 * 2 ** Math.trunc(Math.random() * 0x400)
+   while (x == Infinity);
+   //test across the whole range of Naturals
+   assert(Numeric.ctz(x) === ctz(x), 'wrong CTZ')
+}
 
 Numeric.isDivisible = function(n, d)
 {
@@ -718,8 +739,8 @@ Numeric.sqrt = function(x)
    {return (x = Numeric.to(x)) < 0 ? NaN : (BigInt.is(x) ? BigInt : Math).sqrt(x)};
 
 {
-   //Euclidean
-   const GCD = (a, b) =>
+   //Euclidean template/"macro"/generic-function
+   const Euclid = (a, b) =>
    {
       while (b) [a, b] = [b, a % b];
       return a
@@ -733,28 +754,74 @@ Numeric.sqrt = function(x)
    */
    Math.gcd = function(a, b)
    {
-      a = +a; b = +b;
+      a = Math.abs(a); b = Math.abs(b);
       if (a != a || b != b) return NaN;
-      return GCD(a, b)
+      if (a == Infinity) return b;
+      //avoid potential NaN
+      //this is correct according to `Euclid`
+      if (b == Infinity) return a;
+      const i = Numeric.ctz(a), j = Numeric.ctz(b),
+         k = Math.min(i, j);
+      //ensure the max length = 53b
+      a /= 2 ** i; b /= 2 ** j;
+      return Euclid(a, b) * 2 ** k
    };
 
+   //BEHOLD THE ULTIMATE GCD ALGORITHM
    BigInt.gcd = function(a, b)
    {
+      //simplify future operations
       a = BigInt.abs(a); b = BigInt.abs(b);
-      //en.wikipedia.org/wiki/Lehmer%27s_GCD_algorithm#Algorithm
+      if (!a) return b; if (!b) return a;
+      /*
+      if one value is a big Mersenne but the other is 1
+      Stein's algorithm will use TOO MUCH time.
+      to prevent that, return early when any value = 1
+      */
+      if (a == 1n || b == 1n) return 1n;
+      const ctz = BigInt.ctz;
+      let i = ctz(a), j = ctz(b),
+         k = BigInt.min(i, j);
+      //keep GCD "pseudo-intact", but reduce sizes
+      a >>= i; b >>= j;
+      //update current CTZ for potential future use,
+      //also free up memory if the engine doesn't do it
+      i = j = 0n;
+      //`k` isn't updated because data would be lost
+      
       if (b > a) [a, b] = [b, a];
       let a_len = BigInt.sizeOf(a, 64n),
          b_len = BigInt.sizeOf(b, 64n);
-      if (b_len < 2) return GCD(a, b);
+      if (b_len < 2)
+      {
+         //both are small, Euclid is best here
+         if (a_len < 2) return Euclid(a, b) << k;
+         /*
+         else: the larger is too large
+         but the smaller is too small,
+         so use Stein's algorithm
+         en.wikipedia.org/wiki/Binary_GCD_algorithm#Implementation
+         */
+         for(;;)
+         {
+            if (a > b) [a, b] = [b, a];
+            b -= a;
+            if (!b) return a << k;
+            b >>= ctz(b)
+         }
+      }
+      /*
+      else: BOTH TOO LARGE
+      definitely use Lehmer's algorithm
+      en.wikipedia.org/wiki/Lehmer%27s_GCD_algorithm#Algorithm
+      */
       let m = a_len - b_len;
-      assert(m >= 0, "Negative absolute difference")
       if (m)
       {
-         while (!(a & BigInt.U64MAX) && m)
-            {a >>= 64n; a_len--; m--}
-         b <<= m << 6n; b_len += m;
+         //this potentially makes `b > a` true
+         b <<= m << 6n;
+         b_len += m; //b_len = a_len
       }
-      assert(a_len === b_len, 'Mismatched Q-word lengths')
       m = a_len;
       while (a && b)
       {
@@ -769,8 +836,11 @@ Numeric.sqrt = function(x)
                w;
             //I'm afraid of deleting the `else`
             if (w0 != w1) {break} else w = w0;
-            [A, B, x, C, D, y] =
-               [C, D, y, A - w*C, B - w*D, x - w*y];
+            [A, B, x,
+            C, D, y] = [
+               C, D, y,
+               A - w*C, B - w*D, x - w*y
+            ];
             if (B) continue;
          }
          if (!B)
@@ -781,12 +851,12 @@ Numeric.sqrt = function(x)
          [a, b] = [a*A + b*B, C*a + D*b];
          if (b) continue;
       }
-      return a
+      return a << k
    };
 
-   const a = BigInt.random(1n << 0x100n),
-      b = BigInt.random(1n << 0x100n);
-   assert(BigInt.gcd(a, b) === GCD(a, b), 'BigInt.gcd is bugged')
+   const a = BigInt.random(1n << 128n),
+      b = BigInt.random(1n << 128n);
+   assert(BigInt.gcd(a, b) === Euclid(a, b), 'BigInt.gcd is bugged')
 }
 
 Numeric.gcd = function(a, b)
@@ -879,23 +949,25 @@ let Pd = new Set([2, 3, 5]);
 //Primality "dictionary", any order, gaps allowed (sparse)
 let addP = function()
 {//find next prime and store it
-   let x = Pa.at(-1) + 2;
+   let x = +(Pa.at(-1)) + 2;
+   //avoid infinite loop
+   if (x >= 2 ** 53) return true; //no more primes
    loop:
    for (let y = Math.sqrt(x), j; true; x += 2, y = Math.sqrt(x))
    {
       if (Pd.has(x)) break;
-      if (y === Math.trunc(y)) continue; //ignore perfect squares because they are composite
+      if (y == Math.trunc(y)) continue; //ignore perfect squares because they are composite
       j = 1;
       while (Pa[j] <= y)
-         {if (x % Pa[j++] === 0) continue loop;}
+         {if (x % Pa[j++] == 0) continue loop;}
       Pd.add(x); break;
    }
-   Pa.push(x)
+   Pa.push(x); return false;
 };
 
 Math.factorize = function(n) //get prime factorization of n
 {
-   n = Math.trunc(Math.abs(n));
+   n = Math.floor(Math.abs(n));
    if (!isFinite(n)) return; //returning `undefined` is "more correct"
    const out = new Map;
    if (n < 2) return out; //0 and 1 don't have factorization
@@ -906,7 +978,7 @@ Math.factorize = function(n) //get prime factorization of n
    const ctz = Numeric.ctz(n);
    //binary speed-hack
    if (ctz) {out.set(2, ctz * rt); n /= 2 ** ctz}
-   if (Pd.has(n)) {out.set(n, (out.get(n) || 0) + rt); return out}
+   if (Pd.has(n)) {out.set(n, rt); return out}
    while (Pa[i] <= y && Pa[i] <= n)
    {
       while (n % Pa[i] === 0)
