@@ -739,18 +739,21 @@ Numeric.sqrt = function(x)
    {return (x = Numeric.to(x)) < 0 ? NaN : (BigInt.is(x) ? BigInt : Math).sqrt(x)};
 
 {
-   //Euclidean template/"macro"/generic-function
+   /*
+   Euclidean algorithm for finding Highest Common Factor.
+   returns correct values when inputs are rational numbers
+   *whose denominators are any power of 2 (including 2**0)
+   */
    const Euclid = (a, b) =>
    {
       while (b) [a, b] = [b, a % b];
       return a
    };
 
-   /**returns correct values when inputs are rational numbers
-   *whose denominators are any power of 2 (including 2**0)
+   /**
    *@param {number} a
    *@param {number} b
-   *@return {number} highest common factor of `a` and `b`
+   *@return {number}
    */
    Math.gcd = function(a, b)
    {
@@ -760,6 +763,8 @@ Numeric.sqrt = function(x)
       //avoid potential NaN
       //this is correct according to `Euclid`
       if (b == Infinity) return a;
+      //handle rationals
+      if (a % 1 || b % 1) return Euclid(a, b);
       const i = Numeric.ctz(a), j = Numeric.ctz(b),
          k = Math.min(i, j);
       //ensure the max length = 53b
@@ -768,6 +773,11 @@ Numeric.sqrt = function(x)
    };
 
    //BEHOLD THE ULTIMATE GCD ALGORITHM
+   /**
+   *@param {bigint} a
+   *@param {bigint} b
+   *@return {bigint}
+   */
    BigInt.gcd = function(a, b)
    {
       //simplify future operations
@@ -782,16 +792,25 @@ Numeric.sqrt = function(x)
       const ctz = BigInt.ctz;
       let i = ctz(a), j = ctz(b),
          k = BigInt.min(i, j);
-      //keep GCD "pseudo-intact", but reduce sizes
+      //keep values "pseudo-intact", and reduce sizes
       a >>= i; b >>= j;
       //update current CTZ for potential future use,
       //also free up memory if the engine doesn't do it
       i = j = 0n;
       //`k` isn't updated because data would be lost
       
+      /*
+      this will set the base ("Beta") of Lehmer's algorithm
+      to `2 ** (2 ** BIN)`
+      use `5n` for 32b machines.
+      this is currently optimized for binary computers
+      whose word-size is 64b
+      */
+      const BIN = 6n;
+      
       if (b > a) [a, b] = [b, a];
-      let a_len = BigInt.sizeOf(a, 64n),
-         b_len = BigInt.sizeOf(b, 64n);
+      let a_len = BigInt.sizeOf(a, 1n << BIN),
+         b_len = BigInt.sizeOf(b, 1n << BIN);
       if (b_len < 2)
       {
          //both are small, Euclid is best here
@@ -819,15 +838,15 @@ Numeric.sqrt = function(x)
       if (m)
       {
          //this potentially makes `b > a` true
-         b <<= m << 6n;
+         b <<= m << BIN;
          b_len += m; //b_len = a_len
       }
       m = a_len;
       while (a && b)
       {
          m--;
-         let x = a >> (m << 6n),
-            y = b >> (m << 6n),
+         let x = a >> (m << BIN),
+            y = b >> (m << BIN),
             [A, B, C, D] = [1n, 0n, 0n, 1n];
          while (true)
          {
@@ -845,6 +864,8 @@ Numeric.sqrt = function(x)
          }
          if (!B)
          {
+            //is the order correct?
+            //if a < b, this will be no-op
             if (b) [a, b] = [b, a % b];
             continue
          }
