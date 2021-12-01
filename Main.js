@@ -898,7 +898,7 @@ BigInt.lcm = function(a, b)
 {
    a = BigInt.abs(a); b = BigInt.abs(b);
    return a / BigInt.gcd(a, b) * b
-   //better performance than `a * b / Math.gcd(a, b)`
+   //better performance than `a * b / BigInt.gcd(a, b)`
 };
 
 Numeric.lcm = function(a, b)
@@ -1100,9 +1100,13 @@ Numeric.factorial_inv = function(n, k = 1)
 //get Nth "TriNumber" fast
 Numeric.triNum = function(x)
 {
-   return BigInt.is(x = Numeric.to(x))
-      ? x * (x + 1n) / 2n
-      : x * (x + 1) / 2
+   x = Numeric.to(x);
+   const U = BigInt.is(x) ? 1n : 1,
+      B = U + U;
+   //this approach is slightly faster
+   return x % B
+      ? (x + U) / B * x
+      : x / B * (x + U)
 };
 
 //get index of a trinum
