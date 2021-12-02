@@ -918,21 +918,24 @@ Numeric.lcd = function(a, b)
    return u
 };
 
-Math.agm = function (a, g)
+Math.agm = function(a, g)
 {
    a = +a; g = +g;
+   //avoid infinite loop
+   if (a != a || g != g || a < 0 || g < 0)
+      return NaN;
    let x;
    do [a, g, x] = [(a + g) / 2, Math.sqrt(a * g), a]
-   while (a !== x) //this condition allows max precision
-   //and prevents infinite loops caused by rounding errors
+   while (a != x) //this condition allows max precision
+   //and prevents infinite loop caused by rounding error
    return a
 };
 
-BigInt.agm = function (a, g)
+BigInt.agm = function(a, g)
 {
    a = BigInt.to(a); g = BigInt.to(g);
    do [a, g] = [(a + g) / 2n, BigInt.sqrt(a * g)]
-   while (a !== g)
+   while (a != g)
    return a
 };
 
@@ -940,7 +943,8 @@ BigInt.agm = function (a, g)
 Numeric.agm = function(a, g)
 {
    a = Numeric.to(a); g = Numeric.to(g);
-   if (a < 0n || g < 0n) return NaN; //avoid throw on negative BigInt
+   //avoid throw on negative BigInt
+   if (a < 0n || g < 0n) return NaN;
    return (BigInt.is(a) && BigInt.is(g) ? BigInt : Math).agm(a, g)
 };
 
