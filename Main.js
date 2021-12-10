@@ -3,8 +3,6 @@
 {
    const F = Object.defineProperty;
 
-   F(Array, 'is', Object.getOwnPropertyDescriptor(Array, 'isArray'))
-
    F(globalThis, 'defProp',
       {
          value:
@@ -46,6 +44,8 @@ globalThis.AssertionError = class AssertionError extends Error
       defProp(this.__proto__, 'name', this.constructor.name, 0b101)
    }
 };
+defProp(globalThis, 'AssertionError', AssertionError, 0b101)
+
 
 defProp(globalThis, 'assert', function assert(c, m) {if (!c) throw new AssertionError(m)}, 0)
 
@@ -156,7 +156,8 @@ Numeric.to = function toNumeric(x)
 //check if int by coercion
 //JS should have this for consistency
 defProp(globalThis, 'isInteger',
-   function isInt(x) {return BigInt.is(x) || Number.isInteger(+x)}, 0b101
+   function isInt(x) {return BigInt.is(x) || Number.isInteger(+x)},
+   0b101
 )
 /**
 *check if strictly any integer
@@ -217,8 +218,8 @@ Math.PHI = Math.SQRT5 / 2 + 0.5;
 Math.logB = function(x, b = Math.E) {return Math.log2(x) / Math.log2(b)};
 //in general, lb has better precision than ln
 
-Math.LNPHI = Math.log(Math.PHI);
 Math.LOG2PHI = Math.log2(Math.PHI);
+Math.LNPHI = Math.log(Math.PHI);
 Math.LOG10PHI = Math.log10(Math.PHI);
 
 Math.logPHI = function(x) {return Math.logB(x, Math.PHI)};
@@ -252,6 +253,7 @@ BigInt.S64MIN = -1n << 63n;
 
 //github.com/zloirock/core-js/blob/master/packages/core-js/modules/esnext.math.signbit.js
 Math.signbit = function(x)
+//this should be in `Number`, not `Math`
    {return (x = +x) == x && x < 0 || Number.isMinusZero(x)};
 
 //for consistency, no static method will be an arrow function
@@ -276,35 +278,35 @@ Numeric.signSplit = function(x)
 
 BigInt.max = function(...a)
 {
-   let i = 0, m;
-   if (BigInt.is(a[i])) m = a[i];
+   a = a.map(BigInt.to);
+   let i = 0, m = a[i];
    while (++i < a.length)
-      {if (BigInt.is(a[i]) && a[i] > m) m = a[i];}
+      {if (a[i] > m) m = a[i];}
    return m
 };
 BigInt.min = function(...a)
 {
-   let i = 0, m;
-   if (BigInt.is(a[i])) m = a[i];
+   a = a.map(BigInt.to);
+   let i = 0, m = a[i];
    while (++i < a.length)
-      {if (BigInt.is(a[i]) && a[i] < m) m = a[i];}
+      {if (a[i] < m) m = a[i];}
    return m
 };
 
 Numeric.max = function(...a)
 {
-   let i = 0, m;
-   if (Numeric.is(a[i])) m = a[i];
+   a = a.map(Numeric.to);
+   let i = 0, m = a[i];
    while (++i < a.length)
-      {if (Numeric.is(a[i]) && a[i] > m) m = a[i];}
+      {if (a[i] > m) m = a[i];}
    return m
 };
 Numeric.min = function(...a)
 {
-   let i = 0, m;
-   if (Numeric.is(a[i])) m = a[i];
+   a = a.map(Numeric.to);
+   let i = 0, m = a[i];
    while (++i < a.length)
-      {if (Numeric.is(a[i]) && a[i] < m) m = a[i];}
+      {if (a[i] < m) m = a[i];}
    return m
 };
 
@@ -528,6 +530,13 @@ BigInt.isPow2 = function(n)
 BigInt.isMersenne = function(n)
    {return BigInt.is(n) && n > 0n && !(n & (n + 1n))};
 
+Math.isPow2 = function(n)
+   {return Number.isInteger(n.valueOf()) && n > 0 && BigInt.isPow2(BigInt(n))};
+//Do these need manual optimization?
+Math.isMersenne = function(n)
+   {return Number.isInteger(n.valueOf()) && n > 0 && BigInt.isMersenne(BigInt(n))};
+
+
 //reverse the order of bits using "binary chop"
 Math.rev32 = function(n)
 {
@@ -604,13 +613,10 @@ Math.isSquare = function(n)
    n = +n;
    if (!Number.isInteger(n)) return false;
    if (n < 2) return n >= 0;
-   //stackoverflow.com/a/18686659
-   if (BigInt.asIntN(64, 0x840C04048404040n << BigInt(n)) >= 0n)
-      return false;
    const ctz = Numeric.ctz(n);
    if (ctz % 2) return false;
    n /= 2 ** ctz;
-   if (n % 8 !== 1) return false;
+   if (n % 8 != 1) return false;
    return Number.isInteger(Math.sqrt(n))
 };
 
@@ -618,20 +624,52 @@ BigInt.isSquare = function(n)
 {
    if (!BigInt.is(n)) return false;
    if (n < 2n) return n >= 0n;
-   //stackoverflow.com/a/18686659
-   if (BigInt.asIntN(64, 0x840C04048404040n << n) >= 0n)
-      return false;
    const ctz = BigInt.ctz(n);
    if (ctz & 1n) return false;
    n >>= ctz;
-   if ((n & 7n) !== 1n) return false;
-   return BigInt.sqrt(n) ** 2n === n
+   if (n & 7n != 1n) return false;
+   return BigInt.sqrt(n) ** 2n == n
 };
 
 Numeric.isSquare = function(n)
 {
    if (!Numeric.isInt(n)) return false;
    return (BigInt.is(n) ? BigInt : Math).isSquare(n)
+};
+
+//math.stackexchange.com/a/2190888
+Math.isCube = function(n)
+{
+   n = Math.abs(n);
+   if (!Number.isInteger(n)) return false;
+   if (!n) return true;
+   const ctz = Numeric.ctz(n);
+   if (ctz % 3) return false;
+   n /= 2 ** ctz;
+   if (n == 1) return true;
+   if (!([0, 1, 8].includes(n % 9) && [0, 1, 6].includes(n % 7)))
+      return false;
+   return Number.isInteger(Math.cbrt(n))
+};
+
+BigInt.isCube = function(n)
+{
+   if (!BigInt.is(n)) return false;
+   n = BigInt.abs(n);
+   if (!n) return true;
+   const ctz = BigInt.ctz(n);
+   if (ctz % 3n) return false;
+   n >>= ctz;
+   if (n == 1n) return true;
+   if (!([0n, 1n, 8n].includes(n % 9n) && [0n, 1n, 6n].includes(n % 7n)))
+      return false;
+   return BigInt.root(n, 3n) ** 3n == n
+};
+
+Numeric.isCube = function(n)
+{
+   if (!Numeric.isInt(n)) return false;
+   return (BigInt.is(n) ? BigInt : Math).isCube(n)
 };
 
 //this should be an instance method
@@ -665,13 +703,10 @@ BigInt.log2 = function(n) //lb(bigint)
 BigInt.logB = function(n, b = 3n)
 {
    n = BigInt.to(n); b = BigInt(b);
-   if (b < 2n) throw new RangeError('Invalid logarithm base. return value is -Infinity or NaN');
-   //stackoverflow.com/a/7982137
-   const d = BigInt.log2(n) - 52n;
-   if (d > 0n) n >>= d; //remove all bits BUT the most significant 53
-   b = Number(b);
-   return BigInt(Math.trunc(Math.logB(Number(n), b) + (d > 0n && (Number(d) * Math.logB(2, b)))));
-   //WARNING: this is rounded, not truncated
+   if (n < 1n || b < 2n) throw new RangeError('return value is -Infinity or NaN');
+   let i = 0n;
+   while (n > 1n) {n /= b; i++}
+   return i
 };
 
 Numeric.logB = function(x, b = 2)
@@ -690,7 +725,20 @@ Numeric.logStar = function(x, b = 2)
    return i
 };
 
-Math.root = function(x, n = 2) {return Math.pow(x, 1 / n)};
+/*
+IIFEs and closures allow "taking a snapshot"
+of a var in an outer scope.
+This effect essentially allows "pseudo-compilation"
+of the function, which makes its behavior constant
+unless explicitly replaced.
+I saw this "trick" at MDN's `cbrt` polyfill.
+I don't know if I should use this in all functions,
+as it would be a redundancy mess (it already is, but this would be worse)
+
+A simple solution would be to put EVERYTHING inside a big IIFE,
+but it would be tedious to refactor
+*/
+Math.root = (function(pow){return function(x, n = 2) {return pow(x, 1 / n)}})(Math.pow);
 
 BigInt.root = function(n, i = 2n)
 {//ith (degree i) root of n
@@ -701,30 +749,16 @@ BigInt.root = function(n, i = 2n)
    if (n[0] === -1n && !(i & 1n)) throw new RangeError('return value is a Complex number');
    if (i < 0n) {if (!n[1]) throw new RangeError('return value is Infinity'); return n[1] == 1n ? n[0] : 0n}
    if (!n[1]) return 0n;
-   const j = i - 1n;
+   const j = i - 1n, log = BigInt.log2(n[1]);
    //a ^ (1 / k) = b ^ (log_b(a) / k)
-   let x0 = 2n << BigInt.log2(n[1]) / i, //upper bound estimation
-       x1 = x0 * j / i + n[1] / (i * x0 ** j); //lower
+   let x0 = n >> (log - log / i),
+       x1 = x0 * j / i + n[1] / (i * x0 ** j);
    while (x1 < x0)
    {//Newton's Method
       x0 = x1;
       x1 = x1 * j / i + n[1] / (i * x1 ** j)
    }
    return x0 * n[0]
-};
-
-BigInt.sqrt = function(n)
-{//Heron's Method
-   n = BigInt.to(n);
-   if (n < 2n) {if (n < 0n) throw new RangeError('return value is Complex number'); return n}
-   let x0 = 2n << (BigInt.log2(n) >> 1n),
-       x1 = (x0 + n / x0) >> 1n;
-   while (x1 < x0)
-   {
-      x0 = x1;
-      x1 = (x1 + n / x1) >> 1n
-   }
-   return x0
 };
 
 Numeric.root = function(x, n)
@@ -738,6 +772,20 @@ Numeric.root = function(x, n)
    if (!a) return zero;
    if (typeof x != typeof n) throw new TypeError('Mismatched numeric types');
    return (BigInt.is(x) ? BigInt : Math).root(x, n)
+};
+
+BigInt.sqrt = function(n)
+{//Heron's Method
+   n = BigInt.to(n);
+   if (n < 2n) {if (n < 0n) throw new RangeError('return value is Complex number'); return n}
+   let x0 = n >> (BigInt.log2(n) >> 1n),
+       x1 = (x0 + n / x0) >> 1n;
+   while (x1 < x0)
+   {
+      x0 = x1;
+      x1 = (x1 + n / x1) >> 1n
+   }
+   return x0
 };
 
 /**
@@ -776,7 +824,9 @@ Numeric.sqrt = function(x)
          k = Math.min(i, j);
       //ensure the max length = 53b
       a /= 2 ** i; b /= 2 ** j;
-      return Euclid(a, b) * 2 ** k
+      return (Math.isMersenne(a) && Math.isMersenne(b)
+         ? 2 ** Math.gcd(Math.trunc(Math.log2(a)) + 1, Math.trunc(Math.log2(b)) + 1) - 1
+         : Euclid(a, b)) * 2 ** k
    };
    /**
    *BEHOLD THE ULTIMATE GCD ALGORITHM
@@ -788,7 +838,7 @@ Numeric.sqrt = function(x)
    {
       //simplify future operations
       a = BigInt.abs(a); b = BigInt.abs(b);
-      if (!a) return b; if (!b) return a;
+      if (a == b || !a) return b; if (!b) return a;
       const ctz = BigInt.ctz,
          i = ctz(a), j = ctz(b),
          k = BigInt.min(i, j);
@@ -958,56 +1008,71 @@ Numeric.agm = function(a, g)
 }
 
 //returns non-trivial divisors (proper divs) of n
-Numeric.divisors = function(n)
+Math.divisors = function(n)
 {
-   n = Numeric.abs(n); if (!BigInt.is(n)) n = Math.trunc(n);
-   const m = Numeric.sqrt(n), out = [];
-   let i = BigInt.is(n) ? 2n : 2;
-   while (i <= m) {if (Numeric.isDivisible(n, i)) out.push(i); i++};
-   i = out.length - Numeric.isSquare(n) - 1;
+   n = Math.trunc(Math.abs(n));
+   const m = Math.sqrt(n), out = [];
+   let i = 2;
+   while (i <= m) {if (!(n % i)) out.push(i); i++};
+   i = out.length - Math.isSquare(n) - 1;
    while (i >= 0) out.push(n / out[i--]);
    return out
 };
 
-let Pa = [3, 5]; //2 is unnecessary
 //array of sorted Primes, no gaps (dense)
-let Pd = new Set([2, 3, 5]);
+let Pa = [3, 5]; //2 is unnecessary because CTZ
 //Primality "dictionary", any order, gaps allowed (sparse)
+let Pd = new Set([2, 3, 5]);
+//find next prime and store it
 let addP = function()
-{//find next prime and store it
+{
    let x = +(Pa.at(-1)) + 2;
    //avoid infinite loop
    if (x >= 2 ** 53) return true; //no more primes
    loop:
-   for (let y = Math.sqrt(x), j; true; x += 2, y = Math.sqrt(x))
+   for (let j; true; x += 2)
    {
       if (Pd.has(x)) break;
-      if (y == Math.trunc(y)) continue; //ignore perfect squares because they are composite
-      j = 1;
-      while (Pa[j] <= y)
+      if (Math.isSquare(x)) continue;
+      j = 0;
+      while (Pa[j] <= Math.sqrt(x))
          {if (x % Pa[j++] == 0) continue loop;}
       Pd.add(x); break;
    }
    Pa.push(x); return false;
 };
 
-Math.factorize = function(n) //get prime factorization of n
+//get prime factorization of n
+Math.factorize = function(n)
 {
-   n = Math.floor(Math.abs(n));
+   /*
+   `floor` and `trunc` are the same here,
+   but `trunc` means "get int part"
+   and this is EXACTLY what must be done
+   */
+   n = Math.trunc(Math.abs(n));
    if (!isFinite(n)) return; //returning `undefined` is "more correct"
-   const out = new Map;
-   if (n < 2) return out; //0 and 1 don't have factorization
+   const out = new Map, ctz = Numeric.ctz(n);
+   if (ctz) {out.set(2, ctz); n /= 2 ** ctz}
+   if (n < 2) return out;
    let rt = 1, y = Math.sqrt(n);
-   //TO-DO: replace with a better root-degree-finding algorithm
+   //trial rooting
    while (Math.isSquare(n)) {n = y; y = Math.sqrt(y); rt *= 2}
-   let i = 0;
-   const ctz = Numeric.ctz(n);
-   //binary speed-hack
-   if (ctz) {out.set(2, ctz * rt); n /= 2 ** ctz}
+   y = Math.cbrt(n);
+   while (Math.isCube(n)) {n = y; y = Math.cbrt(y); rt *= 3}
+   let i = 1;
+   while ((Math.log2(n) + 1) / Pa[i] > 3)
+   {
+      y = Math.root(n, Pa[i]);
+      while (!(y % 1)) {n = y; y = Math.root(y, Pa[i]); rt *= Pa[i]}
+      i++
+   }
    if (Pd.has(n)) {out.set(n, rt); return out}
+   i = 0; y = Math.sqrt(n);
+   //trial division on steroids
    while (Pa[i] <= y && Pa[i] <= n)
    {
-      while (n % Pa[i] === 0)
+      while (n % Pa[i] == 0)
       {
          out.set(Pa[i], (out.get(Pa[i]) || 0) + rt);
          n /= Pa[i];
@@ -1023,6 +1088,12 @@ Math.factorize = function(n) //get prime factorization of n
    return out
 }
 
+/*
+I don't want to add inefficient naive algorithms,
+that's why there's no `factorize` nor `divisors` for BigInts.
+I wanted to add Euler's Totient func but the naive algo is EXTREMELY slow
+*/
+
 {
    //factorial approximation for non-integers
    const Gosper = x => Math.sqrt((+x + 1 / 6) * Math.TAU) * (x / Math.E) ** x;
@@ -1033,7 +1104,7 @@ Math.factorize = function(n) //get prime factorization of n
    {
       let t = 1, s0, s1 = 0 ** x;
       do {s0 = s1; s1 += t ** x * Math.exp(-t); t++}
-      while (s0 !== s1)
+      while (s0 != s1)
       return s0
    };
 
@@ -1189,665 +1260,17 @@ Numeric.Lucas = function(n, P = 1, Q = -1, F)
    const seq = BigInt.is(P) && BigInt.is(Q)
       ? (F ? [2n, P] : [0n, 1n])
       : (F ? [2, P] : [0, 1]);
-   while (seq.length <= n) seq.push(P * seq.at(-1) - Q * seq.at(-2));
+   while (seq.length <= n)
+      seq.push(P * seq.at(-1) - Q * seq.at(-2));
    return seq
 };
 
 //TO-DO: insert Dot-Product here
 
 
-//generalized Collatz
-//en.wikipedia.org/wiki/Collatz_conjecture#Undecidable_generalizations
-Numeric.Collatz_gen = function(n, k = 2, a=[[1, 2], [3, 1]], b=[[0, 1], [1, 1]], P = 2)
-{
-   n = Numeric.to(n);
-   if (!isFinite(n)) return; //`undefined` is more correct than `[]`
-   P = Numeric.to(P);
-   if (!BigInt.is(P)) P = Math.trunc(P);
-   const seq = [n]; let i, tmp;
-   const addFrac = (f0, f1) => {
-      //format is [num, den]
-      const x = Numeric.lcm(f0[1], f1[1]);
-      return [x / f0[1] * f0[0] + x / f1[1] * f1[0], x]
-   };
-   while (seq.length < Number(k))
-   {
-      i = seq.at(-1) % P;
-      tmp = addFrac([seq.at(-1) * a.at(i)[0] / a.at(i)[1], 1], b.at(i));
-      seq.push(tmp[0] / tmp[1])
-   }
-   return seq.slice(1)
-};
-
-/*
-Returns (Hailstone) seq of n. Supports signed integers.
-You can explicitly specify the k steps, or let it detect known cycles.
-Falsy s: Standard
-Truthy s: "Shortcut" version
-"Shortcut" is like Standard but skips some Even numbers
-en.wikipedia.org/wiki/Collatz_conjecture
-*/
-Numeric.Collatz_std = function(n, k, s)
-{
-   n = Numeric.to(n); k = Number(k);
-   const h = [];
-   if (BigInt.is(n))
-   {
-      h.push(n);
-      const c = new Set([0n, 1n, -1n, -5n, -17n]);
-      while (k ? h.length < k : !c.has(h.at(-1)))
-         h.push(h.at(-1) & 1n ? (3n * h.at(-1) + 1n) / (s ? 2n : 1n) : h.at(-1) / 2n);
-   }
-   else
-   {
-      h.push(Math.trunc(n));
-      const c = new Set([0, 1, -1, -5, -17, Infinity, -Infinity, NaN]);
-      while (k ? h.length < k : !c.has(h.at(-1)))
-         h.push(h.at(-1) % 2 ? (3 * h.at(-1) + 1) / (s ? 2 : 1) : h.at(-1) / 2);
-   }
-   return h.slice(1)
-};
-
-
-/*
-The following are all Work In Progress:
-
-//Division by repeated subtraction, but the divisor gets decremented each iteration
-function decayDiv(n, d)
-{
-   [n, d] = [singSplit(n), singSplit(d)];
-   let i = BigInt.is(n[0]) ? 0n : 0;
-   while (n[1] > d[1])
-      {n[1] -= d[1]--; i++}
-   return [n[0] * i, n[0] * n[1], d[0] * d[1]]
-   //quotient, remainder, and unnamed, lol
-}
-
-//Multiplication by repeated addition, but multiplier gets decremented
-function decayMult0(f, m)
-{
-   [f, m] = [singSplit(f), singSplit(m)];
-   if (!f[0] || !m[0]) return f[0] * m[0]; //if NaN or 0 then No-Op
-   let i = BigInt.is(m[0]) ? 0n : 0, x = f[1];
-   while (i < m[1])
-      {x += f[1]; m[1]--; i++}
-   return [n[0] * i, n[0] * n[1], d[0] * d[1]]
-}
-
-//"multiplicand" (factor) gets decremented
-function decayMult1(f, m)
-{
-   
-}
-
-//returns the digit at index i of a numeral in base/radix B, with numeric value N
-let getDigit = (n, b, i) => {
-   n = n / b ** i % b;
-   return Numeric.isInt(n) ? n : Math.trunc(n)
-};
-
-//prints a Natural number n to its corresponding numeral in base B
-let toNumeral = function(N, B)
-{
-   const dig = [];
-   while (N > 0) {dig.push(N % B); N = N / B - N % B};
-   return dig.reverse().join('')
-};
-//for performance I avoided using unshift(), reverse() should be faster
-
-//parses a numeral in base B and returns its value
-let parseNumeral = function(numeral, B)
-{
-   let n = 0;
-   for (d of numeral) {n = b * n + d};
-   return n
-};
-
-//convert the digits representation of a number from a base/radix to another
-let B2B = (numeral, inpB, outB) => toNumeral(parseNumeral(numeral, inpB), outB);
-
-//en.wikipedia.org/wiki/Digital_root#Congruence_formula
-function dig_rt_c(n, b)
-{
-   return (
-      BigInt.is(n) && BigInt.is(b) ?
-      (n && ((n - 1n) % (b - 1n) + 1n) : 0n)
-      :
-      (n !== 0 ? ((n - 1) % (b - 1) + 1) : 0)
-   )
-};
-
-//en.wikipedia.org/wiki/Digital_root
-let dig_sum = function(x, b)
-{
-   let sum;
-   if (BigInt.is(x) && BigInt.is(b))
-   {
-      if (!b) return Infinity;
-      sum = 0n;
-      if (BigInt.abs(b) === 1n) return sum;
-      while (x) {sum += x % b; x /= b)};
-   };
-   else
-   {
-      x = +x; b = +b;
-      if (!isFinite(x) || !isFinite(b) || b === 0) return x / b;
-      sum = 0;
-      if (Math.abs(b) === 1) return sum;
-      while (x) {sum += x % b; x = Math.trunc(x / b)};
-   };
-   return sum
-};
-
-//persistence == seen.length - 1
-let dig_rt_a = function(x, b)
-{
-   const seen = new Set;
-   do {seen.add(x); x = dig_sum(x, b)} while (!seen.has(x));
-   console.log(seen) //DEBUG
-   return x
-};
-
-//en.wikipedia.org/wiki/Multiplicative_digital_root
-let dig_prod = function(x, b)
-{
-   if (BigInt.is(x) && b === 2n)
-   {//missing nega-binary optimization
-      x = Numeric.signSplit(x);
-      return BigInt(BigInt.isMersenne(x[1])) * x[0]
-   }
-   x = Math.trunc(x); b = Math.trunc(b);
-   let prod = 1, mod;
-   while (x > 1)
-   {
-      mod = x % b;
-      if (mod === 0) return 0;
-      prod *= mod;
-      x = Math.trunc(x / b)
-   };
-   return prod
-};
-
-let dig_rt_m = function(x, b)
-{
-   const seen = new Set;
-   do {seen.add(x); x = dig_prod(x, b)} while (!seen.has(x));
-   console.log(seen) //DEBUG
-   return x
-};
-
-TO-DO: add a function that tests if the sum of the digit sum and digit product
-are equal to the input itself.
-Example in decimal: 69 = 6*9 + 6+9
-
-TO-DO: add function to test if number equals sum of divisors
-with the option to include or exclude 1
-*/
-
-//END OF VANILLA JS
-//BEGIN classes
-
-/*
-most methods have a parameter `r` at the end,
-this is "in-place mode" or "replacer",
-it has side effects but can improve performance and conciseness.
-if false, the method will create more BigFloats.
-
-for example, `x.add(1, true)` is analogous to `x += 1`
-but `x.add(1)` is just `x + 1`
-*/
-globalThis.BigFloat = class BigFloat
-{
-   //default maximum fractional size (in bits)
-   static PRECISION = 0x100n;
-   
-   //aliases of common constants
-   static ZERO = new BigFloat;
-   static HALF = new BigFloat(0.5);
-   static ONE = new BigFloat(1n);
-   static TWO = new BigFloat(2n);
-   static THREE = new BigFloat(3n);
-
-   //get/compute Pi
-   //(missing algorithm)
-   static PI (p = BigFloat.PRECISION)
-   {
-      return new BigFloat(Math.PI)
-   }
-
-   static TAU (p = BigFloat.PRECISION)
-   {
-      let x = BigFloat.PI(++p);
-      x.exponent++
-      return x
-   }
-
-   //Euler's number
-   static E (p = BigFloat.PRECISION)
-   {
-      if (!BigInt.is(p)) p = BigInt(Math.trunc(p));
-      p = BigInt.abs(p);
-      let x = new BigFloat(1);
-      x.exponent = -p + 1n;
-      let y = new BigFloat(1);
-      y.exponent = p - 1n;
-      return x.add(1).pow(y, p);
-   }
-
-   //Golden Ratio
-   static PHI (p = BigFloat.PRECISION)
-   {
-      let x = BigFloat.sqrt(5, --p).add(1);
-      x.exponent--
-      return x
-   }
-
-   constructor(x = 0n)
-   {
-      x = x.valueOf();
-      this.exponent = 0n;
-      this.mantissa = 0n;
-      switch (typeof x)
-      {
-         case 'number':
-            if (!isFinite(x)) throw new RangeError('Invalid Number');
-            if (!x) break;
-            let e = 0;
-            //shift left until integer
-            while (x % 1) {x *= 2; e--}
-            this.exponent = BigInt(e);
-            this.mantissa = BigInt(x);
-            break;
-         
-         case 'bigint':
-            this.mantissa = x;
-            break;
-
-         default:
-            if (x instanceof BigFloat)
-            {
-               this.exponent = BigInt(x.exponent);
-               this.mantissa = BigInt(x.mantissa);
-               break
-            }
-            //again, `trim` is faster and more readable than `\s*?`
-            x = String(x).trim().split('.');
-
-            //do if decimal base
-            if (!(/^[-+]?0[box]/.test(x[0]))) //"box" lol
-            {
-               //partial decimal support
-               //only parses integer part
-               this.mantissa = BigInt(x[0]);
-               break
-            }
-            const b = {'0b': 0, '0o': 2, '0x': 3}[x[0].slice(0, 2)];
-            if (x[1]) this.exponent = -BigInt(x[1].length + b);
-            this.mantissa = BigInt(x.join(''));
-      }
-      //manually normalize
-      //because `this = something` is a syntax error
-      const c = this.mantissa && BigInt.ctz(this.mantissa);
-      this.mantissa >>= c;
-      this.exponent += c;
-      /*
-      //TO-DO: support recurring digits
-      this.recurring0 = 0n;
-      this.recurring1 = -1n;
-      //if start > end (0 & 1 respectively), then it's not recurring
-      */
-   }
-
-   //same as constructor, but doesn't normalize,
-   //and allows in-place modification
-   sanitize(r)
-   {
-      let y = r ? this : new BigFloat;
-      y.exponent = BigInt(this.exponent);
-      y.mantissa = BigInt(this.mantissa);
-      return y
-   }
-   //TO-DO: use Proxy for event-driven sanitizing
-
-   //make exponents equal, preserve numerical value
-   align(b, r)
-   {
-      let x = this.sanitize(r).normalize(r),
-         y = b instanceof BigFloat ? b.sanitize(r).normalize(r) : new BigFloat(b);
-      if (x.exponent > 0n)
-         {x.mantissa <<= x.exponent; x.exponent = 0n}
-      if (y.exponent > 0n)
-         {y.mantissa <<= y.exponent; y.exponent = 0n}
-      const e = x.exponent - y.exponent;
-      if (e < 0n)
-      {//y has a more positive exponent
-         y.exponent += e;
-         y.mantissa <<= -e
-      }
-      else
-      {
-         x.exponent -= e;
-         x.mantissa <<= e
-      }
-      return [x, y]
-   }
-
-   //reduce memory usage
-   normalize(r)
-   {
-      let x = this.sanitize(r);
-      if (x.mantissa)
-      {
-         const c = BigInt.ctz(x.mantissa);
-         x.mantissa >>= c;
-         x.exponent += c
-      }
-      else x.exponent = 0n;
-      return x
-   }
-
-   static abs(x)
-   {
-      x = new BigFloat(x);
-      x.mantissa = BigInt.abs(x.mantissa);
-      return x
-   }
-   //BigFloat.sign(x)
-   //BigInt.sign(x.mantissa)
-
-   /**
-   *compare.
-   *@param {bigfloat} x
-   *@return {number} the sign of `this.sub(x)`
-   */
-   cmp(x)
-   {
-      let [a, b] = this.align(x);
-      a = a.mantissa; b = b.mantissa;
-      return a == b ? 0 : (a > b ? 1 : -1)
-   }
-
-   add(f, r)
-   {
-      let x;
-      [x, f] = this.align(f, r);
-      x.mantissa += f.mantissa;
-      return x.normalize(r)
-   }
-
-   sub(f, r)
-   {
-      let x;
-      [x, f] = this.align(f, r);
-      x.mantissa -= f.mantissa;
-      return x.normalize(r)
-   }
-
-   mul(f, p = BigFloat.PRECISION, r)
-   {
-      f = new BigFloat(f); 
-      let x = this.normalize(r);
-      const e = x.exponent + f.exponent;
-      //get max fractional size from both operands
-      let b = -BigInt.min(x.exponent, f.exponent, 0n);
-      b = b < p ? p - b : 0n;
-      x.align(f, true);
-      x.mantissa <<= b;
-      f.mantissa <<= b;
-      x.mantissa *= f.mantissa;
-      x.normalize(true);
-      x.exponent = e;
-      return x
-   }
-
-   /*
-   I'M LOSING MY MIND WITH THIS CRAP
-   IT DOESN'T WORK, even though it's defined EXACTLY like `mul`
-   but subtracting exponents and dividing mantissas.
-   IT SHOULD WORK, WHY IS THE EXPONENT WRONG?
-   I've already patched this like 64 TIMES
-   */
-   div(f, p = BigFloat.PRECISION, r)
-   {
-      f = new BigFloat(f); 
-      let x = this.normalize(r);
-      const e = x.exponent - f.exponent;
-      let b = -BigInt.min(x.exponent, f.exponent, 0n);
-      b = b < p ? p - b : 0n;
-      x.align(f, true);
-      x.mantissa <<= b;
-      f.mantissa <<= b;
-      x.mantissa /= f.mantissa;
-      x.normalize(true);
-      x.exponent = e;
-      return x
-   }
-
-   //NOT the standard mathematical modulo
-   //just trunc-div remainder
-   mod(f, r)
-   {
-      let x;
-      [x, f] = this.align(f, r);
-      x.mantissa %= f.mantissa;
-      return x.normalize(r)
-   }
-
-   pow(f, p, r)
-   {
-      f = new BigFloat(f);
-      let x = this.sanitize(r),
-         root = f.mod(1).mantissa //fractional part of power degree
-            ? BigFloat.root(x, BigFloat.ONE.div(root, p), p)
-            : new BigFloat(1);
-         //a ^ 2.5 = a ^ 2 * a ^ 0.5
-
-      f = f.toBigInt();
-      const s = f < 0n;
-      if (s) f = -f;
-      let y = new BigFloat(x);
-
-      while (f > 1n)
-      {
-         x.mul(y, p, true);
-         f--
-      }
-      /*
-      *TODO: replace by this algorithm:
-      let prod = new BigFloat.(1n);
-      prod.exponent = trunc(log2(x).mul(f)).toBigInt();
-      rt = BigInt.ONE.div((log2(x).mul(f)).mod(1));
-      return prod.mul(root(2, rt))
-      */
-      //ALT algorithm: there's a possibility that `**` will work only when exponent is uint
-      x.mul(root, p, true);
-      if (s)
-      {
-         //handle negative power
-         //a ^ -b = 1 / a ^ b
-         y = BigFloat.ONE.div(x, p);
-         //preserve "in-place mode"
-         x.mantissa = y.mantissa;
-         x.exponent = y.exponent;
-      }
-      return x
-   }
-
-   //floored binary logarithm
-   static ilog2(x)
-   {
-      x = new BigFloat(x);
-      return (new BigFloat(x.exponent + BigInt.log2(x.mantissa)))
-   }
-
-   static log2(x)
-   {
-      x = new BigFloat(x);
-      x.exponent -= 1n; //wrong
-      return x
-   }
-
-   static sqrt(x, p)
-   {
-      x = new BigFloat(x);
-      if (x.mantissa < 0n) throw new RangeError('return value is Complex number');
-      if (!x.mantissa) return new BigFloat;
-      let x0 = new BigFloat(2n);
-      x0.exponent += BigInt(BigFloat.ilog2(x).div(2n, p));
-      let x1 = x.div(x0, p).add(x0).div(2n, p);
-      while (x1.cmp(x0) == -1)
-      {
-         x0 = x1;
-         x1 = x.div(x1, p).add(x1).div(2n, p)
-      }
-      return x0
-   }
-
-   static root(n, i)
-   {
-      n = new BigFloat(n); i = new BigFloat(i);
-      if (i.cmp(1n) == 0) return n;
-      const s = BigInt.sign(n.mantissa);
-      n.mantissa *= s; //abs
-      if (!i.mantissa)
-      {
-         if (n.cmp(1n) == 1) throw new RangeError('return value is NaN');
-         return new BigFloat
-      }
-      if (s == -1n && !i.mod(2n).mantissa)
-         throw new RangeError('return value is Complex number');
-      if (i.mantissa < 0n)
-      {
-         if (!n.mantissa) throw new RangeError('return value is Infinity');
-         return new BigFloat(n.cmp(1n) && s)
-      }
-      if (!n.mantissa) return n;
-      const j = i.sub(1);
-      let x0 = new BigFloat(2);
-      x0.exponent += BigInt(BigFloat.ilog2(n).div(i, p));
-      let x1 = x0.mul(j).div(i).add(n[1].div(x0.pow(j).mul(i)));
-      while (x1.cmp(x0) == -1)
-      {
-         x0 = x1;
-         x1 = x1.mul(j).div(i).add(n.div(x1.pow(j).mul(i)))
-      }
-      x0.mantissa *= s;
-      return x0
-   }
-
-   static isInt(x)
-   {
-      if (!(x instanceof BigFloat))
-         return false;
-      x = x.sanitize();
-      //`sanitize` doesn't normalize, so CTZ must be checked
-      return !x.mantissa || 0n <= x.exponent + BigInt.ctz(x.mantissa)
-   }
-
-   //keeps integer part by default
-   //but can remove a custom amount of bits
-   static trunc(x, b = 0n, r)
-   {
-      x = new BigFloat(x);
-      b = BigInt(b);
-      if (b)
-      {
-         x.mantissa >>= b;
-         x.exponent += b
-      }
-      else
-      {
-         //`x` is guaranteed to be normalized,
-         //so checking exp sign is enough to know if it's an int
-         if (x.exponent < 0n)
-         {
-            x.mantissa >>= -x.exponent;
-            x.exponent = 0n
-         }
-      }
-      return x.normalize(r)
-   }
-
-   toNumber()
-   {
-      return Number(this.mantissa) * 2 ** Number(this.exponent)
-   }
-
-   toBigInt()
-   {
-      const x = BigFloat.trunc(this);
-      return x.mantissa << x.exponent
-   }
-
-   //TO-DO: support multiple bases
-   toString(b)
-   {
-      const x = new BigFloat(this);
-      let S = x.mantissa.toString(16);
-      const e = Number(x.exponent + 3n);
-      if (e < 0)
-         S = S.slice(0, e) + '.' + S.slice(e);
-      return S
-   }
-};
-for (const O of ['ZERO', 'HALF', 'ONE', 'TWO', 'THREE'])
-{
-   for (const k of ['mantissa', 'exponent'])
-      defProp(BigFloat[O], k, BigFloat[O][k], 0);
-}
-
-
-//based on: github.com/infusion/Complex.js/blob/master/complex.js
-globalThis.BigComplex = class BigComplex
-{
-   constructor(x)
-   {
-      x = x.valueOf();
-      this.real = new BigFloat;
-      this.imagin = new BigFloat;
-      //WARNING: Infinite recursion
-      if (x instanceof BigFloat || Numeric.is(x))
-         this.real = new BigFloat(x)
-      else
-      {
-         x = String(x).split(/[+-]/);
-         //missing sign handling
-         if (x[0].includes(/[ij]/))
-            this.imagin = new BigFloat(x[0].slice(0, -1))
-         else
-            this.real = new BigFloat(x[0]);
-
-         if (x[1].includes(/[ij]/))
-            this.imagin.add(x[0].slice(0, -1))
-         else
-            this.real.add(x[0]);
-      }
-   }
-
-   add(x, r)
-   {
-      if (!(x instanceof BigComplex))
-         x = new BigComplex(x);
-      let c = r ? this : new BigComplex();
-      c.real.add(x.real, 1);
-      c.imagin.add(x.imagin, 1);
-      return c
-   }
-
-   sub(x, r)
-   {
-      if (!(x instanceof BigComplex))
-         x = new BigComplex(x);
-      let c = r ? this : new BigComplex();
-      c.real.sub(x.real, 1);
-      c.imagin.sub(x.imagin, 1);
-      return c
-   }
-};
-
 //correction of data descriptors
 //to make everything equal to vanilla JS
-for (const O of [Number, Math, BigInt, Numeric, BigFloat, BigComplex])
+for (const O of [Number, Math, BigInt, Numeric])
 {
    //`for in` is slower and has more potential side-effects
    for (const k of Object.keys(O))
@@ -1856,6 +1279,3 @@ for (const O of [Number, Math, BigInt, Numeric, BigFloat, BigComplex])
       if (typeof O[k] == 'function') defProp(O[k], 'name', O[k].name || k, 1);
    }
 }
-
-for (const k of ['AssertionError', 'BigFloat', 'BigComplex'])
-   defProp(globalThis, k, globalThis[k], 0b101);
