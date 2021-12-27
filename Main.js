@@ -123,9 +123,6 @@
 		trunc = x => isInt(x) ? x : x - x % 1,
 		floor = x => isInt(x) ? x : trunc(x) - (x < 0 ? 1 : 0);
 
-		assert(isNegZero(floor(-0)))
-		assert(isNegZero(trunc(-0)))
-
 	/**
 	*get the internal bits (binary64 IEEE 754 representation)
 	*@param {number} number
