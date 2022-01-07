@@ -1,5 +1,5 @@
-//IIFE with closure
-(function(sin, sqrt)
+//IIFE with closure, for encapsulation and localization
+(function(random01, sin, exp)
 {
 	'use strict';
 	const isPrimitive = x => x === null || !(typeof x == 'object' || typeof x == 'function');
@@ -116,12 +116,19 @@
 	//localization increases performance, and protects against external side-effects
 	const abs = x => x < 0 || isNegZero(x) ? -x : x,
 		sign = x => {const ONE = (x ^ x) ** (x ^ x); return x && (x < 0 ? -ONE : ONE)},
+		signSplit = x => [sign(x), abs(x)], //should be reversed order
 		isInf = x => x === Infinity || x === -Infinity,
-		isNan = x => x != x, //THERE'S NO TYPO. Last "n" is lowercase to avoid confusion.
+		isNan = x => x != x, //NOT A TYPO. capitalization is to avoid ambiguity
 		isInfNan = x => isInf(x) || isNan(x), //!isFinite(x)
 		isInt = x => (isNumber(x) && x % 1 == 0) || isBigInt(x),
 		trunc = x => isInt(x) ? x : x - x % 1,
-		floor = x => isInt(x) ? x : trunc(x) - (x < 0 ? 1 : 0);
+		floor = x => isInt(x) ? x : trunc(x) - (x < 0 ? 1 : 0),
+		ceil = x => isInt(x) ? x : trunc(x) + (x > 0 ? 1 : 0),
+		roundInf = x => (x < 0 ? floor : ceil)(x);
+
+	//both `parseInt` AND `parseFloat` never throw on bigints, so I decided to "fix" these other functions
+	globalThis.isFinite = function(value) {return isBigInt(value) || !isInfNan(+value)} //TO-DO fix bug when strings are large
+	globalThis.isNaN = function(value) {return !isBigInt(value) || isNan(+value)}
 
 	/**
 	*get the internal bits (binary64 IEEE 754 representation)
@@ -139,6 +146,49 @@
 	*/
 	BigInt.castNumber = function(n) {return new Float64Array(new BigUint64Array([n]).buffer)[0]};
 
+	//parseInt for bigints
+	BigInt.parse = function(string, radix)
+	{
+		string = String(string).trimStart().toLowerCase();
+		let sign = 1n;
+		if (string) //the only falsy primitive string is empty, no need to check length
+		{
+			switch (string[0])
+			{
+				case '\x2D': sign = -1n
+				case '\x2B': string = string.substring(1)
+			}
+		}
+		radix = Number(radix) | 0; //TO-DO: fix precision loss when bigint or string
+		let stripPrefix = true;
+		if (radix) //it will never be NaN, no need to check for zero
+		{
+			if (radix < 2 || radix > 36) throw new RangeError('Invalid base');
+			if (radix != 0x10) stripPrefix = false; //why only 16? it should include 2 and 8
+		}
+		else
+			radix = 10;
+		if (stripPrefix && string.length >= 2 && string[0] == '0' && string[1] == 'x')
+		{//why only 'x'? it should include 'b' and 'o'
+			string = string.substring(2);
+			radix = 0x10
+		}
+		const charset = new Map;
+		for (let i = 0n; i < radix; i++)
+			charset.set('0123456789abcdefghijklmnopqrstuvwxyz'[i], i);
+		let end = -1;
+		while (++end < string.length)
+			if (!charset.has(string[end])) break;
+		string = string.substring(0, end);
+		let int = 0n;
+		if (!string) return int; //no need to throw, 0 fits better
+		radix = BigInt(radix); end = BigInt(end);
+		//DO NOT REVERSE iteration order
+		for (let i = end - 1n; i >= 0; i--)
+			int += charset.get(string[end - i - 1n]) * radix ** i;
+		return sign * int
+	};
+
 	//TO-DO: fix error when strings have 1 "." (dot)
 	BigInt.from = function(value)
 	{
@@ -152,7 +202,7 @@
 					: BigInt(value))
 		}
 		if (!value) return 0n;
-		value = value?.valueOf();
+		value = value.valueOf();
 		if (!value) return 0n;
 		if (typeof value == 'object') return 1n;
 		return BigInt(value);
@@ -173,7 +223,7 @@
 		if (!+x || abs(+x) < 2 ** 53 ||
 			//I know /\s/ exists, but `trim` is faster and more readable
 			/^[-+]?Infinity$/.test(String(x).trim())) return +x;
-		if (typeof x == 'string' && x.includes('.')) return BigInt(x.su(x.indexOf('.')));
+		if (typeof x == 'string' && x.includes('.')) return BigInt(x.substring(0, x.indexOf('.')));
 		return BigInt(x)
 	};
 	/**
@@ -245,9 +295,57 @@
 		return sum + cs + ccs
 	};
 
+	//ith (degree i) root of n
+	const root = (x, i = 2) =>
+	{
+		const B = isBigInt(x);
+		if (B) i = BigInt(i);
+		const ZERO = B ? 0n : 0, ONE = B ? 1n : 1;
+		if (i == 1) return x;
+		if (!B && isInfNan(x ** (1 / i))) return x ** (1 / i);
+		x = signSplit(x);
+		//I feel like something is wrong here
+		if (!i) {if (x[1] > 1) throw new RangeError('return value is NaN'); return ZERO}
+		if (x[0] == -1 && !(i & ONE)) throw new RangeError('return value is a Complex number');
+		if (i < 0) {if (!x[1]) throw new RangeError('return value is Infinity'); return x[1] == 1 ? x[0] : ZERO}
+		if (!x[1]) return 0n;
+		const j = i - ONE; let x0, x1;
+		if (B)
+		{
+			//a ^ (1 / k) = b ^ (log_b(a) / k)
+			const log = BigInt.log2(x[1]);
+			x0 = x[1] >> (log - log / i);
+		}
+		else
+			x0 = x[1] ** (1 / i);
+		x1 = x0 * j / i + x[1] / (i * x0 ** j)
+		//Newton's Method
+		while (x1 < x0)
+		{
+			x0 = x1;
+			x1 = x1 * j / i + x[1] / (i * x1 ** j)
+		}
+		return x0 * x[0]
+	};
 
-	Math.TAU = Math.PI * 2; //no accuracy loss
-	//because multiplier is power of two
+	const sqrt = x =>
+	{
+		if (!isBigInt(x)) return x ** 0.5; //is this accurate?
+		if (x < 2n) {if (x < 0n) throw new RangeError('return value is Complex number'); return x}
+		let x0 = x >> (BigInt.log2(x) >> 1n),
+			 x1 = (x0 + x / x0) >> 1n;
+		//Heron's Method
+		while (x1 < x0)
+		{
+			x0 = x1;
+			x1 = (x1 + x / x1) >> 1n
+		}
+		return x0
+	};
+
+	const cbrt = x => root(x, 3);
+
+	Math.TAU = Math.PI * 2; //no precision loss, because multiplier is power of two
 
 	Math.SQRT5 = sqrt(5);
 
@@ -308,7 +406,7 @@
 	Numeric.sign = function(x) {return sign(toNumeric(x))};
 	Numeric.abs = function(x) {return abs(toNumeric(x))};
 
-	Numeric.signSplit = function(x) {return [Numeric.sign(x), Numeric.abs(x)]}; //should be reversed order
+	Numeric.signSplit = function(x) {return signSplit(toNumeric(x))}; //should this exist?
 
 	BigInt.max = function(...a)
 	{
@@ -373,7 +471,7 @@
 	};
 
 	//round towards unsigned (any) Infinity
-	Math.roundInf = function(x) {return Math[+x < 0 ? 'floor' : 'ceil'](x)};
+	Math.roundInf = function(x) {return roundInf(+x)};
 
 	//reverse the order of bits using "binary chop"
 	Math.rev32 = function(x)
@@ -450,74 +548,42 @@
 		return (isBigInt(x) && isBigInt(b) ? BigInt : Math).logB(x, b)
 	};
 
-	Math.root = function(x, n = 2) {return (+x) ** (1 / +n)};
+	Math.root = function(x, y = 2) {return root(+x, +y)};
 
-	BigInt.root = function(n, i = 2n)
-	{//ith (degree i) root of n
-		n = toBigInt(n); i = BigInt(i);
-		if (i == 1n) return n;
-		n = Numeric.signSplit(n);
-		if (!i) {if (n[1] > 1n) throw new RangeError('return value is NaN'); return 0n}
-		if (n[0] === -1n && !(i & 1n)) throw new RangeError('return value is a Complex number');
-		if (i < 0n) {if (!n[1]) throw new RangeError('return value is Infinity'); return n[1] == 1n ? n[0] : 0n}
-		if (!n[1]) return 0n;
-		const j = i - 1n, log = BigInt.log2(n[1]);
-		//a ^ (1 / k) = b ^ (log_b(a) / k)
-		let x0 = n >> (log - log / i),
-			 x1 = x0 * j / i + n[1] / (i * x0 ** j);
-		while (x1 < x0)
-		{//Newton's Method
-			x0 = x1;
-			x1 = x1 * j / i + n[1] / (i * x1 ** j)
-		}
-		return x0 * n[0]
-	};
+	BigInt.root = function(n, i = 2n) {return root(toBigInt(n), toBigInt(i))};
 
 	Numeric.root = function(x, n)
 	{
 		x = toNumeric(x); n = toNumeric(n);
-		if (x != x || n != n) return NaN;
-		const a = Numeric.abs(x), zero = x ^ x;
+		if (isNan(x) || isNan(n)) return NaN;
+		const a = abs(x), zero = x ^ x;
 		if (!n) return a > 1 ? NaN : zero;
 		if (x < 0 && (isBigInt(n) && !(n & 1n))) return NaN;
-		if (n < 0) return a ? (a == 1 ? Numeric.sign(x) : zero) : Infinity;
+		if (n < 0) return a ? (a == 1 ? sign(x) : zero) : Infinity;
 		if (!a) return zero;
 		return (isBigInt(x) && isBigInt(n) ? BigInt : Math).root(x, n)
 	};
 
-	BigInt.sqrt = function(n)
-	{//Heron's Method
-		n = toBigInt(n);
-		if (n < 2n) {if (n < 0n) throw new RangeError('return value is Complex number'); return n}
-		let x0 = n >> (BigInt.log2(n) >> 1n),
-			 x1 = (x0 + n / x0) >> 1n;
-		while (x1 < x0)
-		{
-			x0 = x1;
-			x1 = (x1 + n / x1) >> 1n
-		}
-		return x0
-	};
+	BigInt.sqrt = function(n) {return sqrt(toBigInt(n))};
 
 	/**
 	*@param {*} x
 	*@return {numeric}
 	*/
-	Numeric.sqrt = function(x)
-		{return (x = toNumeric(x)) < 0 ? NaN : (isBigInt(x) ? BigInt : Math).sqrt(x)};
+	Numeric.sqrt = function(x) {return (x = toNumeric(x)) < 0 ? NaN : sqrt(x)};
 
 	//get random int32
-	Math.random32 = function() {return Math.random() * 2 ** 32 | 0};
+	Math.random32 = function() {return random01() * 2 ** 32 | 0};
 
 	//get random non-negative safe integer
 	Math.randomSafe = function()
 	{
 		/*
 		only 52bits are generated by `Math.random`,
-		so "rand() << 53" must be used to have space for the missing bit.
+		so "rand() << 53" must be used to allocate space for the missing bit.
 		a bool is enough to fill it (the LSB)
 		*/
-		return Math.random() * 2 ** 53 + (Math.random() < 0.5);
+		return random01() * 2 ** 53 + (random01() < 0.5);
 	};
 
 	//interval [0, n), or (n, 0] if negative
@@ -525,29 +591,32 @@
 	BigInt.random = function(n = 1n << 0x40n)
 	{
 		n = toBigInt(n);
-		const b = BigInt.sizeOf(n, 1n),
-			neg = n < 0n;
-		if (neg) n = -n;
-		let l = 1n, x = 0n; //l = size of x
-		while (l <= b)
-		{
-			x <<= 53n;
-			l += 53n;
-			//getRandomValues is overkill
-			x |= BigInt(Math.randomSafe())
-		}
-		const s = l - b - 1n;
-		//remove bias (kinda, because XORing just 1 block introduces more bias)
-		x >>= s; l -= s;
-		const MAX = ~(-1n << l);
-		while (x >= MAX - MAX % n)
-			x ^= BigInt(Math.randomSafe());
+		const n_len = BigInt.sizeOf(n, 1n),
+			s = n < 0n;
+		if (s) n = -n; //abs
+		let x, x_len, max;
+		do {
+			x = 0n; x_len = 1n;
+			while (x_len < n_len)
+			{
+				//build the bigint in 52b blocks
+				//for speed, and to avoid discarding too much data
+				x <<= 52n;
+				x_len += 52n;
+				//crypto.getRandomValues is overkill
+				x |= BigInt(random01() * 2 ** 52)
+			}
+			const len_diff = x_len - n_len - 1n;
+			//remove bias
+			x >>= len_diff; x_len -= len_diff;
+			max = ~(-1n << x_len);
+		} while (x >= max - max % n) //check if there's bias
 		x %= n;
-		return neg ? -x : x
+		return s ? -x : x
 	};
 
 	//Euclidean division
-	Math.divEuclid = function(x, y) {return floor(x / abs(+y)) * sign(+y)};
+	Math.divEuclid = function(x, y) {return floor(+x / abs(+y)) * sign(+y)};
 	//the other variants of int-div are too short
 
 	BigInt.div = function(n, d, F)
@@ -570,8 +639,8 @@
 	//Standard Mathematical Modulo (floor). NOT remainder
 	const mod = (n, d) => (n % d + d) % d;
 	//TO-DO: localize a multi-mod function.
-	//TO-DO: do not use "multi-mod", make each one independent,
-	//and only add floor and euclid, discard round and ceil
+	//TO-DO: maybe do not use "multi-mod", make each one independent,
+	//floor and euclid are the most used
 
 	//en.wikipedia.org/wiki/Modulo_operation#Variants_of_the_definition
 	Math.mod = function(n, d, F)
@@ -751,7 +820,7 @@
 	Numeric.isDivisible = function(n, d)
 	{
 		n = n?.valueOf(); d = d?.valueOf();
-		return typeof n == typeof d && Numeric.isInteger(n) && Numeric.isInteger(d) && d && !(n % d)
+		return typeof n == typeof d && isInt(n) && isInt(d) && d && !(n % d)
 	};
 
 	BigInt.isPow2 = function(n) {return isBigInt(n) && n > 1n && !(n & (n - 1n))};
@@ -784,16 +853,13 @@
 		const m = 0x3333333333333333n;
 		do {
 			w[0] = n;
-			w[0] >>= w[0] && BigInt.ctz(w[0]);
-			//is this overkill?
-			if (w[0] < 2n) {c += w[0]; continue}
 			//en.wikipedia.org/wiki/Hamming_weight#Efficient_implementation
 			w[0] -= (w[0] >> 1n) & 0x5555555555555555n;
 			w[0] = (w[0] & m) + ((w[0] >> 2n) & m);
 			w[0] = (w[0] + (w[0] >> 4n)) & 0x0f0f0f0f0f0f0f0fn;
 			//emulate mul overflow (wraparound mod 2^64)
 			w[0] *= 0x0101010101010101n;
-			c += w[0] >> 56n;
+			c += w[0] >>= 56n;
 		} while (n >>= 0x40n)
 		return c
 	};
@@ -809,17 +875,17 @@
 		return Number(BigInt.popcnt(Number.castBigInt(n) & ~(-1n << 52n)) + 1n)
 	};
 
-	Math.clmul32 = function(a, b)
+	Math.clmul32 = function(x, y)
 	{
-		a = +a >>> 0; b = +b >>> 0;
-		let out = 0;
-		while (b)
+		x = +x >>> 0; y = +y >>> 0;
+		let prod = 0;
+		while (y)
 		{
-			out ^= (b & 1) && a;
-			b >>>= 1;
-			a <<= 1;
+			prod ^= (y & 1) && x;
+			y >>>= 1;
+			x <<= 1;
 		}
-		return out >>> 0
+		return prod >>> 0
 	};
 	
 	BigInt.clmul = function(a, b)
@@ -891,7 +957,7 @@
 		//math.stackexchange.com/a/2190888
 		if (!([0, 1, 8].includes(n % 9) && [0, 1, 6].includes(n % 7)))
 			return false;
-		return Math.cbrt(n) % 1 == 0
+		return cbrt(n) % 1 == 0
 	};
 
 	BigInt.isCube = function(n)
@@ -905,7 +971,7 @@
 		if (n == 1n) return true;
 		if (!([0n, 1n, 8n].includes(n % 9n) && [0n, 1n, 6n].includes(n % 7n)))
 			return false;
-		return BigInt.root(n, 3n) ** 3n == n
+		return root(n, 3n) ** 3n == n
 	};
 
 	Numeric.isCube = function(n)
@@ -957,12 +1023,12 @@
 	BigInt.gcd = function(a, b)
 	{
 		//simplify future operations
-		a = BigInt.abs(a); b = BigInt.abs(b);
+		a = abs(toBigInt(a)); b = abs(toBigInt(b));
 		if (a == b || !a) return b; if (!b) return a;
-		if (BigInt.abs(a - b) == 1n) return 1n;
+		if (abs(a - b) == 1n) return 1n;
 		const ctz = BigInt.ctz,
 			i = ctz(a), j = ctz(b),
-			k = BigInt.min(i, j);
+			k = i < j ? i : j; //min
 		//reduce sizes
 		a >>= i; b >>= j;
 		if (a == b) return a << k;
@@ -971,7 +1037,7 @@
 		especially if the other argument is a big Mersenne.
 		So return early when any value is 1
 		*/
-		if (a == 1n || b == 1n || BigInt.abs(a - b) == 1n) return 1n << k;
+		if (a == 1n || b == 1n || abs(a - b) == 1n) return 1n << k;
 		/*
 		Stein alg made me realize that the
 		GCD of 2 Mersenne numbers is another Mersenne
@@ -1025,7 +1091,7 @@
 			let x = a >> (m << BIN),
 				y = b >> (m << BIN),
 				[A, B, C, D] = [1n, 0n, 0n, 1n];
-			for (;;)
+			for(;;)
 			{
 				let w0 = (x + A) / (y + C),
 					w1 = (x + B) / (y + D),
@@ -1068,14 +1134,14 @@
 
 	BigInt.lcm = function(a, b)
 	{
-		a = BigInt.abs(a); b = BigInt.abs(b);
+		a = abs(toBigInt(a)); b = abs(toBigInt(b));
 		return a / BigInt.gcd(a, b) * b
 		//better performance than `a * b / BigInt.gcd(a, b)`
 	};
 
 	Numeric.lcm = function(a, b)
 	{
-		a = Numeric.abs(a); b = Numeric.abs(b);
+		a = abs(toNumeric(a)); b = abs(toNumeric(b));
 		return a / Numeric.gcd(a, b) * b
 	};
 
@@ -1103,23 +1169,6 @@
 		return a
 	};
 
-	BigInt.agm = function(a, g)
-	{
-		a = toBigInt(a); g = toBigInt(g);
-		do [a, g] = [(a + g) / 2n, BigInt.sqrt(a * g)]
-		while (a != g)
-		return a
-	};
-
-	//Arithmetic-Geometric Mean
-	Numeric.agm = function(a, g)
-	{
-		a = toNumeric(a); g = toNumeric(g);
-		//avoid throw on negative BigInt
-		if (a < 0n || g < 0n) return NaN;
-		return (isBigInt(a) && isBigInt(g) ? BigInt : Math).agm(a, g)
-	};
-
 	//returns non-trivial divisors (proper divs) of n
 	Math.divisors = function(n)
 	{
@@ -1137,7 +1186,7 @@
 		while (i >= 0) out.push(n / out[i--]);
 		const bin = []; //unique powers of 2
 		for (i = 1; i <= c; i++) bin.push(2 ** i);
-		//missing multiplication and insertion
+		//TO-DO: add and fix missing multiplication and insertion
 		return out.sort((a, b) => a - b)
 	};
 
@@ -1148,7 +1197,7 @@
 	//find next prime and store it
 		addP = function()
 		{
-			let x = +(Pa.at(-1)) + 2;
+			let x = Pa.at(-1) + 2;
 			loop:
 			for (let j;; x += 2)
 			{
@@ -1172,17 +1221,10 @@
 		let rt = 1, y = sqrt(n);
 		//trial rooting
 		while (Math.isSquare(n)) {n = y; y = sqrt(y); rt *= 2}
-		y = Math.cbrt(n);
-		while (Math.isCube(n)) {n = y; y = Math.cbrt(y); rt *= 3}
-		let i = 1;
-		while ((Math.log2(n) + 1) / Pa[i] > 3)
-		{
-			y = Math.root(n, Pa[i]);
-			while (!(y % 1)) {n = y; y = Math.root(y, Pa[i]); rt *= Pa[i]}
-			i++
-		}
+		y = cbrt(n);
+		while (Math.isCube(n)) {n = y; y = cbrt(y); rt *= 3}
 		if (Pd.has(n)) {out.set(n, rt); return out}
-		i = 0; y = sqrt(n);
+		let i = 0; y = sqrt(n);
 		//trial division on steroids
 		while (Pa[i] <= y && Pa[i] <= n)
 		{
@@ -1206,14 +1248,16 @@
 	const Gosper = x => sqrt((+x + 1 / 6) * Math.TAU) * (x / Math.E) ** x;
 	//improvement of Stirling
 
-	//Gamma Function defined as Summation instead of Integration
+	//Gamma Function (+1) defined as Summation instead of Integration
 	const Gamma = x =>
 	{
 		let t = 1, s0, s1 = 0 ** x;
-		do {s0 = s1; s1 += t ** x * Math.exp(-t); t++}
+		do {s0 = s1; s1 += t ** x * exp(-t); t++}
 		while (s0 != s1)
 		return s0
 	};
+
+	//missing Lanczos approx
 
 	//`F` is to allow selection of preferred function
 	Math.factorial = function(x, F)
@@ -1223,9 +1267,8 @@
 		if (isInfNan(x)) return NaN;
 		if (x % 1) return (F ? Gosper : Gamma)(x);
 		let s, out = 1;
-		[s, x] = Numeric.signSplit(x);
-		for (let i = 2; i <= x; i++)
-			out *= i;
+		[s, x] = signSplit(x);
+		for (let i = 2; i <= x; i++) out *= i;
 		return out * (x % 2 ? s : 1)
 	};
 
@@ -1233,7 +1276,7 @@
 	{
 		n = toBigInt(n);
 		let s, out = 1n, a = 0n, c;
-		[s, n] = Numeric.signSplit(n);
+		[s, n] = signSplit(n);
 		for (let i = 2n; i <= n; i++)
 		{
 			a += c = BigInt.ctz(i);
@@ -1251,7 +1294,7 @@
 	//TO-DO: add rising and falling Fs
 	Numeric.factorial = function(x, k = 1)
 	{//if k > 1 returns multifactorial of that degre
-		x = Numeric.signSplit(x);
+		x = signSplit(toNumeric(x));
 		k = toNumeric(k);
 		if (!isBigInt(k)) k = Math.trunc(k);
 		k = x[0] * k; x = x[1];
@@ -1261,17 +1304,15 @@
 		return out
 	};
 
-
-	//iterative inverse Fact
+	//iterative inverse int Fact
 	Numeric.factorial_inv = function(n, k = 1)
 	{//if k > 1 returns corresponding inv multifactorial
 		n = toNumeric(n); k = toNumeric(k);
 		if (!n || isNan(k)) return NaN;
 		if (isInfNan(n)) return n;
-		const o = isBigInt(n) ? BigInt : Math;
-		let x = o.sign(n);
+		let x = sign(n);
 		if (!k) return x;
-		while (o.abs(n) > 1) {n /= x; x += k}
+		while (abs(n) > 1) {n /= x; x += k}
 		return x
 	};
 
@@ -1283,12 +1324,11 @@
 	Numeric.triNum = function(x)
 	{
 		x = toNumeric(x);
-		const U = isBigInt(x) ? 1n : 1,
-			B = U + U;
+		const ONE = isBigInt(x) ? 1n : 1, TWO = ONE + ONE;
 		//this approach is slightly faster
-		return x % B
-			? (x + U) / B * x
-			: x / B * (x + U)
+		return x % TWO
+			? (x + ONE) / TWO * x
+			: x / TWO * (x + ONE)
 	};
 
 	//get index of a trinum
@@ -1302,7 +1342,7 @@
 	//get TriNums up to index x (inclusive)
 	Numeric.triSeq = function(x)
 	{
-		x = Numeric.signSplit(x);
+		x = signSplit(toNumeric(x));
 		const out = [x ^ x]; //auto-type Zero
 		for (let i = x[0]; out.length <= x[1]; i += x[0])
 			out.push(i + out.at(-1));
@@ -1310,10 +1350,10 @@
 	};
 
 	//get Nth Fibonacci faster than recursion
-	Math.Fib = function(n)
+	Math.Fib = function(x)
 	{
-		n = Numeric.signSplit(+n);
-		return Math.round(Math.PHI ** n[1] / Math.SQRT5) * (n[0] === -1 && n[1] % 2 === 0 ? -1 : 1)
+		x = signSplit(+x);
+		return Math.round(Math.PHI ** x[1] / Math.SQRT5) * (x[0] === -1 && x[1] % 2 === 0 ? -1 : 1)
 	};
 	//en.wikipedia.org/wiki/Generalizations_of_Fibonacci_numbers#Extension_to_negative_integers
 
@@ -1324,7 +1364,7 @@
 	*/
 	Math.Fib_inv = function(x)
 	{
-		x = Numeric.signSplit(+x);
+		x = signSplit(+x);
 		const i = floor(Math.logPHI(x[1] * Math.SQRT5 + 0.5))
 		return !(i % 2) && x[0] === -1 ? NaN : i * x[0]
 	};
@@ -1358,4 +1398,4 @@
 			if (typeof O[k] == 'function') defProp(O[k], 'name', O[k].name || k, 1);
 		}
 	}
-})(Math.sin, Math.sqrt)
+})(Math.random, Math.sin, Math.exp)
