@@ -5,13 +5,13 @@
 	const isPrimitive = x => x === null || !(typeof x == 'object' || typeof x == 'function');
 
 	/**
-	*Shorter
+	*Short edition of `defineProperty`
 	*@param {object} O Object to modify
-	*@param {string} k key (property name) to define
+	*@param {string} p key (property name) to define
 	*@param {*} v value to set
 	*@param {(boolean[]|numeric|string)} a descriptor
 	*/
-	const defProp = function(O, k, v, a)
+	const defProp = function(O, p, v, a)
 	{
 		switch (typeof a)
 		{
@@ -28,12 +28,12 @@
 				a = [/w/i.test(a), /e/i.test(a), /c/i.test(a)];
 				break;
 		}
-		return Object.defineProperty(O, k, {value: v, writable: !!a[0], enumerable: !!a[1], configurable: !!a[2]})
+		return Object.defineProperty(O, p, {value: v, writable: !!a[0], enumerable: !!a[1], configurable: !!a[2]})
 	};
 
 	//for non-Deno environments
-	const AssertionError = class extends Error {constructor(m) {super(m)}};
-	const assert = function(c, m) {if (!c) throw new AssertionError(m)};
+	const AssertionError = class extends Error {constructor(m) {super(m)}},
+		  assert = function(c, m) {if (!c) throw new AssertionError(m)};
 
 	//github.com/tc39/proposal-relative-indexing-method#polyfill
 	function at(n)
@@ -174,8 +174,7 @@
 			radix = 0x10
 		}
 		const charset = new Map;
-		for (let i = 0n; i < radix; i++)
-			charset.set('0123456789abcdefghijklmnopqrstuvwxyz'[i], i);
+		for (let i = 0n; i < radix; i++) charset.set('0123456789abcdefghijklmnopqrstuvwxyz'[i], i);
 		let end = -1;
 		while (++end < string.length)
 			if (!charset.has(string[end])) break;
@@ -184,8 +183,7 @@
 		if (!string) return int; //no need to throw, 0 fits better
 		radix = BigInt(radix); end = BigInt(end);
 		//DO NOT REVERSE iteration order
-		for (let i = end - 1n; i >= 0; i--)
-			int += charset.get(string[end - i - 1n]) * radix ** i;
+		for (let i = end - 1n; i >= 0; i--) int += charset.get(string[end - i - 1n]) * radix ** i;
 		return sign * int
 	};
 
@@ -273,17 +271,17 @@
 	)
 
 	//Summation with minimal rounding errors
-	//KahanBabushkaKleinSum
+	//"KahanBabushkaKleinSum"
 	Math.sum = function(...values)
 	{
 		values = values.map(x => +x);
 		let sum = 0, cs = 0, ccs = 0, c = 0, cc = 0;
-		for (let i = 0; i < values.length; i++)
+		for (const v of values)
 		{
-			let t = sum + values[i];
-			c = abs(sum) >= abs(values[i])
-				? (sum - t) + values[i]
-				: (values[i] - t) + sum;
+			let t = sum + v;
+			c = abs(sum) >= abs(v)
+				? (sum - t) + v
+				: (v - t) + sum;
 			sum = t;
 			t = cs + c;
 			cc = abs(cs) >= abs(c)
@@ -294,6 +292,14 @@
 		}
 		return sum + cs + ccs
 	};
+
+	/**
+	*@param {bigint} n binary numeral to measure
+	*@param {bigint} b unit of measurement. 1: bit, 8: Byte, 16: word, 32: D-word, 64: Q-word
+	*@param {numeric} i initial value of counter
+	*@return {numeric}
+	*/
+	const sizeOf = (n, b, i) => {while (n >>= b) i++; return i};
 
 	//ith (degree i) root of n
 	const root = (x, i = 2) =>
@@ -313,11 +319,10 @@
 		if (B)
 		{
 			//a ^ (1 / k) = b ^ (log_b(a) / k)
-			const log = BigInt.log2(x[1]);
+			const log = sizeOf(x[1], 1n, 0n);
 			x0 = x[1] >> (log - log / i);
 		}
-		else
-			x0 = x[1] ** (1 / i);
+		else x0 = x[1] ** (1 / i);
 		x1 = x0 * j / i + x[1] / (i * x0 ** j)
 		//Newton's Method
 		while (x1 < x0)
@@ -332,8 +337,8 @@
 	{
 		if (!isBigInt(x)) return x ** 0.5; //is this accurate?
 		if (x < 2n) {if (x < 0n) throw new RangeError('return value is Complex number'); return x}
-		let x0 = x >> (BigInt.log2(x) >> 1n),
-			 x1 = (x0 + x / x0) >> 1n;
+		let x0 = x >> (sizeOf(x, 1n, 0n) >> 1n),
+			x1 = (x0 + x / x0) >> 1n;
 		//Heron's Method
 		while (x1 < x0)
 		{
@@ -408,41 +413,37 @@
 
 	Numeric.signSplit = function(x) {return signSplit(toNumeric(x))}; //should this exist?
 
-	BigInt.max = function(...a)
+	BigInt.max = function(...values)
 	{
-		a = a.map(toBigInt);
-		let i = 0, m = a[i];
-		while (++i < a.length)
-			if (a[i] > m) m = a[i];
+		values = values.map(toBigInt);
+		let i = 0, m = v;
+		while (++i < values.length) if (v > m) m = v;
 		return m
 	};
-	BigInt.min = function(...a)
+	BigInt.min = function(...values)
 	{
-		a = a.map(toBigInt);
-		let i = 0, m = a[i];
-		while (++i < a.length)
-			if (a[i] < m) m = a[i];
+		values = values.map(toBigInt);
+		let i = 0, m = v;
+		while (++i < values.length) if (v < m) m = v;
 		return m
 	};
 
 	Numeric.max = function(...values)
 	{
-		const a = values.map(toNumeric);
-		let i = 0, m = a[i];
-		while (++i < a.length)
-			if (a[i] > m) m = a[i];
+		values = values.map(toNumeric);
+		let i = 0, m = v;
+		while (++i < values.length) if (v > m) m = v;
 		return m
 	};
 	/*
-	TO-DO: return a number only if it's safe, otherwise bigint.
+	TO-DO: return Number type only if it's safe, otherwise BigInt type.
 	Only do that if there's multiple valid choices.
 	*/
 	Numeric.min = function(...values)
 	{
-		const a = values.map(toNumeric);
-		let i = 0, m = a[i];
-		while (++i < a.length)
-			if (a[i] < m) m = a[i];
+		values = values.map(toNumeric);
+		let i = 0, m = v;
+		while (++i < values.length) if (v < m) m = v;
 		return m
 	};
 
@@ -456,16 +457,16 @@
 
 	BigInt.clamp = function(x, min, max) {return clamp(toBigInt(x), BigInt(min), BigInt(max))};
 
+	//if the args are not coerced to the same type, the output isn't guaranteed to be the same type as `x`
 	Numeric.clamp = function(x, min, max) {return clamp(toNumeric(x), toNumeric(min), toNumeric(max))};
 
 	//github.com/zloirock/core-js/blob/master/packages/core-js/internals/math-scale.js
 	//https://rwaldron.github.io/proposal-math-extensions/#sec-math.scale
 	Math.scale = function(x, inLow, inHigh, outLow, outHigh)
 	{
-		x = +x; if (isInfNan(x)) return x;
-		//throw on BigInt and
-		//avoid string concatenation if `outLow` is text
+		if (isInfNan(x = +x)) return x;
 		inLow = +inLow; inHigh = +inHigh;
+		//avoid string concatenation if `outLow` is text
 		outLow = +outLow; outHigh = +outHigh;
 		return (x - inLow) * (outHigh - outLow) / (inHigh - inLow) + outLow
 	};
@@ -489,7 +490,8 @@
 	//circular left shift
 	Math.rotl32 = function(n, b)
 	{
-		n = +n; b = +b & 31;
+		n = +n;
+		b = +b & 31; //coerce and throw the same error as built-ins, then apply mod 32, JIC
 		n = (n << b) | (n >>> (32 - b));
 		return n >>> 0
 	};
@@ -501,48 +503,30 @@
 		return n >>> 0
 	};
 
-	BigInt.sizeOf = function(n, b = 8)
-	{//b is the unit of measurement. 1: bit, 8: Byte, 16: word, 32: D-word, 64: Q-word
-		n = abs(toBigInt(n)); b = abs(BigInt(b)); //exclude sign bit
-		//what's the size of 0? 0 or 1?
-		let i = 1n;
-		while (n >>= b) i++;
-		return i
-	};
+	//is the size of 0 really 1?
+	BigInt.sizeOf = function(n, b = 8) {return sizeOf(abs(toBigInt(n)), abs(BigInt(b)), 1n)};
 
 	BigInt.log2 = function(n) //lb(bigint)
 	{
 		n = toBigInt(n);
 		if (n <= 0n) throw new RangeError('Non-positive logarithmation');
-		//linear word search
-		let i = 0n, B = 0x40n; //`B` MUST be a power of 2
-		while (n >> B) {n >>= B; i += B}
-		let w = (-1n << (B >> 1n)) & ~(-1n << B);
-		//binary search
-		while (B >>= 1n)
-		{
-			//`|=` == `+=` but faster
-			if (n & w) {i |= B; n >>= B}
-			w = (w >> B) & (-1n << (B >> 1n));
-		}
-		//I rolled the loop because it'll probably be unrolled anyway.
-		//this "rolling" allows changing `B` without editing extra code
-		return i
+		return sizeOf(n, 1n, 0n)
 	};
 
+	//3 is the closest integer to `Math.E`
 	BigInt.logB = function(n, b = 3n)
 	{
 		n = toBigInt(n); b = BigInt(b);
 		if (n < 1n || b < 2n) throw new RangeError('return value is -Infinity or NaN');
 		let i = 0n;
-		while (n > 1n) {n /= b; i++}
+		while (n /= b) i++;
 		return i
 	};
 
 	Numeric.logB = function(x, b = 2)
 	{
 		x = toNumeric(x); b = toNumeric(b);
-		if (x != x || b != b || x < 0 || b <= 1) return NaN;
+		if (isNan(x) || isNan(b) || x < 0 || b <= 1) return NaN;
 		if (x == 0) return -Infinity;
 		if (x == 1) return 0;
 		return (isBigInt(x) && isBigInt(b) ? BigInt : Math).logB(x, b)
@@ -556,11 +540,11 @@
 	{
 		x = toNumeric(x); n = toNumeric(n);
 		if (isNan(x) || isNan(n)) return NaN;
-		const a = abs(x), zero = x ^ x;
-		if (!n) return a > 1 ? NaN : zero;
+		const a = abs(x), ZERO = x ^ x;
+		if (!n) return a > 1 ? NaN : ZERO;
 		if (x < 0 && (isBigInt(n) && !(n & 1n))) return NaN;
-		if (n < 0) return a ? (a == 1 ? sign(x) : zero) : Infinity;
-		if (!a) return zero;
+		if (n < 0) return a ? (a == 1 ? sign(x) : ZERO) : Infinity;
+		if (!a) return ZERO;
 		return (isBigInt(x) && isBigInt(n) ? BigInt : Math).root(x, n)
 	};
 
@@ -1002,8 +986,7 @@
 	Math.gcd = function(a, b)
 	{
 		a = abs(+a); b = abs(+b);
-		//is it really NaN?
-		if (a != a || b != b) return NaN;
+		if (isNan(a) || isNan(b)) return NaN;
 		if (a % 1 != 0 || b % 1 != 0) return Euclid(a, b);
 		//borrowed from Stein, lol
 		const i = Numeric.ctz(a), j = Numeric.ctz(b),
@@ -1025,13 +1008,14 @@
 		//simplify future operations
 		a = abs(toBigInt(a)); b = abs(toBigInt(b));
 		if (a == b || !a) return b; if (!b) return a;
-		if (abs(a - b) == 1n) return 1n;
+		if (abs(a - b) == 1n) return 1n; //does this improve speed?
 		const ctz = BigInt.ctz,
 			i = ctz(a), j = ctz(b),
 			k = i < j ? i : j; //min
 		//reduce sizes
 		a >>= i; b >>= j;
-		if (a == b) return a << k;
+		//REMINDER: every `return` after this point MUST be shifted by `k` to the left
+		if (a == b) return a << k; //again, does this improve speed?
 		/*
 		Stein's algorithm is slow when any argument is 1,
 		especially if the other argument is a big Mersenne.
@@ -1056,8 +1040,8 @@
 		const BIN = 8n;
 
 		if (b > a) [a, b] = [b, a];
-		const a_len = BigInt.sizeOf(a, 1n << BIN),
-			b_len = BigInt.sizeOf(b, 1n << BIN);
+		const a_len = sizeOf(a, 1n << BIN, 1n),
+			b_len = sizeOf(b, 1n << BIN, 1n);
 		if (b_len < 2)
 		{
 			//both are small, Euclid is best here
@@ -1082,9 +1066,8 @@
 		en.wikipedia.org/wiki/Lehmer%27s_GCD_algorithm#Algorithm
 		*/
 		let m = a_len - b_len;
-		//this will sometimes make `b > a` true
-		b <<= m << BIN;
-		m = a_len;
+		//this will sometimes make `b > a` true, I will fix it soon
+		b <<= m << BIN; m = a_len;
 		while (a && b)
 		{
 			m--;
@@ -1096,7 +1079,7 @@
 				let w0 = (x + A) / (y + C),
 					w1 = (x + B) / (y + D),
 					w;
-				//I'm afraid of deleting the `else`
+				//I'm afraid of deleting the `else` lol
 				if (w0 != w1) {break} else w = w0;
 				[A, B, x,
 				C, D, y] = [
@@ -1107,8 +1090,7 @@
 			}
 			if (!B)
 			{
-				//is the order correct?
-				//if a < b, this will just swap them
+				//is the order correct? if a < b, this will just swap them
 				if (b) [a, b] = [b, a % b];
 				continue
 			}
@@ -1121,10 +1103,10 @@
 
 	Numeric.gcd = function(a, b)
 	{
-		a = Numeric.abs(a); b = Numeric.abs(b); //avoid tail-calling `Numeric.to` and `Numeric.abs`
+		a = abs(toNumeric(a)); b = abs(toNumeric(b));
 		return isBigInt(a) && isBigInt(b) ? BigInt.gcd(a, b) : Math.gcd(a, b)
 	};
-
+	//should `abs` be a tail-call in all of these (GCDs and LCMs)? it seems better to use it at the start
 	Math.lcm = function(a, b)
 	{
 		a = abs(+a); b = abs(+b);
@@ -1150,17 +1132,16 @@
 	Numeric.lcd = function(a, b)
 	{
 		a = abs(toNumeric(a)); b = abs(toNumeric(b));
-		const rt = Numeric.sqrt(a * b), u = isBigInt(a) ? 1n : 1;
-		for (let i = u + u; i <= rt; i++)
-			if (!(a % i || b % i)) return i;
-		return u
+		const rt = Numeric.sqrt(a * b), ONE = isBigInt(a) ? 1n : 1;
+		for (let i = ONE + ONE; i <= rt; i++) if (!(a % i || b % i)) return i;
+		return ONE
 	};
 
 	Math.agm = function(a, g)
 	{
 		a = +a; g = +g;
 		//avoid infinite loop
-		if (a != a || g != g || a < 0 || g < 0)
+		if (isNan(a) || isNan(g) || a < 0 || g < 0)
 			return NaN;
 		let x;
 		do [a, g, x] = [(a + g) / 2, sqrt(a * g), a]
@@ -1176,7 +1157,7 @@
 		if (isInfNan(n)) return;
 		if (n < 2) return [];
 		const c = Numeric.ctz(n);
-		//prevent infinite loop, and increase sqrt accuracy
+		//prevent infinite loop, increase sqrt accuracy, and improve overall speed
 		n /= 2 ** c;
 		const m = sqrt(n), out = [];
 		let i;
@@ -1210,6 +1191,7 @@
 			}
 			Pa.push(x)
 		};
+	//remember, those 3 constants are static, so their data is preserved between calls to `factorize`
 
 	Math.factorize = function(n)
 	{
@@ -1280,6 +1262,7 @@
 		for (let i = 2n; i <= n; i++)
 		{
 			a += c = BigInt.ctz(i);
+			//reduce size (temporarily) in the hope of being faster
 			out *= i >> c
 		}
 		return out * (n & 1n ? s : 1n) << a
@@ -1293,15 +1276,14 @@
 	};
 	//TO-DO: add rising and falling Fs
 	Numeric.factorial = function(x, k = 1)
-	{//if k > 1 returns multifactorial of that degre
+	{//if k > 1 returns multifactorial of that degree
 		x = signSplit(toNumeric(x));
 		k = toNumeric(k);
 		if (!isBigInt(k)) k = Math.trunc(k);
 		k = x[0] * k; x = x[1];
 		const out = [isBigInt(x) ? 1n : 1];
-		for (let i = k; out.length <= x; i += k)
-			out.push(i * out.at(-1));
-		return out
+		for (let i = k; out.length <= x; i += k) out.push(i * out.at(-1));
+		return out.at(-1) //yes, memory is being wasted
 	};
 
 	//iterative inverse int Fact
@@ -1344,8 +1326,7 @@
 	{
 		x = signSplit(toNumeric(x));
 		const out = [x ^ x]; //auto-type Zero
-		for (let i = x[0]; out.length <= x[1]; i += x[0])
-			out.push(i + out.at(-1));
+		for (let i = x[0]; out.length <= x[1]; i += x[0]) out.push(i + out.at(-1));
 		return out
 	};
 
@@ -1384,7 +1365,7 @@
 		return seq
 	};
 
-	//TO-DO: probably insert Dot-Product here
+	//TO-DO: maybe insert Dot-Product here
 
 
 	//correction of data descriptors
