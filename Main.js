@@ -9,7 +9,7 @@
 	*@param {object} O Object to modify
 	*@param {string} p key (property name) to define
 	*@param {*} v value to set
-	*@param {(boolean[]|numeric|string)} a descriptor
+	*@param {(boolean[]|numeric|string)} a bool descriptor with format [W, E, C]
 	*/
 	const defProp = function(O, p, v, a)
 	{
@@ -33,19 +33,18 @@
 
 	//for non-Deno environments
 	const AssertionError = class extends Error {constructor(m) {super(m)}},
-		  assert = function(c, m) {if (!c) throw new AssertionError(m)};
+		assert = function(c, m) {if (!c) throw new AssertionError(m)};
 
 	//github.com/tc39/proposal-relative-indexing-method#polyfill
 	function at(n)
 	{
 		//throw the same error as built-in implementation
-		if (this === null || this === undefined)
-			throw new TypeError('Cannot convert undefined or null to object');
+		if (this === null || this === undefined) throw new TypeError('Cannot convert undefined or null to object');
 		let l = this.length;
 		//BigInt (and object-wrapped bigint) support
 		if (isBigInt(n)) l = BigInt(l)
 		else n = trunc(+n) || 0; //toIntegerOrInfinity
-		if (n < 0) n += l; //very convenient
+		if (n < 0) n += l;
 		return n < 0 || n >= l ? undefined : this[n]
 	}
 	for (const C of [Array, String, Reflect.getPrototypeOf(Int8Array)])
@@ -106,11 +105,9 @@
 	*/
 	const toBigInt = x =>
 	{
-		switch (typeof x?.valueOf())
-		{
-			case 'string': case 'boolean': case 'bigint': return BigInt(x);
-			default: throw new TypeError(`Cannot convert ${x} to BigInt`)
-		}
+		const B = typeof x?.valueOf();
+		if (B == 'string' || B == 'boolean' || B == 'bigint') return BigInt(x)
+		throw new TypeError(`Cannot convert ${x} to BigInt`)
 	};
 
 	//localization increases performance, and protects against external side-effects
@@ -124,10 +121,12 @@
 		trunc = x => isInt(x) ? x : x - x % 1,
 		floor = x => isInt(x) ? x : trunc(x) - (x < 0 ? 1 : 0),
 		ceil = x => isInt(x) ? x : trunc(x) + (x > 0 ? 1 : 0),
-		roundInf = x => (x < 0 ? floor : ceil)(x);
+		round = x => isInt(x) || isInfNan(x) ? x : x < 0 && x >= -0.5 ? -0 : abs(x) % 1 < 0.5 ? floor(x) : ceil(x),
+		roundInf = x => (x < 0 ? floor : ceil)(x); //opposite of `trunc`
 
+	//TO-DO fix bug when strings are large
+	globalThis.isFinite = function(value) {return isBigInt(value) || !isInfNan(+value)}
 	//both `parseInt` AND `parseFloat` never throw on bigints, so I decided to "fix" these other functions
-	globalThis.isFinite = function(value) {return isBigInt(value) || !isInfNan(+value)} //TO-DO fix bug when strings are large
 	globalThis.isNaN = function(value) {return !isBigInt(value) || isNan(+value)}
 
 	/**
@@ -163,8 +162,8 @@
 		let stripPrefix = true;
 		if (radix) //it will never be NaN, no need to check for zero
 		{
-			if (radix < 2 || radix > 36) throw new RangeError('Invalid base');
-			if (radix != 0x10) stripPrefix = false; //why only 16? it should include 2 and 8
+			if (radix < 2 || radix > 36) throw new RangeError('Invalid base')
+			if (radix != 0x10) stripPrefix = false //why only 16? it should include 2 and 8
 		}
 		else
 			radix = 10;
@@ -261,10 +260,8 @@
 				throw new TypeError("Number.prototype.toScientific requires that 'this' be a Number");
 			x = Number(x); b = Number(b);
 			let e;
-			if (!isInfNan(x))
-				{e = x && trunc(logB(abs(x), b)); x = x / b ** e}
-			else
-				{e = x; x = sign(x)}
+			if (!isInfNan(x)) {e = x && trunc(logB(abs(x), b)); x = x / b ** e}
+			else {e = x; x = sign(x)}
 			return x.toString(b) + ' * ' + '10' + '^' + e.toString(b) + ` (base 0d${b})`
 		},
 		0b101
@@ -401,8 +398,8 @@
 
 
 	//github.com/zloirock/core-js/blob/master/packages/core-js/modules/esnext.math.signbit.js
-	Number.signbit = function(x)
-		{return typeof x == 'number' && x == x && x < 0 || isNegZero(x)};
+	Number.signbit = function(number)
+		{return typeof number == 'number' && !isNan(number) && number < 0 || isNegZero(number)};
 
 	//for consistency, no static method will be an arrow function
 	BigInt.sign = function(n) {return sign(toBigInt(n))};
@@ -506,20 +503,16 @@
 	//is the size of 0 really 1?
 	BigInt.sizeOf = function(n, b = 8) {return sizeOf(abs(toBigInt(n)), abs(BigInt(b)), 1n)};
 
-	BigInt.log2 = function(n) //lb(bigint)
-	{
-		n = toBigInt(n);
-		if (n <= 0n) throw new RangeError('Non-positive logarithmation');
-		return sizeOf(n, 1n, 0n)
-	};
+	//lb(bigint)
+	BigInt.log2 = function(n)
+		{if ((n = toBigInt(n)) > 0n) return sizeOf(n, 1n, 0n); throw new RangeError('Non-positive logarithmation')};
 
 	//3 is the closest integer to `Math.E`
 	BigInt.logB = function(n, b = 3n)
 	{
 		n = toBigInt(n); b = BigInt(b);
 		if (n < 1n || b < 2n) throw new RangeError('return value is -Infinity or NaN');
-		let i = 0n;
-		while (n /= b) i++;
+		let i = 0n; while (n /= b) i++;
 		return i
 	};
 
@@ -722,19 +715,14 @@
 	*@param {number} x
 	*@return {number}
 	*/
-	Math.sawTrig = function(x)
-	{
-		x = +x / Math.TAU;
-		return (x - floor(x + 0.5)) * 2
-	};
+	Math.sawTrig = function(x) {x = +x / Math.TAU; return (x - floor(x + 0.5)) * 2};
 
 	/**
 	*triangular
 	*@param {number} x
 	*@return {number}
 	*/
-	Math.triangleTrig = function(x)
-		{return abs(Math.sawTrig(+x + Math.PI / 2)) * 2 - 1};
+	Math.triangleTrig = function(x) {return abs(Math.sawTrig(+x + Math.PI / 2)) * 2 - 1};
 
 	//square wave defined as piecewise
 	//because Math.sign(Math.sin(x)) is inefficient
@@ -753,29 +741,25 @@
 		const F = x => sqrt(1 - (x / (Math.PI / 2) - 1) ** 2);
 		return x < Math.PI ? F(x) : -F(x - Math.PI)
 	};
+	//missing periodic Gauss and arcsin, but It's not important
 
-
-	Math.ctz32 = (function(clz) {return function(x) {return (x = +x) | 0 ? 31 - clz(x & -x) : 32}})(Math.clz32);
 	//count trailing zeros in binary
-	BigInt.ctz = function(n)
+	const ctz = n =>
 	{
-		n = toBigInt(n);
-		if (!n) throw new RangeError('return value is Infinity');
-		//`b` MUST be a power of 2
-		let i = 0n, b = 0x40n, w = ~(-1n << b);
-		//linear word search
-		while (!(n & w)) {i += b; n >>= b}
-		//release memory, and
-		n &= w; //increase probability of fixed-precision optimization
-		//binary search
-		while (b >>= 1n) if (!(n & (w >>= b))) {i |= b; n >>= b};
-		return i
+		const B = typeof n == 'bigint', U = B ? 1n : 1;
+		let c = U ^ U;
+		while (!(n & U)) {c += U; n = B ? n >> 1n : n >>> 1}
+		return c
 	};
+	//logarithmic binary search is faster than linear, but the engine will do it for us
+	Math.ctz32 = function(x) {return ctz(+x >>> 0)};
+
+	BigInt.ctz = function(n) {if (n = toBigInt(n)) return ctz(n); throw new RangeError('return value is Infinity')};
 
 	Numeric.ctz = function(n)
 	{
 		n = toNumeric(n);
-		if (typeof n == 'bigint') return n ? BigInt.ctz(n) : Infinity;
+		if (typeof n == 'bigint') return n ? ctz(n) : Infinity;
 		n = trunc(abs(+n));
 		if (isInfNan(n)) return NaN;
 		if (!n) return 0x400; //(rounded) `Math.log2(Number.MAX_VALUE)` = (truncated) ilb(2 ^ 1024 - 1) + 1
@@ -783,21 +767,15 @@
 		n = Number.castBigInt(n);
 		const e = ((n >> 52n) & 0x3ffn) - 51n; //get exponent
 		n &= ~(-1n << 52n); //mask mantissa
-		n = n ? BigInt.ctz(n) : 52n;
+		n = n ? ctz(n) : 52n;
 		return Number(e + n)
 		/*
-		//the following algorithm is ditched
-		//because I doubt it's efficient.
-		//It's kept here for historical purposes
+		//the following algorithm is ditched because I doubt it's efficient.
+		//It's kept here for historical and educational purposes.
 		const c = trunc(Math.log2(n)) - 52;
 		if (c > 0) n /= 2 ** c; //remove all but the most significant 53b
-		//floats larger than 53b always have trailing zeros
-		//so there's no need for `trunc`
-		assert(n % 1 == 0) //ensure it's an int, JIC
-		return (c > 0 && c) +
-			Math.ctz32(n) +
-			(n | 0 ? 0
-				: n >= 2 ** 32 && Math.ctz32(n / 2 ** 32))
+		//floats larger than 53b always have trailing zeros, so there's no need for `trunc`
+		return (c > 0 && c) + Math.ctz32(n) + (n | 0 ? 0 : n >= 2 ** 32 && Math.ctz32(n / 2 ** 32))
 		*/
 	};
 
@@ -807,58 +785,47 @@
 		return typeof n == typeof d && isInt(n) && isInt(d) && d && !(n % d)
 	};
 
+	const isPow2 = x => n > 1 && !(n & (n - 1n));
+
 	BigInt.isPow2 = function(n) {return isBigInt(n) && n > 1n && !(n & (n - 1n))};
 
 	BigInt.isMersenne = function(n) {return isBigInt(n) && n > 0n && !(n & (n + 1n))};
 
 	Math.isPow2 = function(n)
-		{return (n = +n) % 1 == 0 && BigInt.isPow2(BigInt(n))};
+		{return isInt(n = +n) && BigInt.isPow2(BigInt(n))};
 	//every unsafe int has trailing zeros
 	Math.isMersenne = function(n)
-		{return (n = +n) % 1 == 0 && n < 2 ** 53 && BigInt.isMersenne(BigInt(n))};
+		{return isInt(n = +n) && n < 2 ** 53 && BigInt.isMersenne(BigInt(n))};
 
-	Math.popcnt32 = function(i)
+	//for educational purposes see: en.wikipedia.org/wiki/Hamming_weight#Efficient_implementation
+	//without optimization, this is very slow
+	const popcnt = x =>
 	{
-		i = +i | 0;
-		i -= (i >>> 1) & 0x55555555;
-		i = (i & 0x33333333) + ((i >>> 2) & 0x33333333);
-		i = (i + (i >>> 4)) & 0x0F0F0F0F;
-		return Math.imul(i, 0x01010101) >>> 24;
+		const B = typeof x == 'bigint';
+		let c = B ? 0n : 0;
+		while (x) {c += x & (B ? 1n : 1); x = B ? x >> 1n : x >>> 1}
+		return c
 	};
-
+	
+	Math.popcnt32 = function(x) {return popcnt(+x >>> 0)};
+	
 	BigInt.popcnt = function(n)
 	{
-		n = toBigInt(n);
-		if (n < 0n) throw new RangeError('return value is Infinity');
-		//this algorithm works best with less zeros
-		n >>= n && BigInt.ctz(n);
-		if (n < 2n) return n;
-		let c = 0n, w = new BigUint64Array(1); //correctness and performance
-		const m = 0x3333333333333333n;
-		do {
-			w[0] = n;
-			//en.wikipedia.org/wiki/Hamming_weight#Efficient_implementation
-			w[0] -= (w[0] >> 1n) & 0x5555555555555555n;
-			w[0] = (w[0] & m) + ((w[0] >> 2n) & m);
-			w[0] = (w[0] + (w[0] >> 4n)) & 0x0f0f0f0f0f0f0f0fn;
-			//emulate mul overflow (wraparound mod 2^64)
-			w[0] *= 0x0101010101010101n;
-			c += w[0] >>= 56n;
-		} while (n >>= 0x40n)
-		return c
+		if ((n = toBigInt(n)) < 0n) throw new RangeError('return value is Infinity')
+		return popcnt(n)
 	};
 
 	Numeric.popcnt = function(n)
 	{
 		n = toNumeric(n);
-		if (typeof n == 'bigint')
-			return n < 0n ? Infinity : BigInt.popcnt(n);
+		if (typeof n == 'bigint') return n < 0n ? Infinity : popcnt(n);
 		if (isInfNan(n)) return NaN;
 		n = abs(trunc(+n));
 		//mantissa popcount, because exponent doesn't matter
-		return Number(BigInt.popcnt(Number.castBigInt(n) & ~(-1n << 52n)) + 1n)
+		return Number(popcnt(Number.castBigInt(n) & ~(-1n << 52n)) + 1n)
 	};
 
+	//bitwise (logical base 2, not artihmetic) carryless multiplication
 	Math.clmul32 = function(x, y)
 	{
 		x = +x >>> 0; y = +y >>> 0;
@@ -871,13 +838,12 @@
 		}
 		return prod >>> 0
 	};
-	
+	//IDK if the naive definition is fast
 	BigInt.clmul = function(a, b)
 	{
 		a = toBigInt(a); b = toBigInt(b);
 		//can it be defined?
-		if (a < 0n || b < 0n)
-			throw new RangeError('negative carryless product is undefined');
+		if (a < 0n || b < 0n) throw new RangeError('negative carryless product is undefined');
 		let out = 0n;
 		while (b)
 		{
@@ -913,14 +879,13 @@
 
 	BigInt.isSquare = function(n)
 	{
-		if (!isBigInt(n)) return false;
-		if (n < 2n) return n >= 0n;
-		const ctz = BigInt.ctz(n);
-		if (ctz & 1n) return false;
-		n >>= ctz;
-		if (n == 1n) return true;
-		if (n & 7n != 1n) return false;
-		return BigInt.sqrt(n) ** 2n == n
+		if (!isBigInt(n)) return false
+		if (n < 2n) return n >= 0n
+		const c = ctz(n);
+		if (c & 1n) return false
+		n >>= c;
+		if (n & 7n != 1n) return false
+		return sqrt(n) ** 2n == n
 	};
 
 	Numeric.isSquare = function(n)
@@ -932,12 +897,11 @@
 	Math.isCube = function(n)
 	{
 		n = abs(+n);
-		if (n % 1 != 0) return false;
+		if (!isInt(n)) return false;
 		if (!n) return true;
 		const ctz = Numeric.ctz(n);
 		if (ctz % 3) return false;
 		n /= 2 ** ctz;
-		if (n == 1) return true;
 		//math.stackexchange.com/a/2190888
 		if (!([0, 1, 8].includes(n % 9) && [0, 1, 6].includes(n % 7)))
 			return false;
@@ -946,23 +910,27 @@
 
 	BigInt.isCube = function(n)
 	{
-		if (!isBigInt(n)) return false;
-		n = abs(n);
-		if (!n) return true;
-		const ctz = BigInt.ctz(n);
-		if (ctz % 3n) return false;
-		n >>= ctz;
-		if (n == 1n) return true;
-		if (!([0n, 1n, 8n].includes(n % 9n) && [0n, 1n, 6n].includes(n % 7n)))
-			return false;
-		return root(n, 3n) ** 3n == n
+		if (!isBigInt(n)) return false
+		if (!n) return true
+		const c = ctz(n);
+		if (c % 3n) return false
+		//shifting must be done before abs,
+		//this allows the engine to reuse the shifted local copy of `n` inside `ctz`
+		n >>= c;
+		/*
+		`abs` (and "abs") is O(n) in worst-case only, so we must use it sparingly.
+		By using it just before `if`, the max number of comparisons is reduced.
+		Inverting the math sign of an odd number doesn't need sum, just "OR" (~n | 1n).
+		But we can reduce those 2 ops down to 1. XORing with minus-two flips all bits except LSB
+		bitwise ops are parallelizable, increasing potential speed
+		*/
+		if (n < 0n) n ^= -2n; //abs
+		if ((n % 9n > 1n && n % 9n != 8n) && (n % 7n > 1n && n % 7n != 6n)) return false
+		//if ( !([0n, 1n, 8n].includes(n % 9n) && [0n, 1n, 6n].includes(n % 7n)) ) return false
+		return cbrt(n) ** 3n == n
 	};
 
-	Numeric.isCube = function(n)
-	{
-		if (!Numeric.isInteger(n)) return false;
-		return (isBigInt(n) ? BigInt : Math).isCube(n)
-	};
+	Numeric.isCube = function(n) {return Numeric.isInteger(n) && (isBigInt(n) ? BigInt : Math).isCube(n)};
 
 	/**
 	*Euclidean algorithm for finding Highest Common Factor.
@@ -972,11 +940,7 @@
 	*@param {numeric} b
 	*@return {numeric}
 	*/
-	const Euclid = (a, b) =>
-	{
-		while (b) [a, b] = [b, a % b];
-		return a
-	};
+	const Euclid = (a, b) => {while (b) [a, b] = [b, a % b]; return a};
 
 	/**
 	*@param {number} a
@@ -986,15 +950,15 @@
 	Math.gcd = function(a, b)
 	{
 		a = abs(+a); b = abs(+b);
-		if (isNan(a) || isNan(b)) return NaN;
-		if (a % 1 != 0 || b % 1 != 0) return Euclid(a, b);
+		if (isNan(a) || isNan(b)) return NaN
+		if (!isInt(a) || !isInt(b)) return Euclid(a, b)
 		//borrowed from Stein, lol
 		const i = Numeric.ctz(a), j = Numeric.ctz(b),
-			k = Math.min(i, j);
-		//ensure the max length = 53b
+			k = i < j ? i : j; //min
+		//ensure the max length is 53b
 		a /= 2 ** i; b /= 2 ** j;
 		return (Math.isMersenne(a) && Math.isMersenne(b)
-			? 2 ** Math.gcd(Math.trunc(Math.log2(a)) + 1, Math.trunc(Math.log2(b)) + 1) - 1
+			? 2 ** Math.gcd(trunc(Math.log2(a)) + 1, trunc(Math.log2(b)) + 1) - 1
 			: Euclid(a, b)) * 2 ** k
 	};
 	/**
@@ -1009,9 +973,7 @@
 		a = abs(toBigInt(a)); b = abs(toBigInt(b));
 		if (a == b || !a) return b; if (!b) return a;
 		if (abs(a - b) == 1n) return 1n; //does this improve speed?
-		const ctz = BigInt.ctz,
-			i = ctz(a), j = ctz(b),
-			k = i < j ? i : j; //min
+		const i = ctz(a), j = ctz(b), k = i < j ? i : j; //min
 		//reduce sizes
 		a >>= i; b >>= j;
 		//REMINDER: every `return` after this point MUST be shifted by `k` to the left
@@ -1107,10 +1069,10 @@
 		return isBigInt(a) && isBigInt(b) ? BigInt.gcd(a, b) : Math.gcd(a, b)
 	};
 	//should `abs` be a tail-call in all of these (GCDs and LCMs)? it seems better to use it at the start
-	Math.lcm = function(a, b)
+	Math.lcm = function(x, y)
 	{
-		a = abs(+a); b = abs(+b);
-		return a / Math.gcd(a, b) * b
+		x = abs(+x); y = abs(+y);
+		return x / Math.gcd(x, y) * y
 		//lower overflow probability than `a * b / Math.gcd(a, b)`
 	};
 
@@ -1137,34 +1099,33 @@
 		return ONE
 	};
 
-	Math.agm = function(a, g)
+	Math.agm = function(x, y)
 	{
-		a = +a; g = +g;
+		x = +x; y = +y;
 		//avoid infinite loop
-		if (isNan(a) || isNan(g) || a < 0 || g < 0)
-			return NaN;
-		let x;
-		do [a, g, x] = [(a + g) / 2, sqrt(a * g), a]
-		while (a != x) //this condition allows max precision
+		if (isNan(x) || isNan(y) || x < 0 || y < 0) return NaN
+		let a;
+		do [x, y, a] = [(x + y) / 2, sqrt(x * y), x]
+		while (x != a) //this condition allows max precision
 		//and prevents infinite loop caused by rounding error
-		return a
+		return x
 	};
 
-	//returns non-trivial divisors (proper divs) of n
-	Math.divisors = function(n)
+	//returns non-trivial divisors (proper divs) of x
+	Math.divisors = function(x)
 	{
-		n = trunc(abs(+n));
-		if (isInfNan(n)) return;
-		if (n < 2) return [];
-		const c = Numeric.ctz(n);
+		x = trunc(abs(+x));
+		if (isInfNan(x)) return;
+		if (x < 2) return [];
+		const c = Numeric.ctz(x);
 		//prevent infinite loop, increase sqrt accuracy, and improve overall speed
-		n /= 2 ** c;
-		const m = sqrt(n), out = [];
+		x /= 2 ** c;
+		const m = sqrt(x), out = [];
 		let i;
 		for (i = 3; i <= m; i += 2)
-			if (!(n % i)) out.push(i);
-		i = out.length - Math.isSquare(n) - 1;
-		while (i >= 0) out.push(n / out[i--]);
+			if (!(x % i)) out.push(i);
+		i = out.length - Math.isSquare(x) - 1;
+		while (i >= 0) out.push(x / out[i--]);
 		const bin = []; //unique powers of 2
 		for (i = 1; i <= c; i++) bin.push(2 ** i);
 		//TO-DO: add and fix missing multiplication and insertion
@@ -1193,36 +1154,36 @@
 		};
 	//remember, those 3 constants are static, so their data is preserved between calls to `factorize`
 
-	Math.factorize = function(n)
+	Math.factorize = function(x)
 	{
-		n = trunc(abs(+n));
-		if (isInfNan(n)) return; //returning `undefined` is "more correct"
-		const out = new Map, ctz = Numeric.ctz(n);
-		if (ctz) {out.set(2, ctz); n /= 2 ** ctz}
-		if (n < 2) return out;
-		let rt = 1, y = sqrt(n);
+		x = trunc(abs(+x));
+		if (isInfNan(x)) return; //returning `undefined` is "more correct"
+		const out = new Map, ctz = Numeric.ctz(x);
+		if (ctz) {out.set(2, ctz); x /= 2 ** ctz}
+		if (x < 2) return out;
+		let rt = 1, y = sqrt(x);
 		//trial rooting
-		while (Math.isSquare(n)) {n = y; y = sqrt(y); rt *= 2}
-		y = cbrt(n);
-		while (Math.isCube(n)) {n = y; y = cbrt(y); rt *= 3}
-		if (Pd.has(n)) {out.set(n, rt); return out}
-		let i = 0; y = sqrt(n);
+		while (Math.isSquare(x)) {x = y; y = sqrt(y); rt *= 2}
+		y = cbrt(x);
+		while (Math.isCube(x)) {x = y; y = cbrt(y); rt *= 3}
+		if (Pd.has(x)) {out.set(x, rt); return out}
+		let i = 0; y = sqrt(x);
 		//trial division on steroids
-		while (Pa[i] <= y && Pa[i] <= n)
+		while (Pa[i] <= y && Pa[i] <= x)
 		{
-			while (n % Pa[i] == 0)
+			while (x % Pa[i] == 0)
 			{
 				out.set(Pa[i], (out.get(Pa[i]) || 0) + rt);
-				n /= Pa[i];
-				if (Pd.has(n))
+				x /= Pa[i];
+				if (Pd.has(x))
 				{
-					out.set(n, (out.get(n) || 0) + rt);
+					out.set(x, (out.get(x) || 0) + rt);
 					return out
 				}
 			}
 			if (++i >= Pa.length) addP(); //Primes on-demand
 		}
-		if (n > 1) {out.set(n, (out.get(n) || 0) + rt); Pd.add(n)}
+		if (x > 1) {out.set(x, (out.get(x) || 0) + rt); Pd.add(x)}
 		return out
 	};
 
@@ -1261,7 +1222,7 @@
 		[s, n] = signSplit(n);
 		for (let i = 2n; i <= n; i++)
 		{
-			a += c = BigInt.ctz(i);
+			a += c = ctz(i);
 			//reduce size (temporarily) in the hope of being faster
 			out *= i >> c
 		}
@@ -1279,7 +1240,7 @@
 	{//if k > 1 returns multifactorial of that degree
 		x = signSplit(toNumeric(x));
 		k = toNumeric(k);
-		if (!isBigInt(k)) k = Math.trunc(k);
+		if (!isBigInt(k)) k = trunc(k);
 		k = x[0] * k; x = x[1];
 		const out = [isBigInt(x) ? 1n : 1];
 		for (let i = k; out.length <= x; i += k) out.push(i * out.at(-1));
@@ -1334,7 +1295,7 @@
 	Math.Fib = function(x)
 	{
 		x = signSplit(+x);
-		return Math.round(Math.PHI ** x[1] / Math.SQRT5) * (x[0] === -1 && x[1] % 2 === 0 ? -1 : 1)
+		return round(Math.PHI ** x[1] / Math.SQRT5) * (x[0] == -1 && x[1] % 2 == 0 ? -1 : 1)
 	};
 	//en.wikipedia.org/wiki/Generalizations_of_Fibonacci_numbers#Extension_to_negative_integers
 
@@ -1347,7 +1308,7 @@
 	{
 		x = signSplit(+x);
 		const i = floor(Math.logPHI(x[1] * Math.SQRT5 + 0.5))
-		return !(i % 2) && x[0] === -1 ? NaN : i * x[0]
+		return !(i % 2) && x[0] == -1 ? NaN : i * x[0]
 	};
 
 	//en.wikipedia.org/wiki/Lucas_sequence
