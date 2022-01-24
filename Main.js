@@ -1,5 +1,5 @@
 //IIFE with closure, for encapsulation and localization
-(function(random01, sin, exp)
+(function(BigInt, TypeErr, RangeErr, random01, sin, exp)
 {
 	'use strict';
 	const isPrimitive = x => x === null || !(typeof x == 'object' || typeof x == 'function');
@@ -31,7 +31,7 @@
 	function at(n)
 	{
 		//throw the same error as built-in implementation
-		if (this === null || this === undefined) throw new TypeError('Cannot convert undefined or null to object');
+		if (this === null || this === undefined) throw new TypeErr('Cannot convert undefined or null to object');
 		let l = this.length;
 		//BigInt (and object-wrapped bigint) support
 		if (isBigInt(n)) l = BigInt(l)
@@ -98,7 +98,7 @@
 	{
 		const B = typeof x?.valueOf();
 		if (B == 'string' || B == 'boolean' || B == 'bigint') return BigInt(x)
-		throw new TypeError(`Cannot convert ${x} to BigInt`)
+		throw new TypeErr(`Cannot convert ${x} to BigInt`)
 	};
 
 	//localization increases performance, and protects against external side-effects
@@ -153,7 +153,7 @@
 		let stripPrefix = true;
 		if (radix) //it will never be NaN, no need to check for zero
 		{
-			if (radix < 2 || radix > 36) throw new RangeError('Invalid base')
+			if (radix < 2 || radix > 36) throw new RangeErr('Invalid base')
 			if (radix != 0x10) stripPrefix = false //why only 16? it should include 2 and 8
 		}
 		else
@@ -248,7 +248,7 @@
 			let x = this?.valueOf();
 			//JIC someone uses the `call` method
 			if (typeof x != 'number')
-				throw new TypeError("Number.prototype.toScientific requires that 'this' be a Number");
+				throw new TypeErr("Number.prototype.toScientific requires that 'this' be a Number");
 			x = Number(x); b = Number(b);
 			let e;
 			if (!isInfNan(x)) {e = x && trunc(logB(abs(x), b)); x = x / b ** e}
@@ -289,61 +289,46 @@
 	*/
 	const sizeOf = (n, b, i) => {while (n >>= b) i++; return i};
 
-	//ith (degree i) root of n
+	//ith (degree i) root of x
 	const root = (x, i = 2) =>
 	{
-		const B = isBigInt(x);
-		if (B) i = BigInt(i);
-		const ZERO = B ? 0n : 0, ONE = B ? 1n : 1;
 		if (i == 1) return x;
-		if (!B && isInfNan(x ** (1 / i))) return x ** (1 / i);
-		x = signabs(x);
-		//I feel like something is wrong here
-		if (!i) {if (x[1] > 1) throw new RangeError('return value is NaN'); return ZERO}
-		if (x[0] == -1 && !(i & ONE)) throw new RangeError('return value is a Complex number');
-		if (i < 0) {if (!x[1]) throw new RangeError('return value is Infinity'); return x[1] == 1 ? x[0] : ZERO}
-		if (!x[1]) return 0n;
+		const B = isBigInt(x);
+		if (B) {i = BigInt(i)} else if (isInfNan(x ** (1 / i))) return x ** (1 / i);
+		const ZERO = B ? 0n : 0, ONE = B ? 1n : 1, TWO = ONE + ONE;
+		if (i == -1) return ONE / x;
+		if (!i) {if (B && x > 1n) throw new RangeErr('return value is NaN'); return ZERO}
+		const s = sign(x); x = abs(x);
+		if (s == -1 && !(i % TWO)) {if (B) throw new RangeErr('return value is a Complex number'); return NaN};
+		if (B && i < 0n) {if (!x) throw new RangeErr('return value is Infinity'); return x == 1 ? s : ZERO}
+		if (!x) return ZERO;
+		if (x == 1) return s == -1 ? s ** i : x;
 		const j = i - ONE; let x0, x1;
-		if (B)
-		{
-			//a ^ (1 / k) = b ^ (log_b(a) / k)
-			const log = sizeOf(x[1], 1n, 0n);
-			x0 = x[1] >> (log - log / i);
-		}
-		else x0 = x[1] ** (1 / i);
-		x1 = x0 * j / i + x[1] / (i * x0 ** j)
+		//identity: a ^ (1 / k) = b ^ (log_b(a) / k)
+		if (B) {const lb = sizeOf(x, 1n, 0n); x0 = x >> (lb - lb / i)}
+		else x0 = x ** (1 / i);
+		x1 = x0 * j / i + x / (i * x0 ** j)
 		//Newton's Method
-		while (x1 < x0)
-		{
-			x0 = x1;
-			x1 = x1 * j / i + x[1] / (i * x1 ** j)
-		}
-		return x0 * x[0]
+		while (x1 < x0) {x0 = x1; x1 = x1 * j / i + x / (i * x1 ** j)}
+		return x0 * s
 	};
-
+	//I defined this dedicated (instead of just `root(x, 2)`) `sqrt` because of performance concerns
 	const sqrt = x =>
 	{
 		if (!isBigInt(x)) return x ** 0.5; //is this accurate?
-		if (x < 2n) {if (x < 0n) throw new RangeError('return value is Complex number'); return x}
-		let x0 = x >> (sizeOf(x, 1n, 0n) >> 1n),
-			x1 = (x0 + x / x0) >> 1n;
+		if (x < 2n) {if (x < 0n) throw new RangeErr('return value is Complex number'); return x}
+		let x0 = x >> (sizeOf(x, 1n, 0n) >> 1n), x1 = (x0 + x / x0) >> 1n;
 		//Heron's Method
-		while (x1 < x0)
-		{
-			x0 = x1;
-			x1 = (x1 + x / x1) >> 1n
-		}
+		while (x1 < x0) {x0 = x1; x1 = (x1 + x / x1) >> 1n}
 		return x0
 	};
-
+	//for some reason `BigInt.root(8n, 3n) == 1n` instead of `2n`
 	const cbrt = x => root(x, 3);
 
 	Math.TAU = Math.PI * 2; //no precision loss, because multiplier is power of two
 
 	Math.SQRT5 = sqrt(5);
-
-	//Golden Ratio
-	Math.PHI = Math.SQRT5 / 2 + 0.5;
+	Math.PHI = Math.SQRT5 / 2 + 0.5; //Golden Ratio
 
 	//in general, lb has better precision and performance than ln
 	const logB = (function(log) {return function(x, b = Math.E) {return log(x) / log(b)}})(Math.log2);
@@ -461,13 +446,13 @@
 
 	//lb(bigint)
 	BigInt.log2 = function(n)
-		{if ((n = toBigInt(n)) > 0n) return sizeOf(n, 1n, 0n); throw new RangeError('Non-positive logarithmation')};
+		{if ((n = toBigInt(n)) > 0n) return sizeOf(n, 1n, 0n); throw new RangeErr('Non-positive logarithmation')};
 
 	//3 is the closest integer to `Math.E`
 	BigInt.logB = function(n, b = 3n)
 	{
 		n = toBigInt(n); b = BigInt(b);
-		if (n < 1n || b < 2n) throw new RangeError('return value is -Infinity or NaN');
+		if (n < 1n || b < 2n) throw new RangeErr('return value is -Infinity or NaN');
 		let i = 0n; while (n /= b) i++;
 		return i
 	};
@@ -710,7 +695,7 @@
 	//logarithmic binary search is faster than linear, but the engine will do it for us
 	Math.ctz32 = function(x) {return ctz(+x >>> 0)};
 
-	BigInt.ctz = function(n) {if (n = toBigInt(n)) return ctz(n); throw new RangeError('return value is Infinity')};
+	BigInt.ctz = function(n) {if (n = toBigInt(n)) return ctz(n); throw new RangeErr('return value is Infinity')};
 
 	Numeric.ctz = function(n)
 	{
@@ -760,7 +745,7 @@
 	Math.popcnt32 = function(x) {return popcnt(+x >>> 0)};
 	BigInt.popcnt = function(n)
 	{
-		if ((n = toBigInt(n)) < 0n) throw new RangeError('return value is Infinity')
+		if ((n = toBigInt(n)) < 0n) throw new RangeErr('return value is Infinity')
 		return popcnt(n)
 	};
 
@@ -792,7 +777,7 @@
 	{
 		a = toBigInt(a); b = toBigInt(b);
 		//can it be defined?
-		if (a < 0n || b < 0n) throw new RangeError('negative carryless product is undefined');
+		if (a < 0n || b < 0n) throw new RangeErr('negative carryless product is undefined');
 		let out = 0n;
 		while (b)
 		{
@@ -1179,7 +1164,7 @@
 		x = signabs(toNumeric(x));
 		k = toNumeric(k);
 		if (!isBigInt(k)) k = trunc(k);
-		k = x[0] * k; x = x[1];
+		k = s * k; x = x;
 		const out = [isBigInt(x) ? 1n : 1];
 		for (let i = k; out.length <= x; i += k) out.push(i * out.at(-1));
 		return out.at(-1) //yes, memory is being wasted
@@ -1225,7 +1210,7 @@
 	{
 		x = signabs(toNumeric(x));
 		const out = [x ^ x]; //auto-type Zero
-		for (let i = x[0]; out.length <= x[1]; i += x[0]) out.push(i + out.at(-1));
+		for (let i = s; out.length <= x; i += s) out.push(i + out.at(-1));
 		return out
 	};
 
@@ -1233,7 +1218,7 @@
 	Math.Fib = function(x)
 	{
 		x = signabs(+x);
-		return round(Math.PHI ** x[1] / Math.SQRT5) * (x[0] == -1 && x[1] % 2 == 0 ? -1 : 1)
+		return round(Math.PHI ** x / Math.SQRT5) * (s == -1 && x % 2 == 0 ? -1 : 1)
 	};
 	//en.wikipedia.org/wiki/Generalizations_of_Fibonacci_numbers#Extension_to_negative_integers
 
@@ -1276,4 +1261,4 @@
 			if (typeof O[k] == 'function') defProp(O[k], 'name', O[k].name || k, 1)
 		}
 	}
-})(Math.random, Math.sin, Math.exp)
+})(BigInt, TypeError, RangeError, Math.random, Math.sin, Math.exp)
