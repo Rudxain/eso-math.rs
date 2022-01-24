@@ -11,22 +11,14 @@
 	*@param {*} v value to set
 	*@param {(boolean[]|numeric|string)} a bool descriptor with format [W, E, C]
 	*/
-	const defProp = function(O, p, v, a)
+	const defProp = (O, p, v, a) =>
 	{
 		switch (typeof a)
 		{
-			case 'number':
-				a &= 7;
-				a = [a & 4, a & 2, a & 1];
-				break;
-			case 'bigint':
-				a &= 7n;
-				a = [a & 4n, a & 2n, a & 1n];
-				break;
-			case 'string':
-				//Linux chmod lol (rwx)
-				a = [/w/i.test(a), /e/i.test(a), /c/i.test(a)];
-				break;
+			case 'number': a &= 7; a = [a & 4, a & 2, a & 1]; break
+			case 'bigint': a &= 7n; a = [a & 4n, a & 2n, a & 1n]; break
+			case 'string': a = [/w/i.test(a), /e/i.test(a), /c/i.test(a)]; break
+			//Linux chmod lol (rwx)
 		}
 		return Object.defineProperty(O, p, {value: v, writable: !!a[0], enumerable: !!a[1], configurable: !!a[2]})
 	};
@@ -47,8 +39,7 @@
 		if (n < 0) n += l;
 		return n < 0 || n >= l ? undefined : this[n]
 	}
-	for (const C of [Array, String, Reflect.getPrototypeOf(Int8Array)])
-		defProp(C.prototype, 'at', at, 0b101);
+	for (const C of [Array, String, Reflect.getPrototypeOf(Int8Array)]) defProp(C.prototype, 'at', at, 0b101);
 
 
 	/**
@@ -113,7 +104,7 @@
 	//localization increases performance, and protects against external side-effects
 	const abs = x => x < 0 || isNegZero(x) ? -x : x,
 		sign = x => {const ONE = (x ^ x) ** (x ^ x); return x && (x < 0 ? -ONE : ONE)},
-		signSplit = x => [sign(x), abs(x)], //should be reversed order
+		signabs = x => [sign(x), abs(x)], //should be reversed order
 		isInf = x => x === Infinity || x === -Infinity,
 		isNan = x => x != x, //NOT A TYPO. capitalization is to avoid ambiguity
 		isInfNan = x => isInf(x) || isNan(x), //!isFinite(x)
@@ -306,7 +297,7 @@
 		const ZERO = B ? 0n : 0, ONE = B ? 1n : 1;
 		if (i == 1) return x;
 		if (!B && isInfNan(x ** (1 / i))) return x ** (1 / i);
-		x = signSplit(x);
+		x = signabs(x);
 		//I feel like something is wrong here
 		if (!i) {if (x[1] > 1) throw new RangeError('return value is NaN'); return ZERO}
 		if (x[0] == -1 && !(i & ONE)) throw new RangeError('return value is a Complex number');
@@ -386,72 +377,38 @@
 	Math.LOG3_10 = Math.log3(10);
 	Math.LOG3PHI = Math.log3(Math.PHI);
 
-	//Maximum unsigned 64bit value
 	const MAX64 = ~(-1n << 0x40n);
-	BigInt.UINT64MAX = MAX64;
-
-	//Maximum signed 64bit value
-	BigInt.INT64MAX = MAX64 >> 1n;
-
-	//Minimum signed 64bit value
-	BigInt.INT64MIN = -1n << 63n;
-
+	BigInt.MAX_UINT64 = MAX64; BigInt.MAX_INT64 = MAX64 >> 1n; BigInt.MIN_INT64 = -1n << 63n;
+	BigInt.MAX_MP_EXP = 82589933n; //Largest Mersenne Prime exponent
 
 	//github.com/zloirock/core-js/blob/master/packages/core-js/modules/esnext.math.signbit.js
 	Number.signbit = function(number)
 		{return typeof number == 'number' && !isNan(number) && number < 0 || isNegZero(number)};
 
-	//for consistency, no static method will be an arrow function
-	BigInt.sign = function(n) {return sign(toBigInt(n))};
-	BigInt.abs = function(n) {return abs(toBigInt(n))};
+	BigInt.sign = function(n) {return sign(toBigInt(n))}; BigInt.abs = function(n) {return abs(toBigInt(n))};
 
-	Numeric.sign = function(x) {return sign(toNumeric(x))};
-	Numeric.abs = function(x) {return abs(toNumeric(x))};
+	Numeric.sign = function(x) {return sign(toNumeric(x))}; Numeric.abs = function(x) {return abs(toNumeric(x))};
 
-	Numeric.signSplit = function(x) {return signSplit(toNumeric(x))}; //should this exist?
-
-	BigInt.max = function(...values)
+	const minmax = (arr, op, f) =>
 	{
-		values = values.map(toBigInt);
-		let i = 0, m = v;
-		while (++i < values.length) if (v > m) m = v;
+		let i = 0, v = f(arr[i]), m = v;
+		while (++i < arr.length) {v = f(arr[i]); if (op ? v > m : v < m) m = v}
 		return m
 	};
-	BigInt.min = function(...values)
-	{
-		values = values.map(toBigInt);
-		let i = 0, m = v;
-		while (++i < values.length) if (v < m) m = v;
-		return m
-	};
+	BigInt.max = function(...values) {return minmax(values, true, toBigInt)};
+	BigInt.min = function(...values) {return minmax(values, false, toBigInt)};
 
-	Numeric.max = function(...values)
-	{
-		values = values.map(toNumeric);
-		let i = 0, m = v;
-		while (++i < values.length) if (v > m) m = v;
-		return m
-	};
-	/*
-	TO-DO: return Number type only if it's safe, otherwise BigInt type.
-	Only do that if there's multiple valid choices.
-	*/
-	Numeric.min = function(...values)
-	{
-		values = values.map(toNumeric);
-		let i = 0, m = v;
-		while (++i < values.length) if (v < m) m = v;
-		return m
-	};
+	Numeric.max = function(...values) {return minmax(values, true, toNumeric)};
+	//TO-DO: return Number type only if it's safe, otherwise BigInt type.
+	//Only do that if there's multiple valid choices
+	Numeric.min = function(...values) {return minmax(values, false, toNumeric)};
 
 	const clamp = (x, min, max) =>
 	{
 		if (min > max) [min, max] = [max, min];
 		return x > max ? max : x < min ? min : x
 	};
-
 	Math.clamp = function(x, min, max) {return clamp(+x, +min, +max)};
-
 	BigInt.clamp = function(x, min, max) {return clamp(toBigInt(x), BigInt(min), BigInt(max))};
 
 	//if the args are not coerced to the same type, the output isn't guaranteed to be the same type as `x`
@@ -474,21 +431,20 @@
 	//reverse the order of bits using "binary chop"
 	Math.rev32 = function(x)
 	{
-		let n = +x | 0;
-		n = ((n & 0xffff0000) >>> 16) | ((n & 0x0000ffff) << 16);
-		n = ((n & 0xff00ff00) >>>  8) | ((n & 0x00ff00ff) <<  8);
-		n = ((n & 0xf0f0f0f0) >>>  4) | ((n & 0x0f0f0f0f) <<  4);
-		n = ((n & 0xcccccccc) >>>  2) | ((n & 0x33333333) <<  2);
-		n = ((n & 0xaaaaaaaa) >>>  1) | ((n & 0x55555555) <<  1);
-		//toUint32
-		return n >>> 0
+		x = +x | 0;
+		x = ((x & 0xffff0000) >>> 16) | ((x & 0x0000ffff) << 16);
+		x = ((x & 0xff00ff00) >>>  8) | ((x & 0x00ff00ff) <<  8);
+		x = ((x & 0xf0f0f0f0) >>>  4) | ((x & 0x0f0f0f0f) <<  4);
+		x = ((x & 0xcccccccc) >>>  2) | ((x & 0x33333333) <<  2);
+		x = ((x & 0xaaaaaaaa) >>>  1) | ((x & 0x55555555) <<  1);
+		return x >>> 0 //toUint32
 	};
 
 	//circular left shift
 	Math.rotl32 = function(n, b)
 	{
 		n = +n;
-		b = +b & 31; //coerce and throw the same error as built-ins, then apply mod 32, JIC
+		b = +b & 31; //coerce and throw the same error as built-ins, then apply mod 32
 		n = (n << b) | (n >>> (32 - b));
 		return n >>> 0
 	};
@@ -785,17 +741,12 @@
 		return typeof n == typeof d && isInt(n) && isInt(d) && d && !(n % d)
 	};
 
-	const isPow2 = x => n > 1 && !(n & (n - 1n));
-
-	BigInt.isPow2 = function(n) {return isBigInt(n) && n > 1n && !(n & (n - 1n))};
-
+	const isPow2 = x => x > 1 && !(x & (x - 1n));
+	BigInt.isPow2 = function(n) {return isBigInt(n) && isPow2(n)};
 	BigInt.isMersenne = function(n) {return isBigInt(n) && n > 0n && !(n & (n + 1n))};
-
-	Math.isPow2 = function(n)
-		{return isInt(n = +n) && BigInt.isPow2(BigInt(n))};
+	Math.isPow2 = function(n) {return isInt(n = +n) && isPow2(BigInt(n))};
 	//every unsafe int has trailing zeros
-	Math.isMersenne = function(n)
-		{return isInt(n = +n) && n < 2 ** 53 && BigInt.isMersenne(BigInt(n))};
+	Math.isMersenne = function(n) {return isInt(n = +n) && n < 2 ** 53 && BigInt.isMersenne(BigInt(n))};
 
 	//for educational purposes see: en.wikipedia.org/wiki/Hamming_weight#Efficient_implementation
 	//without optimization, this is very slow
@@ -806,9 +757,7 @@
 		while (x) {c += x & (B ? 1n : 1); x = B ? x >> 1n : x >>> 1}
 		return c
 	};
-	
 	Math.popcnt32 = function(x) {return popcnt(+x >>> 0)};
-	
 	BigInt.popcnt = function(n)
 	{
 		if ((n = toBigInt(n)) < 0n) throw new RangeError('return value is Infinity')
@@ -857,24 +806,19 @@
 	Numeric.clmul = function(a, b)
 	{
 		a = toNumeric(a); b = toNumeric(b);
-		if (a < 0 || b < 0 || isInfNan(a) || isInfNan(b))
-			return NaN;
-		if (typeof a != 'bigint') a = BigInt(a - a % 1);
-		if (typeof b != 'bigint') b = BigInt(b - b % 1);
+		if (a < 0 || b < 0 || isInfNan(a) || isInfNan(b)) return NaN;
+		a = BigInt(trunc(a)); b = BigInt(trunc(b));
 		return BigInt.clmul(a, b)
 	};
 
 	Math.isSquare = function(n)
 	{
-		n = +n;
-		if (n % 1 != 0) return false;
-		if (n < 2) return n >= 0;
-		const ctz = Numeric.ctz(n);
-		if (ctz % 2) return false;
-		n /= 2 ** ctz;
-		if (n == 1) return true;
-		if (n % 8 != 1) return false;
-		return sqrt(n) % 1 == 0
+		if (!isInt(n = +n)) return false
+		if (n < 2) return n >= 0
+		const c = Numeric.ctz(n);
+		if (c % 2) return false;
+		n /= 2 ** c;
+		return n % 8 == 1 && isInt(sqrt(n))
 	};
 
 	BigInt.isSquare = function(n)
@@ -882,30 +826,24 @@
 		if (!isBigInt(n)) return false
 		if (n < 2n) return n >= 0n
 		const c = ctz(n);
-		if (c & 1n) return false
+		if (c & 1n) return false;
 		n >>= c;
-		if (n & 7n != 1n) return false
-		return sqrt(n) ** 2n == n
+		return n & 7n == 1n && sqrt(n) ** 2n == n
 	};
 
-	Numeric.isSquare = function(n)
-	{
-		if (!Numeric.isInteger(n)) return false;
-		return (isBigInt(n) ? BigInt : Math).isSquare(n)
-	};
+	Numeric.isSquare = function(n) {return isInt(n) && (isBigInt(n) ? BigInt : Math).isSquare(n)};
 
 	Math.isCube = function(n)
 	{
 		n = abs(+n);
 		if (!isInt(n)) return false;
-		if (!n) return true;
+		if (n < 2) return true;
 		const ctz = Numeric.ctz(n);
 		if (ctz % 3) return false;
 		n /= 2 ** ctz;
 		//math.stackexchange.com/a/2190888
-		if (!([0, 1, 8].includes(n % 9) && [0, 1, 6].includes(n % 7)))
-			return false;
-		return cbrt(n) % 1 == 0
+		if (!([0, 1, 8].includes(n % 9) && [0, 1, 6].includes(n % 7))) return false;
+		return isInt(cbrt(n))
 	};
 
 	BigInt.isCube = function(n)
@@ -926,11 +864,11 @@
 		*/
 		if (n < 0n) n ^= -2n; //abs
 		if ((n % 9n > 1n && n % 9n != 8n) && (n % 7n > 1n && n % 7n != 6n)) return false
-		//if ( !([0n, 1n, 8n].includes(n % 9n) && [0n, 1n, 6n].includes(n % 7n)) ) return false
+		//  !([0n, 1n, 8n].includes(n % 9n) && [0n, 1n, 6n].includes(n % 7n))
 		return cbrt(n) ** 3n == n
 	};
 
-	Numeric.isCube = function(n) {return Numeric.isInteger(n) && (isBigInt(n) ? BigInt : Math).isCube(n)};
+	Numeric.isCube = function(n) {return isInt(n) && (isBigInt(n) ? BigInt : Math).isCube(n)};
 
 	/**
 	*Euclidean algorithm for finding Highest Common Factor.
@@ -962,7 +900,7 @@
 			: Euclid(a, b)) * 2 ** k
 	};
 	/**
-	*BEHOLD THE ULTIMATE GCD ALGORITHM
+	*BEHOLD THE ULTIMATE GCD ALGORITHM (ok maybe I exaggerated)
 	*@param {bigint} a
 	*@param {bigint} b
 	*@return {bigint}
@@ -1210,7 +1148,7 @@
 		if (isInfNan(x)) return NaN;
 		if (x % 1) return (F ? Gosper : Gamma)(x);
 		let s, out = 1;
-		[s, x] = signSplit(x);
+		[s, x] = signabs(x);
 		for (let i = 2; i <= x; i++) out *= i;
 		return out * (x % 2 ? s : 1)
 	};
@@ -1219,7 +1157,7 @@
 	{
 		n = toBigInt(n);
 		let s, out = 1n, a = 0n, c;
-		[s, n] = signSplit(n);
+		[s, n] = signabs(n);
 		for (let i = 2n; i <= n; i++)
 		{
 			a += c = ctz(i);
@@ -1238,7 +1176,7 @@
 	//TO-DO: add rising and falling Fs
 	Numeric.factorial = function(x, k = 1)
 	{//if k > 1 returns multifactorial of that degree
-		x = signSplit(toNumeric(x));
+		x = signabs(toNumeric(x));
 		k = toNumeric(k);
 		if (!isBigInt(k)) k = trunc(k);
 		k = x[0] * k; x = x[1];
@@ -1285,7 +1223,7 @@
 	//get TriNums up to index x (inclusive)
 	Numeric.triSeq = function(x)
 	{
-		x = signSplit(toNumeric(x));
+		x = signabs(toNumeric(x));
 		const out = [x ^ x]; //auto-type Zero
 		for (let i = x[0]; out.length <= x[1]; i += x[0]) out.push(i + out.at(-1));
 		return out
@@ -1294,7 +1232,7 @@
 	//get Nth Fibonacci faster than recursion
 	Math.Fib = function(x)
 	{
-		x = signSplit(+x);
+		x = signabs(+x);
 		return round(Math.PHI ** x[1] / Math.SQRT5) * (x[0] == -1 && x[1] % 2 == 0 ? -1 : 1)
 	};
 	//en.wikipedia.org/wiki/Generalizations_of_Fibonacci_numbers#Extension_to_negative_integers
@@ -1306,9 +1244,9 @@
 	*/
 	Math.Fib_inv = function(x)
 	{
-		x = signSplit(+x);
-		const i = floor(Math.logPHI(x[1] * Math.SQRT5 + 0.5))
-		return !(i % 2) && x[0] == -1 ? NaN : i * x[0]
+		let s; [s, x] = signabs(+x);
+		const i = floor(logB(x * Math.SQRT5 + 0.5, Math.PHI))
+		return !(i % 2) && s == -1 ? NaN : i * s
 	};
 
 	//en.wikipedia.org/wiki/Lucas_sequence
@@ -1316,14 +1254,12 @@
 	//If F is falsy (default) then "U", else "V"
 	Numeric.Lucas = function(n, P = 1, Q = -1, F)
 	{
-		const f = Numeric.to;
-		n = f(n); P = f(P); Q = f(Q);
-		const seq = isBigInt(P) && isBigInt(Q)
-			? (F ? [2n, P] : [0n, 1n])
-			: (F ? [2, P] : [0, 1]);
-		while (seq.length <= n)
-			seq.push(P * seq.at(-1) - Q * seq.at(-2));
-		return seq
+		n = Number(n) >>> 0; P = toNumeric(P); Q = toNumeric(Q);
+		//this XOR chain is used to throw early when values are not same-type
+		const ZERO = P ^ Q ^ P ^ Q, ONE = ZERO ** ZERO,
+			L = F ? [ONE + ONE, P] : [ZERO, ONE];
+		while (L.length <= n) L.push(P * L.at(-1) - Q * L.at(-2));
+		return L
 	};
 
 	//TO-DO: maybe insert Dot-Product here
@@ -1337,7 +1273,7 @@
 		for (const k of Object.keys(O))
 		{
 			defProp(O, k, O[k], +(typeof O[k] == 'function') && 0b101)
-			if (typeof O[k] == 'function') defProp(O[k], 'name', O[k].name || k, 1);
+			if (typeof O[k] == 'function') defProp(O[k], 'name', O[k].name || k, 1)
 		}
 	}
 })(Math.random, Math.sin, Math.exp)
