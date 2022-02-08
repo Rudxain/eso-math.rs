@@ -1,8 +1,13 @@
 //IIFE with closure, for encapsulation and localization
-(function(BigInt, TypeErr, RangeErr, random01, sin, exp)
+(function(Float, IntN, Str, TypeErr, RangeErr, random01, sine, exp)
 {
 	'use strict';
-	const isPrimitive = x => x === null || !(typeof x == 'object' || typeof x == 'function');
+	/*
+	this object is used to keep track of all the local arrow functions, like helpers and pseudo-macros,
+	and to avoid implicit collisions with the global scope (like `isNaN`).
+	I know JS doesn't have macros, this is the closest equivalent I'm currently aware of
+	*/
+	const Macro = {};
 
 	/**
 	*Short edition of `defineProperty`
@@ -23,31 +28,32 @@
 		return Object.defineProperty(O, p, {value: v, writable: !!a[0], enumerable: !!a[1], configurable: !!a[2]})
 	};
 
+	Macro.isPrimitive = x => x === null || !(typeof x == 'object' || typeof x == 'function');
+
 	//for non-Deno environments
 	const AssertionError = class extends Error {constructor(m) {super(m)}},
 		assert = function(c, m) {if (!c) throw new AssertionError(m)};
 
 	//github.com/tc39/proposal-relative-indexing-method#polyfill
-	function at(n)
-	{
-		//throw the same error as built-in implementation
-		if (this === null || this === undefined) throw new TypeErr('Cannot convert undefined or null to object');
-		let l = this.length;
-		//BigInt (and object-wrapped bigint) support
-		if (isBigInt(n)) l = BigInt(l)
-		else n = trunc(+n) || 0; //toIntegerOrInfinity
-		if (n < 0) n += l;
-		return n < 0 || n >= l ? undefined : this[n]
-	}
-	for (const C of [Array, String, Reflect.getPrototypeOf(Int8Array)]) defProp(C.prototype, 'at', at, 0b101);
+	for (const C of [Array, Str, Reflect.getPrototypeOf(Int8Array)])
+		//by using a named function expression, each object will have its own deep-copy/clone of `at`,
+		//it also ensures that the `name` prop returns "at"
+		defProp(C.prototype, 'at', function at(n)
+		{
+			//throw the same error as built-in implementation
+			if (this === null || this === undefined) throw new TypeErr('Cannot convert undefined or null to object');
+			let l = this.length;
+			if (isIntN(n)) l = IntN(l) //BigInt (and object-wrapped bigint) support
+			else n = Macro.trunc(+n) || 0; //ECMAscript "toIntegerOrInfinity"
+			if (n < 0) n += l; return n < 0 || n >= l ? undefined : this[n]
+		}, 0b101);
 
 
-	/**
-	*The main global numerical object.
-	*the name is inspired by Ecmascript's `toNumeric` abstract function.
-	*this is intended to work with ANY numerical value,
-	*so if BigFloat/BigDecimal manage to get to Stage 3 of tc39, I'll add support for them
-	*@var {object} Numeric
+	/*
+	The main global numerical object.
+	the name is inspired by Ecmascript's `toNumeric` abstract function.
+	this is intended to work with ANY numerical value,
+	so if BigFloat/BigDecimal manage to get to Stage 3 of tc39, I'll add support for them
 	*/
 	defProp(globalThis, 'Numeric', {}, 0b101)
 
@@ -56,38 +62,21 @@
 	*@typedef {(number|bigint)} numeric
 	*/
 
-	const isNumber = x => typeof x?.valueOf() == 'number';
-	/**
-	*check if primitive number or object-wrapped number,
-	*to ensure it can be operated as a number.
-	*@param {*} value
-	*@return {boolean}
-	*/
-	Number.isNumber = function(value) {return isNumber(value)};
+	const isFloat = x => typeof x?.valueOf() == 'number';
+	//check if primitive number or object-wrapped number, to ensure it can be operated as a number
+	Float.isNumber = function(value) {return isFloat(value)};
 
-	const isBigInt = x => typeof x?.valueOf() == 'bigint';
-	/**
-	*check prim BigInt or obj-wrap bigint (ensure operability as bigint).
-	*@param {*} value
-	*@return {boolean}
-	*/
-	BigInt.isBigInt = function(value) {return isBigInt(value)};
+	const isIntN = x => typeof x?.valueOf() == 'bigint';
+	//check prim or obj-wrap BigInt (ensure operability as bigint)
+	IntN.isBigInt = function(value) {return isIntN(value)};
 
-	const isNumeric = x => isNumber(x) || isBigInt(x);
-	/**
-	*check if any numeric value
-	*@param {*} value
-	*@return {boolean}
-	*/
+	const isNumeric = x => isFloat(x) || isIntN(x);
+	//check if any numeric value
 	Numeric.isNumeric = function(value) {return isNumeric(value)};
 
 	const isNegZero = x => x === 0 && 1 / x < 0;
-	/**
-	*check signed/negative zero
-	*@param {number} number
-	*@return {boolean}
-	*/
-	Number.isMinusZero = function(number) {return isNegZero(number)};
+	//check signed/negative zero
+	Float.isMinusZero = function(number) {return isNegZero(number)};
 
 	/**
 	*https://tc39.es/ecma262/multipage/abstract-operations.html#sec-tobigint
@@ -97,35 +86,36 @@
 	const toBigInt = x =>
 	{
 		const B = typeof x?.valueOf();
-		if (B == 'string' || B == 'boolean' || B == 'bigint') return BigInt(x)
+		if (B == 'string' || B == 'boolean' || B == 'bigint') return IntN(x)
 		throw new TypeErr(`Cannot convert ${x} to BigInt`)
 	};
 
 	//localization increases performance, and protects against external side-effects
-	const abs = x => x < 0 || isNegZero(x) ? -x : x,
-		sign = x => {const ONE = (x ^ x) ** (x ^ x); return x && (x < 0 ? -ONE : ONE)},
-		signabs = x => [sign(x), abs(x)], //should be reversed order
-		isInf = x => x === Infinity || x === -Infinity,
-		isNan = x => x != x, //NOT A TYPO. capitalization is to avoid ambiguity
-		isInfNan = x => isInf(x) || isNan(x), //!isFinite(x)
-		isInt = x => (isNumber(x) && x % 1 == 0) || isBigInt(x),
-		trunc = x => isInt(x) ? x : x - x % 1,
-		floor = x => isInt(x) ? x : trunc(x) - (x < 0 ? 1 : 0),
-		ceil = x => isInt(x) ? x : trunc(x) + (x > 0 ? 1 : 0),
-		round = x => isInt(x) || isInfNan(x) ? x : x < 0 && x >= -0.5 ? -0 : abs(x) % 1 < 0.5 ? floor(x) : ceil(x),
-		roundInf = x => (x < 0 ? floor : ceil)(x); //opposite of `trunc`
+	Macro.abs = x => x < 0 || isNegZero(x) ? -x : x;
+	Macro.sign = x => {const ONE = (x ^ x) ** (x ^ x); return x && (x < 0 ? -ONE : ONE)};
+	Macro.signabs = x => [Macro.sign(x), Macro.abs(x)]; //should be reversed order
+	Macro.isInf = x => x === Infinity || x === -Infinity;
+	Macro.isNaN = x => x != x;
+	Macro.isInfNaN = x => Macro.isInf(x) || Macro.isNaN(x); //!isFinite(x)
+	Macro.isInt = x => (isFloat(x) && x % 1 == 0) || isIntN(x);
+	Macro.trunc = x => Macro.isInt(x) ? x : x - x % 1;
+	Macro.floor = x => Macro.isInt(x) ? x : Macro.trunc(x) - (x < 0 ? 1 : 0);
+	Macro.ceil = x => Macro.isInt(x) ? x : Macro.trunc(x) + (x > 0 ? 1 : 0);
+	Macro.round = x => Macro.isInt(x) || Macro.isInfNaN(x) ? x
+		: x < 0 && x >= -0.5 ? -0 : Macro.abs(x) % 1 < 0.5 ? Macro.floor(x) : Macro.ceil(x);
+	Macro.roundInf = x => Macro[x < 0 ? 'floor' : 'ceil'](x); //"complement" of `trunc`
 
-	//TO-DO fix bug when strings are large
-	globalThis.isFinite = function(value) {return isBigInt(value) || !isInfNan(+value)}
+	//TO-DO: fix wrong output when strings are large (minor bug, because the original/built-in also has it)
+	globalThis.isFinite = function(value) {return isIntN(value) || !Macro.isInfNaN(+value)}
 	//both `parseInt` AND `parseFloat` never throw on bigints, so I decided to "fix" these other functions
-	globalThis.isNaN = function(value) {return !isBigInt(value) || isNan(+value)}
+	globalThis.isNaN = function(value) {return !isIntN(value) || Macro.isNaN(+value)}
 
 	/**
 	*get the internal bits (binary64 IEEE 754 representation)
 	*@param {number} number
 	*@return {bigint}
 	*/
-	Number.castBigInt = function(number) {return new BigUint64Array(new Float64Array([number]).buffer)[0]};
+	Float.castBigInt = function(number) {return new BigUint64Array(new Float64Array([number]).buffer)[0]};
 
 	//do these 2 methods need hex support?
 
@@ -134,12 +124,12 @@
 	*@param {bigint} n
 	*@return {number}
 	*/
-	BigInt.castNumber = function(n) {return new Float64Array(new BigUint64Array([n]).buffer)[0]};
+	IntN.castNumber = function(n) {return new Float64Array(new BigUint64Array([n]).buffer)[0]};
 
 	//parseInt for bigints
-	BigInt.parse = function(string, radix)
+	IntN.parse = function(string, radix)
 	{
-		string = String(string).trimStart().toLowerCase();
+		string = Str(string).trimStart().toLowerCase();
 		let sign = 1n;
 		if (string) //the only falsy primitive string is empty, no need to check length
 		{
@@ -149,7 +139,7 @@
 				case '\x2B': string = string.substring(1)
 			}
 		}
-		radix = Number(radix) | 0; //TO-DO: fix precision loss when bigint or string
+		radix = Float(radix) | 0; //TO-DO: fix precision loss when bigint or string
 		let stripPrefix = true;
 		if (radix) //it will never be NaN, no need to check for zero
 		{
@@ -171,208 +161,189 @@
 		string = string.substring(0, end);
 		let int = 0n;
 		if (!string) return int; //no need to throw, 0 fits better
-		radix = BigInt(radix); end = BigInt(end);
+		radix = IntN(radix); end = IntN(end);
 		//DO NOT REVERSE iteration order
 		for (let i = end - 1n; i >= 0; i--) int += charset.get(string[end - i - 1n]) * radix ** i;
 		return sign * int
 	};
 
 	//TO-DO: fix error when strings have 1 "." (dot)
-	BigInt.from = function(value)
+	IntN.from = function(value)
 	{
-		if (isBigInt(value)) return BigInt(value);
-		if (isNumber(value))
-		{
-			value = trunc(+value);
-			return !value ? 0n
-				: (isInf(value)
-					? (value < 0 ? -1n : 1n)
-					: BigInt(value))
-		}
+		if (isIntN(value)) return value.valueOf();
+		if (isFloat(value)) return (value = Macro.trunc(+value)) ?
+			(Macro.isInf(value) ? (value < 0 ? -1n : 1n) : IntN(value)) : 0n;
 		if (!value) return 0n;
 		value = value.valueOf();
 		if (!value) return 0n;
-		if (typeof value == 'object') return 1n;
-		return BigInt(value);
+		if (!Macro.isPrimitive(value)) return 1n;
+		return IntN(value);
 	};
-
-	//`valueOf` may not be reliable or trustworthy
-	//maybe I should check its return value separately, to avoid bias
-	const isSymbol = x => typeof x?.valueOf() == 'symbol';
 
 	const toNumeric = x =>
 	{
-		if (isNumber(x)) return +x;
-		if (isBigInt(x)) return BigInt(x);
-		if (x === undefined || isSymbol(x)) return NaN;
+		if (isFloat(x)) return +x; if (isIntN(x)) return IntN(x);
 		if (x === null) return 0;
-		x = x.valueOf();
-		if (!isPrimitive(x)) x = String(x);
-		if (!+x || abs(+x) < 2 ** 53 ||
+		if (x === undefined || typeof (x = x.valueOf()) == 'symbol') return NaN;
+		if (!Macro.isPrimitive(x)) x = Str(x);
+		if (!+x || Macro.abs(+x) < 2 ** 53 ||
 			//I know /\s/ exists, but `trim` is faster and more readable
-			/^[-+]?Infinity$/.test(String(x).trim())) return +x;
-		if (typeof x == 'string' && x.includes('.')) return BigInt(x.substring(0, x.indexOf('.')));
-		return BigInt(x)
+			/^[-+]?Infinity$/.test(Str(x).trim())) return +x;
+		if (typeof x == 'string' && x.includes('.')) return IntN(x.substring(0, x.indexOf('.')));
+		return IntN(x)
 	};
 	/**
-	*coerce to numeric
-	*by using the least invasive/intrusive algorithm I know
-	*@param {*} value
-	*@return {numeric}
+	Coerce to numeric by using the least invasive/intrusive algorithm I know.
+	DO NOT confuse with ES' `toNumeric` "abstract operation", it's not the same
+	@param {*} value
+	@return {numeric}
 	*/
 	Numeric.from = function(value) {return toNumeric(value)};
 
-	/**
-	*check if prim value is any integer
-	*@param {numeric} x
-	*@return {boolean}
-	*/
-	Numeric.isInteger = function(x) {return isInt(x)};
-
-	/**
-	*@param {numeric} x
-	*@return {boolean}
-	*/
-	Numeric.isFinite = function(x) {return isNumeric(x) && !isInfNan(x)};
+	Numeric.isInteger = function(x) {return Macro.isInt(x)};
+	Numeric.isFinite = function(x) {return isNumeric(x) && !Macro.isInfNaN(x)};
 
 	//docs.oracle.com/javase/8/docs/api/java/lang/Double.html#MIN_NORMAL
-	Number.MIN_NORMAL = 2 ** -1022;
+	Float.MIN_NORMAL = 2 ** -1022;
 
-	Number.isSafeNumber = function(number)
-		{return typeof number == 'number' && abs(number) >= Number.MIN_NORMAL && abs(number) <= Number.MAX_SAFE_INTEGER};
+	Float.isSafeNumber = function(number)
+	{
+		return typeof number == 'number' &&
+			Macro.abs(number) >= Float.MIN_NORMAL && Macro.abs(number) <= Float.MAX_SAFE_INTEGER
+	};
 
 	//Scientific Notation in base B
-	defProp(Number.prototype, 'toScientific',
+	defProp(Float.prototype, 'toScientific',
 		function SciNotB(b = 10)
 		{
 			let x = this?.valueOf();
 			//JIC someone uses the `call` method
-			if (typeof x != 'number')
+			if (!isFloat(x))
 				throw new TypeErr("Number.prototype.toScientific requires that 'this' be a Number");
-			x = Number(x); b = Number(b);
+			x = Float(x); b = Float(b);
 			let e;
-			if (!isInfNan(x)) {e = x && trunc(logB(abs(x), b)); x = x / b ** e}
-			else {e = x; x = sign(x)}
+			if (!Macro.isInfNaN(x)) {e = x && Macro.trunc(logB(Macro.abs(x), b)); x = x / b ** e}
+			else {e = x; x = Macro.sign(x)}
 			return x.toString(b) + ' * ' + '10' + '^' + e.toString(b) + ` (base 0d${b})`
 		},
 		0b101
 	)
 
-	//Summation with minimal rounding errors
-	//"KahanBabushkaKleinSum"
+	//"KahanBabushkaKleinSum". Summation with minimal rounding errors
 	Math.sum = function(...values)
 	{
-		values = values.map(x => +x);
 		let sum = 0, cs = 0, ccs = 0, c = 0, cc = 0;
-		for (const v of values)
+		for (let v of values)
 		{
-			let t = sum + v;
-			c = abs(sum) >= abs(v)
-				? (sum - t) + v
-				: (v - t) + sum;
-			sum = t;
-			t = cs + c;
-			cc = abs(cs) >= abs(c)
-				? (cs - t) + c
-				: (c - t) + cs;
-			cs = t;
-			ccs = ccs + cc
+			v = +v; let t = sum + v;
+			c = Macro.abs(sum) >= Macro.abs(v) ? (sum - t) + v : (v - t) + sum;
+			sum = t; t = cs + c;
+			cc = Macro.abs(cs) >= Macro.abs(c) ? (cs - t) + c : (c - t) + cs;
+			cs = t; ccs = ccs + cc
 		}
 		return sum + cs + ccs
 	};
 
 	/**
 	*@param {bigint} n binary numeral to measure
-	*@param {bigint} b unit of measurement. 1: bit, 8: Byte, 16: word, 32: D-word, 64: Q-word
-	*@param {numeric} i initial value of counter
+	*@param {bigint} b word size. 1: bit, 8: Byte, 16: word, 32: D-word, 64: Q-word
+	*@param {numeric} i initial counter. if b = 1 then: 0: lb, 1: length (ignore sign), 2: length (include sign)
 	*@return {numeric}
 	*/
-	const sizeOf = (n, b, i) => {while (n >>= b) i++; return i};
+	const sizeOf = (n, b, i) => {n = Macro.abs(n); while (n >>= b) i++; return i};
 
 	//ith (degree i) root of x
 	const root = (x, i = 2) =>
 	{
 		if (i == 1) return x;
-		const B = isBigInt(x);
-		if (B) {i = BigInt(i)} else if (isInfNan(x ** (1 / i))) return x ** (1 / i);
-		const ZERO = B ? 0n : 0, ONE = B ? 1n : 1, TWO = ONE + ONE;
-		if (i == -1) return ONE / x;
-		if (!i) {if (B && x > 1n) throw new RangeErr('return value is NaN'); return ZERO}
-		const s = sign(x); x = abs(x);
-		if (s == -1 && !(i % TWO)) {if (B) throw new RangeErr('return value is a Complex number'); return NaN};
-		if (B && i < 0n) {if (!x) throw new RangeErr('return value is Infinity'); return x == 1 ? s : ZERO}
-		if (!x) return ZERO;
-		if (x == 1) return s == -1 ? s ** i : x;
-		const j = i - ONE; let x0, x1;
-		//identity: a ^ (1 / k) = b ^ (log_b(a) / k)
-		if (B) {const lb = sizeOf(x, 1n, 0n); x0 = x >> (lb - lb / i)}
-		else x0 = x ** (1 / i);
-		x1 = x0 * j / i + x / (i * x0 ** j)
-		//Newton's Method
-		while (x1 < x0) {x0 = x1; x1 = x1 * j / i + x / (i * x1 ** j)}
-		return x0 * s
+		if (isIntN(x))
+		{
+			i = IntN(i);
+			if (i == -1n) return 1n / x;
+			if (!i) {if (x > 1n) throw new RangeErr('return value is NaN'); return 0n}
+			const s = Macro.sign(x); x = Macro.abs(x);
+			if (s == -1 && !(i & 1n)) throw new RangeErr('return value is a Complex number');
+			if (i < 0n) {if (!x) throw new RangeErr('return value is Infinity'); return x == 1 ? s : 0n}
+			if (!x) return 0n;
+			if (x == 1) return s == -1 ? s ** i : x;
+			const j = i - 1n;
+			//identity: a ^ (1 / k) = b ^ (log_b(a) / k)
+			const lb = sizeOf(x, 1n, 0n);
+			//using the MSBs instead of generating a power of 2 is a better approximation
+			let x0 = x >> (lb - lb / i), x1 = j / i * x0 + x / (i * x0 ** j)
+			//Heron/Newton/Babylonian Method
+			while (x1 < x0) {x0 = x1; x1 = j / i * x1 + x / (i * x1 ** j)}
+			return x0 * s
+		}
+		else //I hate the complexity of this entire function
+		{
+			if (Macro.isInf(x ** (1 / i))) return x ** (1 / i);
+			if (Macro.isNaN(x) || Macro.isNaN(i)) return NaN
+			if (i == -1) return 1 / x;
+			if (!i) return 0
+			const s = Macro.sign(x); x = Macro.abs(x);
+			if (s == -1 && !(i % 2)) return NaN;
+			if (i < 0n) return x ? (x == 1 ? s : 0) : Infinity;
+			if (!x) return x;
+			if (x == 1) return s == -1 ? s ** i : x;
+			const j = i - 1;
+			let x0 = x ** (1 / i); const x1 = j / i * x0 + x / (i * x0 ** j);
+			return (x1 < x0 ? x1 : x0) * s
+		}
 	};
-	//I defined this dedicated (instead of just `root(x, 2)`) `sqrt` because of performance concerns
-	const sqrt = x =>
+	//I defined this dedicated (instead of just `root(x, 2)`) `sqrt` because of performance and bug concerns
+	Macro.sqrt = x =>
 	{
-		if (!isBigInt(x)) return x ** 0.5; //is this accurate?
+		if (!isIntN(x)) return x && x ** 0.5; //preserve `-0`
 		if (x < 2n) {if (x < 0n) throw new RangeErr('return value is Complex number'); return x}
-		let x0 = x >> (sizeOf(x, 1n, 0n) >> 1n), x1 = (x0 + x / x0) >> 1n;
-		//Heron's Method
-		while (x1 < x0) {x0 = x1; x1 = (x1 + x / x1) >> 1n}
+		let x0 = x >> (sizeOf(x, 1n, 0n) >> 1n), x1 = (x / x0 + x0) >> 1n;
+		while (x1 < x0) {x0 = x1; x1 = (x / x1 + x1) >> 1n}
 		return x0
 	};
 	//for some reason `BigInt.root(8n, 3n) == 1n` instead of `2n`
-	const cbrt = x => root(x, 3);
+	Macro.cbrt = x => root(x, 3);
 
 	Math.TAU = Math.PI * 2; //no precision loss, because multiplier is power of two
 
-	Math.SQRT5 = sqrt(5);
-	Math.PHI = Math.SQRT5 / 2 + 0.5; //Golden Ratio
+	Math.SQRT5 = Macro.sqrt(5); Math.PHI = Math.SQRT5 / 2 + 0.5; //Golden Ratio
 
 	//in general, lb has better precision and performance than ln
 	const logB = (function(log) {return function(x, b = Math.E) {return log(x) / log(b)}})(Math.log2);
 	/**
-	*@param {number} x get exponent of this
-	*@param {number} [y=Euler] base of logarithm
-	*@return {number}
+	@param {number} x get exponent of this
+	@param {number} [y=Math.E] base of logarithm
+	@return {number}
 	*/
 	Math.logB = function(x, y = Math.E) {return logB(+x, +y)};
 
-	Math.LOG2PHI = Math.log2(Math.PHI);
-	Math.LNPHI = Math.log(Math.PHI);
-	Math.LOG10PHI = Math.log10(Math.PHI);
+	Math.LOG2PHI = Math.log2(Math.PHI); Math.LNPHI = Math.log(Math.PHI); Math.LOG10PHI = Math.log10(Math.PHI);
 
 	Math.logPHI = function(x) {return logB(+x, Math.PHI)};
 
-	Math.LOGPHI2 = Math.logPHI(2);
-	Math.LOGPHIE = Math.logPHI(Math.E);
-	Math.LOGPHI10 = Math.logPHI(10);
+	Math.LOGPHI2 = Math.logPHI(2); Math.LOGPHIE = Math.logPHI(Math.E); Math.LOGPHI10 = Math.logPHI(10);
 
-	Math.SQRT3 = sqrt(3);
-	Math.LN3 = Math.log(3);
-	Math.LOG2_3 = Math.log2(3);
-	Math.LOG10_3 = Math.log10(3);
-	Math.LOGPHI3 = Math.logPHI(3);
+	Math.SQRT3 = Macro.sqrt(3);
+	Math.LN3 = Math.log(3); Math.LOG2_3 = Math.log2(3);
+	Math.LOG10_3 = Math.log10(3); Math.LOGPHI3 = Math.logPHI(3);
 	//ternary lives also matter
 	Math.log3 = function(x) {return logB(+x, 3)};
 	//stop discriminating the number 3
-	Math.LOG3_2 = Math.log3(2);
-	Math.LOG3E = Math.log3(Math.E);
-	Math.LOG3_10 = Math.log3(10);
-	Math.LOG3PHI = Math.log3(Math.PHI);
+	Math.LOG3_2 = Math.log3(2); Math.LOG3E = Math.log3(Math.E);
+	Math.LOG3_10 = Math.log3(10); Math.LOG3PHI = Math.log3(Math.PHI);
+	//join The Order of The Triangle Of Power: https://youtu.be/sULa9Lc4pck
 
 	const MAX64 = ~(-1n << 0x40n);
-	BigInt.MAX_UINT64 = MAX64; BigInt.MAX_INT64 = MAX64 >> 1n; BigInt.MIN_INT64 = -1n << 63n;
-	BigInt.MAX_MP_EXP = 82589933n; //Largest Mersenne Prime exponent
+	IntN.MAX_UINT64 = MAX64; IntN.MAX_INT64 = MAX64 >> 1n; IntN.MIN_INT64 = -1n << 63n;
+	//Largest Mersenne Prime exponent
+	IntN.MAX_MP_EXP = 82_589_933n; //Yes, the unpacked numeral fits in memory. It's just ~10MB, but ~30MB as decimal string
 
 	//github.com/zloirock/core-js/blob/master/packages/core-js/modules/esnext.math.signbit.js
-	Number.signbit = function(number)
-		{return typeof number == 'number' && !isNan(number) && number < 0 || isNegZero(number)};
+	Float.signbit = function(number)
+		{return typeof number == 'number' && !Macro.isNaN(number) && number < 0 || isNegZero(number)};
 
-	BigInt.sign = function(n) {return sign(toBigInt(n))}; BigInt.abs = function(n) {return abs(toBigInt(n))};
+	IntN.sign = function(n) {return Macro.sign(toBigInt(n))}; IntN.abs = function(n) {return Macro.abs(toBigInt(n))};
 
-	Numeric.sign = function(x) {return sign(toNumeric(x))}; Numeric.abs = function(x) {return abs(toNumeric(x))};
+	Numeric.sign = function(x) {return Macro.sign(toNumeric(x))}; Numeric.abs = function(x) {return Macro.abs(toNumeric(x))};
 
 	const minmax = (arr, op, f) =>
 	{
@@ -380,8 +351,8 @@
 		while (++i < arr.length) {v = f(arr[i]); if (op ? v > m : v < m) m = v}
 		return m
 	};
-	BigInt.max = function(...values) {return minmax(values, true, toBigInt)};
-	BigInt.min = function(...values) {return minmax(values, false, toBigInt)};
+	IntN.max = function(...values) {return minmax(values, true, toBigInt)};
+	IntN.min = function(...values) {return minmax(values, false, toBigInt)};
 
 	Numeric.max = function(...values) {return minmax(values, true, toNumeric)};
 	//TO-DO: return Number type only if it's safe, otherwise BigInt type.
@@ -394,16 +365,16 @@
 		return x > max ? max : x < min ? min : x
 	};
 	Math.clamp = function(x, min, max) {return clamp(+x, +min, +max)};
-	BigInt.clamp = function(x, min, max) {return clamp(toBigInt(x), BigInt(min), BigInt(max))};
+	IntN.clamp = function(x, min, max) {return clamp(toBigInt(x), IntN(min), IntN(max))};
 
 	//if the args are not coerced to the same type, the output isn't guaranteed to be the same type as `x`
 	Numeric.clamp = function(x, min, max) {return clamp(toNumeric(x), toNumeric(min), toNumeric(max))};
 
-	//github.com/zloirock/core-js/blob/master/packages/core-js/internals/math-scale.js
+	//https://github.com/zloirock/core-js/blob/master/packages/core-js/internals/math-scale.js
 	//https://rwaldron.github.io/proposal-math-extensions/#sec-math.scale
 	Math.scale = function(x, inLow, inHigh, outLow, outHigh)
 	{
-		if (isInfNan(x = +x)) return x;
+		if (Macro.isInfNaN(x = +x)) return x;
 		inLow = +inLow; inHigh = +inHigh;
 		//avoid string concatenation if `outLow` is text
 		outLow = +outLow; outHigh = +outHigh;
@@ -411,7 +382,7 @@
 	};
 
 	//round towards unsigned (any) Infinity
-	Math.roundInf = function(x) {return roundInf(+x)};
+	Math.roundInf = function(x) {return Macro.roundInf(+x)};
 
 	//reverse the order of bits using "binary chop"
 	Math.rev32 = function(x)
@@ -434,24 +405,23 @@
 		return n >>> 0
 	};
 	//circular right shift
-	Math.rotr32 = function(n, b)
-	{
-		n = +n; b = +b & 31;
-		n = (n >>> b) | (n << (32 - b));
-		return n >>> 0
-	};
+	Math.rotr32 = function(n, b) {n = +n; b = +b & 31; return ((n >>> b) | (n << (32 - b))) >>> 0};
 
 	//is the size of 0 really 1?
-	BigInt.sizeOf = function(n, b = 8) {return sizeOf(abs(toBigInt(n)), abs(BigInt(b)), 1n)};
+	IntN.sizeOf = function(n, b = 8)
+	{
+		if (b = Macro.abs(IntN(b))) return sizeOf(Macro.abs(toBigInt(n)), b, 1n);
+		throw new TypeErr('Invalid measurement unit')
+	};
 
 	//lb(bigint)
-	BigInt.log2 = function(n)
+	IntN.log2 = function(n)
 		{if ((n = toBigInt(n)) > 0n) return sizeOf(n, 1n, 0n); throw new RangeErr('Non-positive logarithmation')};
 
 	//3 is the closest integer to `Math.E`
-	BigInt.logB = function(n, b = 3n)
+	IntN.logB = function(n, b = 3n)
 	{
-		n = toBigInt(n); b = BigInt(b);
+		n = toBigInt(n); b = IntN(b);
 		if (n < 1n || b < 2n) throw new RangeErr('return value is -Infinity or NaN');
 		let i = 0n; while (n /= b) i++;
 		return i
@@ -460,101 +430,104 @@
 	Numeric.logB = function(x, b = 2)
 	{
 		x = toNumeric(x); b = toNumeric(b);
-		if (isNan(x) || isNan(b) || x < 0 || b <= 1) return NaN;
+		if (Macro.isNaN(x) || Macro.isNaN(b) || x < 0 || b <= 1) return NaN;
 		if (x == 0) return -Infinity;
 		if (x == 1) return 0;
-		return (isBigInt(x) && isBigInt(b) ? BigInt : Math).logB(x, b)
+		return (isIntN(x) && isIntN(b) ? IntN : Math).logB(x, b)
 	};
 
 	Math.root = function(x, y = 2) {return root(+x, +y)};
 
-	BigInt.root = function(n, i = 2n) {return root(toBigInt(n), toBigInt(i))};
+	IntN.root = function(n, i = 2n) {return root(toBigInt(n), toBigInt(i))};
 
 	Numeric.root = function(x, n)
 	{
 		x = toNumeric(x); n = toNumeric(n);
-		if (isNan(x) || isNan(n)) return NaN;
-		const a = abs(x), ZERO = x ^ x;
+		if (Macro.isNaN(x) || Macro.isNaN(n)) return NaN;
+		const a = Macro.abs(x), ZERO = x ^ x;
 		if (!n) return a > 1 ? NaN : ZERO;
-		if (x < 0 && (isBigInt(n) && !(n & 1n))) return NaN;
-		if (n < 0) return a ? (a == 1 ? sign(x) : ZERO) : Infinity;
+		if (x < 0 && (isIntN(n) && !(n & 1n))) return NaN;
+		if (n < 0) return a ? (a == 1 ? Macro.sign(x) : ZERO) : Infinity;
 		if (!a) return ZERO;
-		return (isBigInt(x) && isBigInt(n) ? BigInt : Math).root(x, n)
+		return (isIntN(x) && isIntN(n) ? IntN : Math).root(x, n)
 	};
 
-	BigInt.sqrt = function(n) {return sqrt(toBigInt(n))};
+	IntN.sqrt = function(n) {return Macro.sqrt(toBigInt(n))};
 
 	/**
 	*@param {*} x
 	*@return {numeric}
 	*/
-	Numeric.sqrt = function(x) {return (x = toNumeric(x)) < 0 ? NaN : sqrt(x)};
+	Numeric.sqrt = function(x) {return (x = toNumeric(x)) < 0 ? NaN : Macro.sqrt(x)};
 
 	//get random int32
 	Math.random32 = function() {return random01() * 2 ** 32 | 0};
 
-	//get random non-negative safe integer
-	Math.randomSafe = function()
-	{
-		/*
-		only 52bits are generated by `Math.random`,
-		so "rand() << 53" must be used to allocate space for the missing bit.
-		a bool is enough to fill it (the LSB)
-		*/
-		return random01() * 2 ** 53 + (random01() < 0.5);
-	};
+	/*
+	get random safe integer (with random sign).
+	only 52bits are generated by `Math.random`,
+	so "rand() << 53" must be used to allocate space for the missing bit.
+	*/
+	assert(Macro.isInt(random01() * 2 ** 52), 'expected 52 random bits, but got more')
+	Math.randomSafe = function() {return random01() * (random01() < 0.5 ? -2 : 2) ** 53 + (random01() < 0.5)};
 
-	//interval [0, n), or (n, 0] if negative
-	//by default, it returns an uInt64
-	BigInt.random = function(n = 1n << 0x40n)
+	//interval [0, n), or (n, 0] if negative. By default, it returns an uInt64
+	IntN.random = function(n = 1n << 0x40n)
 	{
 		n = toBigInt(n);
-		const n_len = BigInt.sizeOf(n, 1n),
-			s = n < 0n;
-		if (s) n = -n; //abs
+		const n_len = sizeOf(n, 1n, 1n), s = n < 0n; if (s) n = -n; //abs
+		//this isn't a good error msg, lol
+		if (n < 2n) throw new RangeErr(n ? 'BigInts are not Floats' : 'requested an int equal and NOT equal to zero')
 		let x, x_len, max;
 		do {
-			x = 0n; x_len = 1n;
-			while (x_len < n_len)
-			{
-				//build the bigint in 52b blocks
-				//for speed, and to avoid discarding too much data
-				x <<= 52n;
-				x_len += 52n;
-				//crypto.getRandomValues is overkill
-				x |= BigInt(random01() * 2 ** 52)
-			}
-			const len_diff = x_len - n_len - 1n;
-			//remove bias
-			x >>= len_diff; x_len -= len_diff;
+			//in this context, the size of 0 is defined as zero instead of 1
+			x = x_len = 0n;
+			do {
+				//build the bigint in 52b blocks, to discard less rand data
+				x <<= 52n; x_len += 52n;
+				//`crypto.getRandomValues` is overkill
+				x |= IntN(random01() * 2 ** 52)
+			} while (x_len <= n_len)
+			//this condition and the `-1` allow `%` to never be no-op
+			const len_d = x_len - n_len - 1n;
+			x >>= len_d; x_len -= len_d;
 			max = ~(-1n << x_len);
-		} while (x >= max - max % n) //check if there's bias
-		x %= n;
-		return s ? -x : x
+			//https://stackoverflow.com/a/10984975
+		} while (x >= max - max % n)
+		x %= n; return s ? -x : x
 	};
 
 	//Euclidean division
-	Math.divEuclid = function(x, y) {return floor(+x / abs(+y)) * sign(+y)};
+	Math.divEuclid = function(x, y) {return Macro.floor(+x / Macro.abs(+y)) * Macro.sign(+y)};
 	//the other variants of int-div are too short
 
-	BigInt.div = function(n, d, F)
-	{//n: numerator|dividend. d: denominator|divisor
+	/**
+	All the integer division defnitions
+	@param {bigint} n numerator | dividend
+	@param {bigint} d denominator | divisor
+	@param {string} F function or variant
+	@return {bigint} quotient
+	*/
+	IntN.div = function(n, d, F)
+	{
 		n = toBigInt(n); d = toBigInt(d);
+		const q = n / d;
 		//this could be wrong when using "euclid"
-		if (!(n % d)) return n / d;
-		//sign bit
-		const s = (n < 0n) != (d < 0n);
-		switch (String(F).trim().toLowerCase())
+		if ( !(n % d) ) return q;
+		const s = (n < 0n) != (d < 0n) ? 1n : 0n; //XOR of sign bits
+		switch (Str(F).trim().toLowerCase())
 		{
-			case 'floor': default: return n / d - BigInt(s);
-			case 'ceil': return n / d + BigInt(!s);
-			case 'round': return ((s ? -d : d) / 2n + n) / d;
-			case 'euclid': return (n / abs(d) - BigInt(s)) * sign(d);
-			case 'trunc': return n / d;
+			case 'floor': default: return q - s
+			case 'ceil': return q + (s ^ 1n)
+			case 'round': return ((s ? -d : d) / 2n + n) / d
+			case 'euclid': return (n / Macro.abs(d) - s) * Macro.sign(d)
+			case 'trunc': return q
+			case 'roundInf': return q + (s ? -1 : 1)
 		}
 	};
 
 	//Standard Mathematical Modulo (floor). NOT remainder
+	//if args are floats, it can have precision errors, similarly to the naive divison-based definition
 	const mod = (n, d) => (n % d + d) % d;
 	//TO-DO: localize a multi-mod function.
 	//TO-DO: maybe do not use "multi-mod", make each one independent,
@@ -565,34 +538,31 @@
 	{
 		n = +n; d = +d;
 		//TO-DO: fix mod(x, Infinity) == NaN
-		F = String(F).trim().toLowerCase();
-		if (F == 'euclid') d = abs(+d);
+		F = Str(F).trim().toLowerCase();
+		if (F == 'euclid') d = Macro.abs(d);
 		//fallback to 'floor' if 'F' is "euclid" or just invalid
-		if (!['floor', 'trunc', 'ceil', 'round'].includes(F))
-			F = 'floor';
-		return n - d * Math[F](n / d);
+		if (!['floor', 'trunc', 'ceil', 'round', 'roundInf'].includes(F)) F = 'floor';
+		return n - d * Macro[F](q);
 	};
 
-	BigInt.mod = function(n, d, F)
+	IntN.mod = function(n, d, F)
 	{
 		n = toBigInt(n); d = toBigInt(d);
-		F = String(F).trim().toLowerCase();
-		if (F == 'euclid') d = BigInt.abs(d);
-		if (!['floor', 'trunc', 'ceil', 'round'].includes(F))
-			F = 'floor';
-		return n - d * BigInt.div(n, d, F);
+		F = Str(F).trim().toLowerCase();
+		if (F == 'euclid') d = Macro.abs(d);
+		if (!['floor', 'trunc', 'ceil', 'round', 'roundInf'].includes(F)) F = 'floor';
+		return n - d * IntN.div(n, d, F);
 	};
 
 	Numeric.mod = function(n, d, F)
 	{
 		n = toNumeric(n); d = toNumeric(d);
-		return (isBigInt(n) && isBigInt(d) ? BigInt : Math).mod(n, d, F)
+		return (isIntN(n) && isIntN(d) ? IntN : Math).mod(n, d, F)
 	};
 
 	Math.modPow = function(b, e, m, F)
 	{
-		b = +b; e = +e; m = +m;
-		if (b != b || e != e || m != m) return NaN;
+		if (Macro.isNaN(b = +b) || Macro.isNaN(e = +e) || Macro.isNaN(m = +m)) return NaN;
 		const mod = Math.mod;
 		//WARNING: precision won't be preserved if exponent isn't int
 		if (e < 2 || e % 1) return mod(b ** e, m, F);
@@ -602,15 +572,15 @@
 		while (e)
 		{
 			if (e % 2) out = mod(out * b, m, F);
-			e = trunc(e / 2);
+			e = Macro.trunc(e / 2);
 			b = mod(b * b, m, F);
 		}
 		return out
 	};
 
-	BigInt.modPow = function(b, e, m, F)
+	IntN.modPow = function(b, e, m, F)
 	{
-		const mod = BigInt.mod;
+		const mod = IntN.mod;
 		b = toBigInt(b); e = toBigInt(e); m = toBigInt(m);
 		//TO-DO: fix potential OOM error
 		if (e < 2n) return mod(e < 0n ? 1n / b ** -e : b ** e, m, F);
@@ -625,6 +595,11 @@
 		}
 		return out
 	};
+	{
+		const b = IntN.asIntN(0x40, IntN.random()), e = IntN.random(1n << 8n), m = IntN.asIntN(0x40, IntN.random()),
+			F = ['euclid', 'floor', 'trunc', 'ceil', 'round', 'roundInf'][Macro.trunc(random01() * 6)];
+		assert(IntN.modPow(b, e, m, F) == IntN.mod(b ** e, m, F), 'wrong modular exponentiation')
+	}
 
 	/**
 	*converts degrees to radians by default
@@ -649,21 +624,21 @@
 	*@param {number} x
 	*@return {number}
 	*/
-	Math.sinAbs = function(x) {return abs(sin((+x + Math.PI / 3) / 2)) * 2 - 1};
+	Math.sinAbs = function(x) {return Macro.abs(sine((+x + Math.PI / 3) / 2)) * 2 - 1};
 
 	/**
 	*trigonometric sawtooth waveform
 	*@param {number} x
 	*@return {number}
 	*/
-	Math.sawTrig = function(x) {x = +x / Math.TAU; return (x - floor(x + 0.5)) * 2};
+	Math.sawTrig = function(x) {x = +x / Math.TAU; return (x - Macro.floor(x + 0.5)) * 2};
 
 	/**
 	*triangular
 	*@param {number} x
 	*@return {number}
 	*/
-	Math.triangleTrig = function(x) {return abs(Math.sawTrig(+x + Math.PI / 2)) * 2 - 1};
+	Math.triangleTrig = function(x) {return Macro.abs(Math.sawTrig(+x + Math.PI / 2)) * 2 - 1};
 
 	//square wave defined as piecewise
 	//because Math.sign(Math.sin(x)) is inefficient
@@ -671,7 +646,7 @@
 	{
 		x = Math.mod(x, Math.TAU); //normalize
 		//is -0 returned correctly?
-		return x && sign(Math.PI - x)
+		return x && Macro.sign(Math.PI - x)
 	};
 
 	//https://math.stackexchange.com/a/1019099
@@ -679,7 +654,7 @@
 	Math.circleTrig = function(x)
 	{
 		x = Math.mod(x, Math.TAU);
-		const F = x => sqrt(1 - (x / (Math.PI / 2) - 1) ** 2);
+		const F = x => Macro.sqrt(1 - (x / (Math.PI / 2) - 1) ** 2);
 		return x < Math.PI ? F(x) : -F(x - Math.PI)
 	};
 	//missing periodic Gauss and arcsin, but It's not important
@@ -687,7 +662,7 @@
 	//count trailing zeros in binary
 	const ctz = n =>
 	{
-		const B = typeof n == 'bigint', U = B ? 1n : 1;
+		const B = isIntN(n), U = B ? 1n : 1;
 		let c = U ^ U;
 		while (!(n & U)) {c += U; n = B ? n >> 1n : n >>> 1}
 		return c
@@ -695,21 +670,20 @@
 	//logarithmic binary search is faster than linear, but the engine will do it for us
 	Math.ctz32 = function(x) {return ctz(+x >>> 0)};
 
-	BigInt.ctz = function(n) {if (n = toBigInt(n)) return ctz(n); throw new RangeErr('return value is Infinity')};
+	IntN.ctz = function(n) {if (n = toBigInt(n)) return ctz(n); throw new RangeErr('return value is Infinity')};
 
 	Numeric.ctz = function(n)
 	{
-		n = toNumeric(n);
-		if (typeof n == 'bigint') return n ? ctz(n) : Infinity;
-		n = trunc(abs(+n));
-		if (isInfNan(n)) return NaN;
+		if (isIntN(n = toNumeric(n))) return n ? ctz(n) : Infinity;
+		n = Macro.trunc(Macro.abs(+n));
+		if (Macro.isInfNaN(n)) return NaN;
 		if (!n) return 0x400; //(rounded) `Math.log2(Number.MAX_VALUE)` = (truncated) ilb(2 ^ 1024 - 1) + 1
 		if (n % 2) return 0;
-		n = Number.castBigInt(n);
+		n = Float.castBigInt(n);
 		const e = ((n >> 52n) & 0x3ffn) - 51n; //get exponent
 		n &= ~(-1n << 52n); //mask mantissa
 		n = n ? ctz(n) : 52n;
-		return Number(e + n)
+		return Float(e + n)
 		/*
 		//the following algorithm is ditched because I doubt it's efficient.
 		//It's kept here for historical and educational purposes.
@@ -723,40 +697,39 @@
 	Numeric.isDivisible = function(n, d)
 	{
 		n = n?.valueOf(); d = d?.valueOf();
-		return typeof n == typeof d && isInt(n) && isInt(d) && d && !(n % d)
+		return typeof n == typeof d && Macro.isInt(n) && Macro.isInt(d) && d && !(n % d)
 	};
 
+	//1 is odd, so it's not a power of 2. It's a trivial power, because 1 is a power of any real number
 	const isPow2 = x => x > 1 && !(x & (x - 1n));
-	BigInt.isPow2 = function(n) {return isBigInt(n) && isPow2(n)};
-	BigInt.isMersenne = function(n) {return isBigInt(n) && n > 0n && !(n & (n + 1n))};
-	Math.isPow2 = function(n) {return isInt(n = +n) && isPow2(BigInt(n))};
+	IntN.isPow2 = function(n) {return isIntN(n) && isPow2(n)};
+	IntN.isMersenne = function(n) {return isIntN(n) && n > 0n && !(n & (n + 1n))};
+	Math.isPow2 = function(n) {return Macro.isInt(n = +n) && isPow2(IntN(n))};
 	//every unsafe int has trailing zeros
-	Math.isMersenne = function(n) {return isInt(n = +n) && n < 2 ** 53 && BigInt.isMersenne(BigInt(n))};
+	Math.isMersenne = function(n) {return Macro.isInt(n = +n) && n < 2 ** 53 && IntN.isMersenne(IntN(n))};
 
 	//for educational purposes see: en.wikipedia.org/wiki/Hamming_weight#Efficient_implementation
-	//without optimization, this is very slow
+	//without optimization, it would be very slow
 	const popcnt = x =>
 	{
-		const B = typeof x == 'bigint';
+		const B = isIntN(x);
 		let c = B ? 0n : 0;
 		while (x) {c += x & (B ? 1n : 1); x = B ? x >> 1n : x >>> 1}
 		return c
 	};
 	Math.popcnt32 = function(x) {return popcnt(+x >>> 0)};
-	BigInt.popcnt = function(n)
+	IntN.popcnt = function(n)
 	{
-		if ((n = toBigInt(n)) < 0n) throw new RangeErr('return value is Infinity')
-		return popcnt(n)
+		if ((n = toBigInt(n)) >= 0n) return popcnt(n)
+		throw new RangeErr('return value is Infinity')
 	};
-
 	Numeric.popcnt = function(n)
 	{
-		n = toNumeric(n);
-		if (typeof n == 'bigint') return n < 0n ? Infinity : popcnt(n);
-		if (isInfNan(n)) return NaN;
-		n = abs(trunc(+n));
+		if (isIntN(n = toNumeric(n))) return n < 0n ? Infinity : popcnt(n);
+		if (Macro.isInfNaN(n)) return NaN;
+		n = Macro.abs(Macro.trunc(+n));
 		//mantissa popcount, because exponent doesn't matter
-		return Number(popcnt(Number.castBigInt(n) & ~(-1n << 52n)) + 1n)
+		return Float(popcnt(Float.castBigInt(n) & ~(-1n << 52n)) + 1n)
 	};
 
 	//bitwise (logical base 2, not artihmetic) carryless multiplication
@@ -764,96 +737,104 @@
 	{
 		x = +x >>> 0; y = +y >>> 0;
 		let prod = 0;
-		while (y)
-		{
-			prod ^= (y & 1) && x;
-			y >>>= 1;
-			x <<= 1;
-		}
+		while (y) {prod ^= (y & 1) && x; y >>>= 1; x <<= 1}
 		return prod >>> 0
 	};
 	//IDK if the naive definition is fast
-	BigInt.clmul = function(a, b)
+	IntN.clmul = function(a, b)
 	{
 		a = toBigInt(a); b = toBigInt(b);
 		//can it be defined?
 		if (a < 0n || b < 0n) throw new RangeErr('negative carryless product is undefined');
 		let out = 0n;
-		while (b)
-		{
-			out ^= (b & 1n) && a;
-			b >>= 1n;
-			a <<= 1n;
-		}
+		while (b) {out ^= (b & 1n) && a; b >>= 1n; a <<= 1n}
 		return out
 	};
 
 	Numeric.clmul = function(a, b)
 	{
 		a = toNumeric(a); b = toNumeric(b);
-		if (a < 0 || b < 0 || isInfNan(a) || isInfNan(b)) return NaN;
-		a = BigInt(trunc(a)); b = BigInt(trunc(b));
-		return BigInt.clmul(a, b)
+		if (a < 0 || b < 0 || Macro.isInfNaN(a) || Macro.isInfNaN(b)) return NaN;
+		a = IntN(Macro.trunc(a)); b = IntN(Macro.trunc(b));
+		return IntN.clmul(a, b)
 	};
 
 	Math.isSquare = function(n)
 	{
-		if (!isInt(n = +n)) return false
+		if (!Macro.isInt(n = +n)) return false
 		if (n < 2) return n >= 0
 		const c = Numeric.ctz(n);
 		if (c % 2) return false;
 		n /= 2 ** c;
-		return n % 8 == 1 && isInt(sqrt(n))
+		return n % 8 == 1 && Macro.isInt(Macro.sqrt(n))
 	};
 
-	BigInt.isSquare = function(n)
+	IntN.isSquare = function(n)
 	{
-		if (!isBigInt(n)) return false
+		if (!isIntN(n)) return false
 		if (n < 2n) return n >= 0n
 		const c = ctz(n);
 		if (c & 1n) return false;
 		n >>= c;
-		return n & 7n == 1n && sqrt(n) ** 2n == n
+		return n & 7n == 1n && Macro.sqrt(n) ** 2n == n
 	};
 
-	Numeric.isSquare = function(n) {return isInt(n) && (isBigInt(n) ? BigInt : Math).isSquare(n)};
+	Numeric.isSquare = function(n) {return Macro.isInt(n) && (isIntN(n) ? IntN : Math).isSquare(n)};
 
 	Math.isCube = function(n)
 	{
-		n = abs(+n);
-		if (!isInt(n)) return false;
+		if (!Macro.isInt(n = Macro.abs(+n))) return false
 		if (n < 2) return true;
-		const ctz = Numeric.ctz(n);
-		if (ctz % 3) return false;
+		const ctz = Numeric.ctz(n); if (ctz % 3) return false;
 		n /= 2 ** ctz;
 		//math.stackexchange.com/a/2190888
-		if (!([0, 1, 8].includes(n % 9) && [0, 1, 6].includes(n % 7))) return false;
-		return isInt(cbrt(n))
+		let m = Macro.abs(n % 9); if (m > 1 && m != 8) return false
+		    m = Macro.abs(n % 7); if (m > 1 && m != 6) return false
+		return Macro.isInt(Macro.cbrt(n))
 	};
+	//assert(Math.isCube((random01() * 2 ** 17) ** 3), '`Math.isCube` is bugged')
+	//currently, this throws
 
-	BigInt.isCube = function(n)
+	IntN.isCube = function(n)
 	{
-		if (!isBigInt(n)) return false
-		if (!n) return true
-		const c = ctz(n);
-		if (c % 3n) return false
-		//shifting must be done before abs,
-		//this allows the engine to reuse the shifted local copy of `n` inside `ctz`
+		if (!isIntN(n)) return false; if (!n) return true
+		const c = ctz(n); if (c % 3n) return false
+		//the engine will probably reuse the shifted local copy of `n` inside `ctz`
 		n >>= c;
 		/*
-		`abs` (and "abs") is O(n) in worst-case only, so we must use it sparingly.
-		By using it just before `if`, the max number of comparisons is reduced.
-		Inverting the math sign of an odd number doesn't need sum, just "OR" (~n | 1n).
-		But we can reduce those 2 ops down to 1. XORing with minus-two flips all bits except LSB
-		bitwise ops are parallelizable, increasing potential speed
+		`abs` is O(n) in worst-case only, so we must use it sparingly.
+		Inverting the math sign of an odd number doesn't need sum, just (~n | 1n).
+		But we can reduce those 2 ops to 1. XORing with minus-two flips all bits except LSB,
+		like this: `if (n < 0n) n ^= -2n`
+		bitwise ops are parallelizable, increasing potential speed.
+		However, this micro-algorithm is deprecated because computing the `abs` of a remainder < 9 is faster
 		*/
-		if (n < 0n) n ^= -2n; //abs
-		if ((n % 9n > 1n && n % 9n != 8n) && (n % 7n > 1n && n % 7n != 6n)) return false
-		//  !([0n, 1n, 8n].includes(n % 9n) && [0n, 1n, 6n].includes(n % 7n))
-		return cbrt(n) ** 3n == n
+		let m = Macro.abs(n % 9n); if (m > 1n && m != 8n) return false
+		    m = Macro.abs(n % 7n); if (m > 1n && m != 6n) return false
+		return Macro.cbrt(n) ** 3n == n
 	};
+	//assert(BigInt.isCube(BigInt.random() ** 3n), '`BigInt.isCube` is bugged')
+	//it seems `cbrt` has problems
 
-	Numeric.isCube = function(n) {return isInt(n) && (isBigInt(n) ? BigInt : Math).isCube(n)};
+	Numeric.isCube = function(n) {return Macro.isInt(n) && (isIntN(n) ? IntN : Math).isCube(n)};
+
+	//TO-DO: call in GCD and `factorize`
+	const toFraction = x =>
+	{
+		assert(isFloat(x), 'expected float but got ' + x)
+		if (Macro.isInt(x) || Macro.isNaN(x)) return [x, 1];
+		const s = x < 0; if (s) x = -x; //abs
+		if (x == Infinity) return [s ? -1 : 1, 0];
+		const n = Macro.trunc(x); x -= n;
+		for (let f0 = [0, 1], f1 = [1, 1];;)
+		{
+			const fm = [f0[0] + f1[0], f0[1] + f1[1]], mid = fm[0] / fm[1];
+			//TO-DO: compare new `mid` with old `mid`, to avoid infinite loops
+			//fractions like `28 / 3` cause it to never halt
+			if (mid == x) {fm[0] += n * fm[1]; if (s) fm[0] *= -1; return fm}
+			else if (mid < x) {f0 = fm} else f1 = fm
+		}
+	};
 
 	/**
 	*Euclidean algorithm for finding Highest Common Factor.
@@ -865,37 +846,28 @@
 	*/
 	const Euclid = (a, b) => {while (b) [a, b] = [b, a % b]; return a};
 
-	/**
-	*@param {number} a
-	*@param {number} b
-	*@return {number}
-	*/
-	Math.gcd = function(a, b)
+	Math.gcd = function(x, y)
 	{
-		a = abs(+a); b = abs(+b);
-		if (isNan(a) || isNan(b)) return NaN
-		if (!isInt(a) || !isInt(b)) return Euclid(a, b)
+		x = Macro.abs(+x); y = Macro.abs(+y);
+		if (Macro.isNaN(x) || Macro.isNaN(y)) return NaN
+		if (!Macro.isInt(x) || !Macro.isInt(y)) return Euclid(x, y)
 		//borrowed from Stein, lol
-		const i = Numeric.ctz(a), j = Numeric.ctz(b),
+		const i = Numeric.ctz(x), j = Numeric.ctz(y),
 			k = i < j ? i : j; //min
 		//ensure the max length is 53b
-		a /= 2 ** i; b /= 2 ** j;
-		return (Math.isMersenne(a) && Math.isMersenne(b)
-			? 2 ** Math.gcd(trunc(Math.log2(a)) + 1, trunc(Math.log2(b)) + 1) - 1
-			: Euclid(a, b)) * 2 ** k
+		x /= 2 ** i; y /= 2 ** j;
+		return (Math.isMersenne(x) && Math.isMersenne(y)
+			? 2 ** Math.gcd(Macro.trunc(Math.log2(x)) + 1, Macro.trunc(Math.log2(y)) + 1) - 1
+			: Euclid(x, y)) * 2 ** k
 	};
-	/**
-	*BEHOLD THE ULTIMATE GCD ALGORITHM (ok maybe I exaggerated)
-	*@param {bigint} a
-	*@param {bigint} b
-	*@return {bigint}
-	*/
-	BigInt.gcd = function(a, b)
+
+	//BEHOLD THE ULTIMATE GCD ALGORITHM (ok maybe I exaggerated)
+	IntN.gcd = function(a, b)
 	{
 		//simplify future operations
-		a = abs(toBigInt(a)); b = abs(toBigInt(b));
+		a = Macro.abs(toBigInt(a)); b = Macro.abs(toBigInt(b));
 		if (a == b || !a) return b; if (!b) return a;
-		if (abs(a - b) == 1n) return 1n; //does this improve speed?
+		if (Macro.abs(a - b) == 1n) return 1n; //does this improve speed?
 		const i = ctz(a), j = ctz(b), k = i < j ? i : j; //min
 		//reduce sizes
 		a >>= i; b >>= j;
@@ -906,20 +878,20 @@
 		especially if the other argument is a big Mersenne.
 		So return early when any value is 1
 		*/
-		if (a == 1n || b == 1n || abs(a - b) == 1n) return 1n << k;
+		if (a == 1n || b == 1n || Macro.abs(a - b) == 1n) return 1n << k;
 		/*
 		Stein alg made me realize that the
 		GCD of 2 Mersenne numbers is another Mersenne
 		whose size (exponent) equals the GCD of the sizes of the args.
-		Example: GCD(0b111111, 0b11111111) = 0b11
+		Example: GCD(0b111_111, 0b1111_1111) = 0b11
 		because GCD(6, 8) = 2.
 		In case you didn't know,
 		`bigMersenne - smallMersenne == bigMersenne ^ smallMersenne`.
 		I did some research and apparently it works for ANY base, not just 2:
 		math.stackexchange.com/a/11570
 		*/
-		if (BigInt.isMersenne(a) && BigInt.isMersenne(b))
-			return ~(-1n << BigInt.gcd(BigInt.log2(a) + 1n, BigInt.log2(b) + 1n)) << k;
+		if (IntN.isMersenne(a) && IntN.isMersenne(b))
+			return ~(-1n << IntN.gcd(IntN.log2(a) + 1n, IntN.log2(b) + 1n)) << k;
 
 		//set base ("Beta") of Lehmer's algo to `2 ** (2 ** BIN)`
 		const BIN = 8n;
@@ -983,76 +955,72 @@
 			if (b) continue;
 		}
 		return a << k
-	}
-
+	};
 
 	Numeric.gcd = function(a, b)
 	{
-		a = abs(toNumeric(a)); b = abs(toNumeric(b));
-		return isBigInt(a) && isBigInt(b) ? BigInt.gcd(a, b) : Math.gcd(a, b)
+		a = Macro.abs(toNumeric(a)); b = Macro.abs(toNumeric(b));
+		return isIntN(a) && isIntN(b) ? IntN.gcd(a, b) : Math.gcd(a, b)
 	};
 	//should `abs` be a tail-call in all of these (GCDs and LCMs)? it seems better to use it at the start
 	Math.lcm = function(x, y)
 	{
-		x = abs(+x); y = abs(+y);
+		x = Macro.abs(+x); y = Macro.abs(+y);
 		return x / Math.gcd(x, y) * y
 		//lower overflow probability than `a * b / Math.gcd(a, b)`
 	};
 
-	BigInt.lcm = function(a, b)
+	IntN.lcm = function(a, b)
 	{
-		a = abs(toBigInt(a)); b = abs(toBigInt(b));
-		return a / BigInt.gcd(a, b) * b
+		a = Macro.abs(toBigInt(a)); b = Macro.abs(toBigInt(b));
+		return a / IntN.gcd(a, b) * b
 		//better performance than `a * b / BigInt.gcd(a, b)`
 	};
 
 	Numeric.lcm = function(a, b)
-	{
-		a = abs(toNumeric(a)); b = abs(toNumeric(b));
-		return a / Numeric.gcd(a, b) * b
-	};
+		{a = Macro.abs(toNumeric(a)); b = Macro.abs(toNumeric(b)); return a / Numeric.gcd(a, b) * b};
 
 	//2nd lowest common divisor
 	//the 1st is always 1
 	Numeric.lcd = function(a, b)
 	{
-		a = abs(toNumeric(a)); b = abs(toNumeric(b));
-		const rt = Numeric.sqrt(a * b), ONE = isBigInt(a) ? 1n : 1;
+		a = Macro.abs(toNumeric(a)); b = Macro.abs(toNumeric(b));
+		const rt = sqrt(a * b), ONE = isIntN(a) ? 1n : 1;
 		for (let i = ONE + ONE; i <= rt; i++) if (!(a % i || b % i)) return i;
 		return ONE
 	};
 
+	//Arithmetic-Geometric Mean. This is just an approximation, because of rounding errors
 	Math.agm = function(x, y)
 	{
-		x = +x; y = +y;
-		//avoid infinite loop
-		if (isNan(x) || isNan(y) || x < 0 || y < 0) return NaN
+		if ((x = +x) == (y = +y)) return x //avoid round-errors and increase efficiency
 		let a;
-		do [x, y, a] = [(x + y) / 2, sqrt(x * y), x]
-		while (x != a) //this condition allows max precision
-		//and prevents infinite loop caused by rounding error
+		do [x, y, a] = [(x + y) / 2, Macro.sqrt(x * y), x]
+		while (x != a && x == x) /*
+		the 1st condition "squeezes" all the precision.
+		the 2nd prevents EVERY possible infinite loop (the 1st also helps).
+		100% halt guarantee. If it doesn't halt, you get a refund lol
+		*/
 		return x
 	};
 
 	//returns non-trivial divisors (proper divs) of x
 	Math.divisors = function(x)
 	{
-		x = trunc(abs(+x));
-		if (isInfNan(x)) return;
+		x = Macro.trunc(Macro.abs(+x));
+		if (Macro.isInfNaN(x)) return;
 		if (x < 2) return [];
 		const c = Numeric.ctz(x);
 		//prevent infinite loop, increase sqrt accuracy, and improve overall speed
 		x /= 2 ** c;
-		const m = sqrt(x), out = [];
-		let i;
-		for (i = 3; i <= m; i += 2)
-			if (!(x % i)) out.push(i);
+		const m = Macro.sqrt(x), out = []; let i;
+		for (i = 3; i <= m; i += 2) if ( !(x % i) ) out[out.length] = i;
 		i = out.length - Math.isSquare(x) - 1;
-		while (i >= 0) out.push(x / out[i--]);
+		while (i >= 0) out[out.length] = x / out[i--];
 		const bin = []; //unique powers of 2
-		for (i = 1; i <= c; i++) bin.push(2 ** i);
+		for (i = 1; i <= c; i++) bin[bin.length] = 2 ** i;
 		//TO-DO: add and fix missing multiplication and insertion
-		return out.sort((a, b) => a - b)
+		return out
 	};
 
 	//array of sorted Primes, no gaps (dense)
@@ -1062,35 +1030,35 @@
 	//find next prime and store it
 		addP = function()
 		{
-			let x = Pa.at(-1) + 2;
-			loop:
-			for (let j;; x += 2)
+			let x = Pa[Pa.length - 1] + 2;
+			loop: for (;; x += 2)
 			{
 				if (Pd.has(x)) break;
 				if (Math.isSquare(x)) continue;
-				j = 0;
-				while (Pa[j] <= sqrt(x))
-					if (x % Pa[j++] == 0) continue loop;
+				let j = 0;
+				//`sqrt` will never return a different value each call
+				//so the engine will call it once then store the result in a "ghost var"
+				while (Pa[j] <= Macro.sqrt(x)) if (x % Pa[j++] == 0) continue loop;
 				Pd.add(x); break;
 			}
-			Pa.push(x)
+			Pa[Pa.length] = x
 		};
 	//remember, those 3 constants are static, so their data is preserved between calls to `factorize`
 
 	Math.factorize = function(x)
 	{
-		x = trunc(abs(+x));
-		if (isInfNan(x)) return; //returning `undefined` is "more correct"
+		x = Macro.trunc(Macro.abs(+x));
+		if (Macro.isInfNaN(x)) return; //returning `undefined` is "more correct"
 		const out = new Map, ctz = Numeric.ctz(x);
 		if (ctz) {out.set(2, ctz); x /= 2 ** ctz}
 		if (x < 2) return out;
-		let rt = 1, y = sqrt(x);
+		let rt = 1, y = Macro.sqrt(x);
 		//trial rooting
-		while (Math.isSquare(x)) {x = y; y = sqrt(y); rt *= 2}
-		y = cbrt(x);
-		while (Math.isCube(x)) {x = y; y = cbrt(y); rt *= 3}
+		while (Math.isSquare(x)) {x = y; y = Macro.sqrt(y); rt *= 2}
+		y = Macro.cbrt(x);
+		while (Math.isCube(x)) {x = y; y = Macro.cbrt(y); rt *= 3}
 		if (Pd.has(x)) {out.set(x, rt); return out}
-		let i = 0; y = sqrt(x);
+		let i = 0; y = Macro.sqrt(x);
 		//trial division on steroids
 		while (Pa[i] <= y && Pa[i] <= x)
 		{
@@ -1110,49 +1078,57 @@
 		return out
 	};
 
-	//factorial approximation for non-integers
-	const Gosper = x => sqrt((+x + 1 / 6) * Math.TAU) * (x / Math.E) ** x;
+	//factorial approximations for non-integers
 	//improvement of Stirling
+	const Gosper = x => Macro.sqrt((+x + 1 / 6) * Math.TAU) * (x / Math.E) ** x;
 
 	//Gamma Function (+1) defined as Summation instead of Integration
 	const Gamma = x =>
 	{
 		let t = 1, s0, s1 = 0 ** x;
-		do {s0 = s1; s1 += t ** x * exp(-t); t++}
-		while (s0 != s1)
+		do {s0 = s1; s1 += t ** x * exp(-t); t++} while (s0 != s1)
 		return s0
 	};
 
-	//missing Lanczos approx
-
-	//`F` is to allow selection of preferred function
-	Math.factorial = function(x, F)
+	//https://en.wikipedia.org/wiki/Lanczos_approximation#Simple_implementation
+	const Lanczos = z =>
 	{
-		x = +x;
-		if (x == Infinity) return x;
-		if (isInfNan(x)) return NaN;
-		if (x % 1) return (F ? Gosper : Gamma)(x);
-		let s, out = 1;
-		[s, x] = signabs(x);
+		const p = [676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059,
+			12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+		if (z < 0.5) return Math.PI / (sine(Math.PI * z) * Lanczos(1 - z))
+		else
+		{
+			z--; let x = 0.99999999999980993;
+			for (let i = 0; i < p.length; i++) x += p[i] / (z + i + 1);
+			let t = z + p.length - 0.5;
+			return Macro.sqrt(Math.TAU) * t ** (z + 0.5) * exp(-t) * x
+		}
+	}; //why does it always return NaN?
+
+	Math.factorial = function(x)
+	{
+		if ((x = +x) >= 171) return Infinity
+		if (x < 0 || Macro.isNaN(x)) return NaN
+		/*
+		We could precompute an int lookup table, and use spline interpolation for faster processing.
+		The problem is that if `x` is at the extreme, the output would be `NaN` unless we use extrapolation
+		*/
+		if ( !Macro.isInt(x) ) return Gamma(x)
+		let out = 1;
 		for (let i = 2; i <= x; i++) out *= i;
-		return out * (x % 2 ? s : 1)
+		return out
 	};
 
-	BigInt.factorial = function(n)
+	//https://en.wikipedia.org/wiki/Factorial#Properties
+	IntN.factorial = function(n)
 	{
-		n = toBigInt(n);
-		let s, out = 1n, a = 0n, c;
-		[s, n] = signabs(n);
-		for (let i = 2n; i <= n; i++)
-		{
-			a += c = ctz(i);
-			//reduce size (temporarily) in the hope of being faster
-			out *= i >> c
-		}
-		return out * (n & 1n ? s : 1n) << a
+		if ((n = toBigInt(n)) < 0n) throw new RangeErr('return value is NaN')
+		let out = 1n;
+		for (let i = 3n; i <= n; i++) out *= i >> ctz(i); //reduce size
+		//https://en.wikipedia.org/wiki/Legendre%27s_formula#Alternate_form
+		return out << (n - popcnt(n)) //recover TZ
 		/*
-		this algorithm isn't good for BigInts
-		these are better:
+		my algorithm isn't good for BigInts, these are better:
 		http://www.luschny.de/math/factorial/FastFactorialFunctions.htm
 		github.com/PeterLuschny/Fast-Factorial-Functions
 		https://web.archive.org/web/20050211005140/http://www.luschny.de/math/factorial/Description.htm
@@ -1161,24 +1137,24 @@
 	//TO-DO: add rising and falling Fs
 	Numeric.factorial = function(x, k = 1)
 	{//if k > 1 returns multifactorial of that degree
-		x = signabs(toNumeric(x));
-		k = toNumeric(k);
-		if (!isBigInt(k)) k = trunc(k);
-		k = s * k; x = x;
-		const out = [isBigInt(x) ? 1n : 1];
-		for (let i = k; out.length <= x; i += k) out.push(i * out.at(-1));
-		return out.at(-1) //yes, memory is being wasted
+		let s; [s, x] = Macro.signabs(toNumeric(x)); k = toNumeric(k);
+		if (!isIntN(k)) k = Macro.trunc(k);
+		k *= s;
+		let out = isIntN(x) ? 1n : 1, len = 1n;
+		for (let i = k; len <= x; i += k) {out *= i; if (Macro.isInfNaN(out)) return out};
+		return out
 	};
 
 	//iterative inverse int Fact
+	//if this got the inverse Gamma function, it would be more accurate
 	Numeric.factorial_inv = function(n, k = 1)
 	{//if k > 1 returns corresponding inv multifactorial
 		n = toNumeric(n); k = toNumeric(k);
-		if (!n || isNan(k)) return NaN;
-		if (isInfNan(n)) return n;
-		let x = sign(n);
+		if (!n || Macro.isNaN(k)) return NaN;
+		if (Macro.isInfNaN(n)) return n;
+		let x = Macro.sign(n);
 		if (!k) return x;
-		while (abs(n) > 1) {n /= x; x += k}
+		while (Macro.abs(n) > 1) {n /= x; x += k}
 		return x
 	};
 
@@ -1189,48 +1165,37 @@
 	//get Nth "TriNumber" fast
 	Numeric.triNum = function(x)
 	{
-		x = toNumeric(x);
-		const ONE = isBigInt(x) ? 1n : 1, TWO = ONE + ONE;
-		//this approach is slightly faster
-		return x % TWO
-			? (x + ONE) / TWO * x
-			: x / TWO * (x + ONE)
+		const ONE = isIntN(x = toNumeric(x)) ? 1n : 1, TWO = ONE + ONE;
+		//lower overflow probability
+		return x % TWO ? (x + ONE) / TWO * x : x / TWO * (x + ONE)
 	};
 
 	//get index of a trinum
 	Numeric.triNum_inv = function(x)
-	{
-		return isBigInt(x = toNumeric(x))
-			? (BigInt.sqrt((x << 3n) | 1n) - 1n) >> 1n
-			: (sqrt(8 * x + 1) - 1) / 2
-	};
+		{return isIntN(x = toNumeric(x)) ? (Macro.sqrt((x << 3n) | 1n) - 1n) >> 1n : (Macro.sqrt(8 * x + 1) - 1) / 2};
 
 	//get TriNums up to index x (inclusive)
 	Numeric.triSeq = function(x)
 	{
-		x = signabs(toNumeric(x));
+		let s; [s, x] = Macro.signabs(toNumeric(x));
 		const out = [x ^ x]; //auto-type Zero
-		for (let i = s; out.length <= x; i += s) out.push(i + out.at(-1));
+		for (let i = s; out.length <= x; i += s) out[out.length] = i + out[out.length - 1];
 		return out
 	};
 
 	//get Nth Fibonacci faster than recursion
 	Math.Fib = function(x)
 	{
-		x = signabs(+x);
-		return round(Math.PHI ** x / Math.SQRT5) * (s == -1 && x % 2 == 0 ? -1 : 1)
+		let s; [s, x] = Macro.signabs(+x);
+		return Macro.round(Math.PHI ** x / Math.SQRT5) * (s == -1 && x % 2 == 0 ? -1 : 1)
 	};
 	//en.wikipedia.org/wiki/Generalizations_of_Fibonacci_numbers#Extension_to_negative_integers
 
-	/**
-	*get index of a Fib num
-	*@param {mumber} x Fib num to find the index
-	*@return {number}
-	*/
+	//get index of a Fib num `x`
 	Math.Fib_inv = function(x)
 	{
-		let s; [s, x] = signabs(+x);
-		const i = floor(logB(x * Math.SQRT5 + 0.5, Math.PHI))
+		let s; [s, x] = Macro.signabs(+x);
+		const i = Macro.floor(logB(x * Math.SQRT5 + 0.5, Math.PHI))
 		return !(i % 2) && s == -1 ? NaN : i * s
 	};
 
@@ -1239,20 +1204,18 @@
 	//If F is falsy (default) then "U", else "V"
 	Numeric.Lucas = function(n, P = 1, Q = -1, F)
 	{
-		n = Number(n) >>> 0; P = toNumeric(P); Q = toNumeric(Q);
+		n = Float(n) >>> 0; P = toNumeric(P); Q = toNumeric(Q);
 		//this XOR chain is used to throw early when values are not same-type
 		const ZERO = P ^ Q ^ P ^ Q, ONE = ZERO ** ZERO,
 			L = F ? [ONE + ONE, P] : [ZERO, ONE];
-		while (L.length <= n) L.push(P * L.at(-1) - Q * L.at(-2));
+		while (L.length <= n) L[L.length] = P * L[L.length - 1] - Q * L[L.length - 2];
 		return L
 	};
 
 	//TO-DO: maybe insert Dot-Product here
 
-
-	//correction of data descriptors
-	//to make everything equal to vanilla JS
-	for (const O of [Number, Math, BigInt, Numeric])
+	//correction of data descriptors, to make everything equal to vanilla JS
+	for (const O of [Float, Math, IntN, Numeric])
 	{
 		//`for in` is slower and has more potential side-effects
 		for (const k of Object.keys(O))
@@ -1261,4 +1224,4 @@
 			if (typeof O[k] == 'function') defProp(O[k], 'name', O[k].name || k, 1)
 		}
 	}
-})(BigInt, TypeError, RangeError, Math.random, Math.sin, Math.exp)
+})(Number, BigInt, String, TypeError, RangeError, Math.random, Math.sin, Math.exp)
