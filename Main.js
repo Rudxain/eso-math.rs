@@ -53,8 +53,8 @@
 	defProp(globalThis, 'Numeric', {}, 0b101)
 
 	/**
-	*any strictly numerical value
-	*@typedef {(number|bigint)} numeric
+	any strictly numerical value
+	@typedef {(number|bigint)} numeric
 	*/
 
 	const isFloat = x => typeof x?.valueOf() == 'number';
@@ -106,18 +106,16 @@
 	globalThis.isNaN = function(value) {return !isIntN(value) || isNan(+value)}
 
 	/**
-	*get the internal bits (binary64 IEEE 754 representation)
-	*@param {number} number
-	*@return {bigint}
+	get the internal bits (binary64 IEEE 754 representation)
+	@param {number} number
+	@return {bigint}
 	*/
 	Float.castBigInt = function(number) {return new BigUint64Array(new Float64Array([number]).buffer)[0]};
 
-	//do these 2 methods need hex support?
-
 	/**
-	*mask the 64 LSBs and read as IEEE-754 binary64 floating-point format
-	*@param {bigint} n
-	*@return {number}
+	mask the 64 LSBs and read as IEEE-754 binary64 floating-point format
+	@param {bigint} n
+	@return {number}
 	*/
 	IntN.castNumber = function(n) {return new Float64Array(new BigUint64Array([n]).buffer)[0]};
 
@@ -198,31 +196,9 @@
 	Numeric.isInteger = function(x) {return isInt(x)};
 	Numeric.isFinite = function(x) {return isNumeric(x) && !isInfNan(x)};
 
-	//docs.oracle.com/javase/8/docs/api/java/lang/Double.html#MIN_NORMAL
-	Float.MIN_NORMAL = 2 ** -1022;
-
+	Float.MIN_NORMAL = 2 ** -1022; //docs.oracle.com/javase/8/docs/api/java/lang/Double.html#MIN_NORMAL
 	Float.isSafeNumber = function(number)
-	{
-		return typeof number == 'number' &&
-			abs(number) >= Float.MIN_NORMAL && abs(number) <= Float.MAX_SAFE_INTEGER
-	};
-
-	//Scientific Notation in base B
-	defProp(Float.prototype, 'toScientific',
-		function SciNotB(b = 10)
-		{
-			let x = this?.valueOf();
-			//JIC someone uses the `call` method
-			if (!isFloat(x))
-				throw new TypeErr("Number.prototype.toScientific requires that 'this' be a Number");
-			x = Float(x); b = Float(b);
-			let e;
-			if (!isInfNan(x)) {e = x && trunc(logB(abs(x), b)); x = x / b ** e}
-			else {e = x; x = sign(x)}
-			return x.toString(b) + ' * ' + '10' + '^' + e.toString(b) + ` (base 0d${b})`
-		},
-		0b101
-	)
+		{return typeof number == 'number' && abs(number) >= Float.MIN_NORMAL && abs(number) <= Float.MAX_SAFE_INTEGER};
 
 	//"KahanBabushkaKleinSum". Summation with minimal rounding errors
 	Math.sum = function(...values)
@@ -240,15 +216,15 @@
 	};
 
 	/**
-	*@param {bigint} n binary numeral to measure
-	*@param {bigint} b word size. 1: bit, 8: Byte, 16: word, 32: D-word, 64: Q-word
-	*@param {numeric} i initial counter. if b = 1 then: 0: lb, 1: length (ignore sign), 2: length (include sign)
-	*@return {numeric}
+	@param {bigint} n binary numeral to measure
+	@param {bigint} b word size. 1: bit, 8: Byte, 16: word, 32: D-word, 64: Q-word
+	@param {numeric} i initial counter. if b = 1 then: 0: lb, 1: length (ignore sign), 2: length (include sign)
+	@return {numeric}
 	*/
-	const sizeOf = (n, b, i) => {n = abs(n); while (n >>= b) i++; return i},
+	const sizeOf = (n, b, i) => {n = abs(n); while (n >>= b) i++; return i};
 
 	//ith (degree i) root of x
-	root = (x, i = 2) =>
+	const root = (x, i = 2) =>
 	{
 		if (i == 1) return x;
 		if (isIntN(x))
@@ -265,9 +241,10 @@
 			//identity: a ^ (1 / k) = b ^ (log_b(a) / k)
 			const lb = sizeOf(x, 1n, 0n);
 			//using the MSBs instead of generating a power of 2 is a better approximation
-			let x0 = x >> (lb - lb / i), x1 = j / i * x0 + x / (i * x0 ** j)
+			let x0 = x >> (lb - lb / i), x1 = x0 * j / i + x / (i * x0 ** j)
 			//Heron/Newton/Babylonian Method
-			while (x1 < x0) {x0 = x1; x1 = j / i * x1 + x / (i * x1 ** j)}
+			while (x1 < x0) {x0 = x1; x1 = x1 * j / i + x / (i * x1 ** j)}
+			while ((x0 + 1n) ** i <= x) x0++ //dirty bug patch
 			return x0 * s
 		}
 		else //I hate the complexity of this entire function
@@ -282,8 +259,8 @@
 			if (!x) return x;
 			if (x == 1) return s == -1 ? s ** i : x;
 			const j = i - 1;
-			let x0 = x ** (1 / i); const x1 = j / i * x0 + x / (i * x0 ** j);
-			return (x1 < x0 ? x1 : x0) * s
+			let x1 = x ** (1 / i); x1 = j / i * x1 + x / (i * x1 ** j);
+			return x1 * s
 		}
 	},
 	//I defined this dedicated (instead of just `root(x, 2)`) `sqrt` because of performance and bug concerns
@@ -327,17 +304,30 @@
 	Math.LOG3_10 = Math.log3(10); Math.LOG3PHI = Math.log3(Math.PHI);
 	//join The Order of The Triangle Of Power: https://youtu.be/sULa9Lc4pck
 
-	const MAX64 = ~(-1n << 0x40n);
+	//Scientific Notation in base B
+	defProp(Float.prototype, 'toScientific', function toScientific(b = 10)
+		{
+			let x = this?.valueOf();
+			//JIC someone uses the `call` method
+			if (!isFloat(x)) throw new TypeErr("Number.prototype.toScientific requires that 'this' be a Number");
+			x = Float(x); b = Float(b); let e;
+			if (!isInfNan(x)) {e = x && trunc(logB(abs(x), b)); x = x / b ** e}
+			else {e = x; x = sign(x)}
+			return x.toString(b) + ' * ' + '10' + '^' + e.toString(b) + ` (base 0d${b})`
+		}, 0b101)
+
+	const Mersenne = n => ~(-1n << n), MAX64 = Mersenne(0x40n);
 	IntN.MAX_UINT64 = MAX64; IntN.MAX_INT64 = MAX64 >> 1n; IntN.MIN_INT64 = -1n << 63n;
-	//Largest Mersenne Prime exponent
-	IntN.MAX_MP_EXP = 82_589_933n; //Yes, the unpacked numeral fits in memory. It's just ~10MB, but ~30MB as decimal string
+	IntN.MAX_MP_EXP = 82_589_933n; /*Largest known Mersenne Prime exponent
+	Yes, the unpacked numeral fits in memory. It's just ~10MB, but ~30MB as decimal string.
+	To "unpack" it use: `Mersenne(IntN.MAX_MP_EXP)`
+	*/
 
 	//github.com/zloirock/core-js/blob/master/packages/core-js/modules/esnext.math.signbit.js
 	Float.signbit = function(number)
 		{return typeof number == 'number' && !isNan(number) && number < 0 || isNegZero(number)};
 
 	IntN.sign = function(n) {return sign(toBigInt(n))}; IntN.abs = function(n) {return abs(toBigInt(n))};
-
 	Numeric.sign = function(x) {return sign(toNumeric(x))}; Numeric.abs = function(x) {return abs(toNumeric(x))};
 
 	//should these really return 0 when `y == 0`?
@@ -465,7 +455,11 @@
 	only 52bits are generated by `Math.random`,
 	so "rand() << 53" must be used to allocate space for the missing bit.
 	*/
-	Math.randomSafe = function() {return random01() * (random01() < 0.5 ? -2 : 2) ** 53 + (random01() < 0.5)};
+	Math.randomSafe = function()
+	{
+		const b = random01() * 4 | 0; //instead of calling thrice, we call it only twice
+		return random01() * (b & 2 ? -2 : 2) ** 53 + (b & 1)
+	};
 
 	//interval [0, n), or (n, 0] if negative. By default, it returns an uInt64
 	IntN.random = function(n = 1n << 0x40n)
@@ -482,10 +476,11 @@
 				x <<= 52n; x_len += 52n;
 				/*
 				"`crypto.getRandomValues` is overkill" I was mistaken:
-				Repeatedly calling the RNG causes each 52b block in the bigint to be predictable from the previous block.
+				Repeatedly calling the RNG causes each 52b block in the bigint to be correlated to its neighbors.
 				One solution is to call RNG at random locations within the bigint, XORing it with whatever bits are there.
 				But that would increase the number of times RNG gets called, potentially exhausting the internal state,
-				and therefore repeating the period for the entire browser window.
+				and therefore repeating the period for the entire browser window,
+				unless the engine notices and re-seeds the state.
 				It seems the easiest solution is the slowest, calling `getRandomValues`.
 				On the plus side, it would make this function crypto-secure,
 				which would render redundant any dedicated method (something like `BigInt.cryptoRandom`).
@@ -495,7 +490,7 @@
 			//this condition and the `-1` allow `%` to never be no-op
 			const len_d = x_len - n_len - 1n;
 			x >>= len_d; x_len -= len_d;
-			max = ~(-1n << x_len);
+			max = Mersenne(x_len);
 			//https://stackoverflow.com/a/10984975
 		} while (x >= max - max % n)
 		x %= n; return s ? -x : x
@@ -685,7 +680,7 @@
 		if (n % 2) return 0;
 		n = Float.castBigInt(n);
 		const e = ((n >> 52n) & 0x3ffn) - 51n; //get exponent
-		n &= ~(-1n << 52n); //mask mantissa
+		n &= Mersenne(52n); //mask mantissa
 		n = n ? ctz(n) : 52n;
 		return Float(e + n)
 		/*
@@ -733,7 +728,7 @@
 		if (isInfNan(n)) return NaN;
 		n = abs(trunc(+n));
 		//mantissa popcount, because exponent doesn't matter
-		return Float(popcnt(Float.castBigInt(n) & ~(-1n << 52n)) + 1n)
+		return Float(popcnt(Float.castBigInt(n) & Mersenne(52n)) + 1n)
 	};
 
 	//bitwise (logical base 2, not artihmetic) carryless multiplication
@@ -894,15 +889,13 @@
 		I did some research and apparently it works for ANY base, not just 2:
 		math.stackexchange.com/a/11570
 		*/
-		if (IntN.isMersenne(a) && IntN.isMersenne(b))
-			return ~(-1n << IntN.gcd(IntN.log2(a) + 1n, IntN.log2(b) + 1n)) << k;
+		if (IntN.isMersenne(a) && IntN.isMersenne(b)) return Mersenne(IntN.gcd(sizeOf(a, 1n, 1n), sizeOf(b, 1n, 1n))) << k;
 
 		//set base ("Beta") of Lehmer's algo to `2 ** (2 ** BIN)`
 		const BIN = 8n;
 
 		if (b > a) [a, b] = [b, a];
-		const a_len = sizeOf(a, 1n << BIN, 1n),
-			b_len = sizeOf(b, 1n << BIN, 1n);
+		const a_len = sizeOf(a, 1n << BIN, 1n), b_len = sizeOf(b, 1n << BIN, 1n);
 		if (b_len < 2)
 		{
 			//both are small, Euclid is best here
