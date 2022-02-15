@@ -241,10 +241,9 @@
 			//identity: a ^ (1 / k) = b ^ (log_b(a) / k)
 			const lb = sizeOf(x, 1n, 0n);
 			//using the MSBs instead of generating a power of 2 is a better approximation
-			let x0 = x >> (lb - lb / i), x1 = x0 * j / i + x / (i * x0 ** j)
-			//Heron/Newton/Babylonian Method
-			while (x1 < x0) {x0 = x1; x1 = x1 * j / i + x / (i * x1 ** j)}
-			while ((x0 + 1n) ** i <= x) x0++ //dirty bug patch
+			let x0 = x >> (lb - lb / i - 1n), x1 = (x0 * j + x / x0 ** j) / i
+			//Heron/Newton/Babylonian Method, thanks to https://stackoverflow.com/a/30869049
+			while (x1 < x0) {x0 = x1; x1 = (x1 * j + x / x1 ** j) / i}
 			return x0 * s
 		}
 		else //I hate the complexity of this entire function
@@ -259,7 +258,8 @@
 			if (!x) return x;
 			if (x == 1) return s == -1 ? s ** i : x;
 			const j = i - 1;
-			let x1 = x ** (1 / i); x1 = j / i * x1 + x / (i * x1 ** j);
+			let x1 = x ** (1 / i);
+			if (x1 ** i != x) x1 = (x1 * j + x / x1 ** j) / i;
 			return x1 * s
 		}
 	},
@@ -271,9 +271,7 @@
 		let x0 = x >> (sizeOf(x, 1n, 0n) >> 1n), x1 = (x / x0 + x0) >> 1n;
 		while (x1 < x0) {x0 = x1; x1 = (x / x1 + x1) >> 1n}
 		return x0
-	},
-	//for some reason `BigInt.root(8n, 3n) == 1n` instead of `2n`
-	cbrt = x => root(x, 3);
+	}, cbrt = x => root(x, 3);
 
 	Math.TAU = Math.PI * 2; //no precision loss, because multiplier is power of two
 
@@ -426,9 +424,7 @@
 	};
 
 	Math.root = function(x, y = 2) {return root(+x, +y)};
-
 	IntN.root = function(n, i = 2n) {return root(toBigInt(n), toBigInt(i))};
-
 	Numeric.root = function(x, n)
 	{
 		x = toNumeric(x); n = toNumeric(n);
@@ -440,13 +436,7 @@
 		if (!a) return ZERO;
 		return (isIntN(x) && isIntN(n) ? IntN : Math).root(x, n)
 	};
-
 	IntN.sqrt = function(n) {return sqrt(toBigInt(n))};
-
-	/**
-	*@param {*} x
-	*@return {numeric}
-	*/
 	Numeric.sqrt = function(x) {return (x = toNumeric(x)) < 0 ? NaN : sqrt(x)};
 
 	assert(isInt(random01() * 2 ** 52), 'expected 52 random bits, but got more')
