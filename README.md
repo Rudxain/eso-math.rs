@@ -23,3 +23,6 @@ This section refers to formatting, style, paradigms, idioms, and related stuff. 
 
 # DISCLAIMER
 Currently some part of source code in this repo is unfinished, badly optimized, in need of refactoring, or all at the same time (sorry lol). Most of the code is in good state though, so don't worry. If you're unsure and want to avoid problems, just read the code comments, most bugs and unfinished stuff are described there.
+
+# WARNING: Side effects
+Some built-in methods are modified by this library. This library only modifies built-ins that "need fixing" (such as `isFinite`), so most built-ins are intact. The lack of localization of vars can allow external code to change the behavior of this library, or even cause error-throwing. I'll ensure (in the future) that all vars that need localization are localized by the closure.
