@@ -1064,34 +1064,26 @@
 		if (x > 1) {out.set(x, (out.get(x) || 0) + rt); Pd.add(x)}
 		return out
 	};
-
-	//factorial approximations for non-integers
-	//improvement of Stirling
-	const Gosper = x => sqrt((+x + 1 / 6) * Math.TAU) * (x / Math.E) ** x;
-
-	//Gamma Function (+1) defined as Summation instead of Integration
-	const Gamma = x =>
-	{
-		let t = 1, s0, s1 = 0 ** x;
-		do {s0 = s1; s1 += t ** x * exp(-t); t++} while (s0 != s1)
-		return s0
-	};
-
-	//https://en.wikipedia.org/wiki/Lanczos_approximation#Simple_implementation
-	const Lanczos = z =>
-	{
-		const p = [676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059,
-			12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
-		if (z < 0.5) return Math.PI / (sine(Math.PI * z) * Lanczos(1 - z))
-		else
+	
+	//factorial approximations for non-ints.
+	//These 3 are trash, none make use of full Float precision. I need help to make these more accurate
+	const Gosper = x => sqrt((+x + 1 / 6) * Math.TAU) * (x / Math.E) ** x, //improvement of Stirling
+		//Gamma Function (+1) defined as Summation instead of Integration
+		Gamma = x => {let t = 1, s0, s1 = 0 ** x; do {s0 = s1; s1 += t ** x * exp(-t); t++} while (s0 != s1); return s0},
+		//https://en.wikipedia.org/wiki/Lanczos_approximation#Simple_implementation
+		Lanczos = z =>
 		{
-			z--; let x = 0.99999999999980993;
-			for (let i = 0; i < p.length; i++) x += p[i] / (z + i + 1);
-			let t = z + p.length - 0.5;
-			return sqrt(Math.TAU) * t ** (z + 0.5) * exp(-t) * x
-		}
-	}; //why does it always return NaN?
-
+			const p = [676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059,
+				12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+			if (z < 0.5) return Math.PI / (sine(Math.PI * z) * Lanczos(1 - z))
+			else
+			{
+				z--; let x = 0.99999999999980993;
+				for (let i = 0; i < p.length; i++) x += p[i] / (z + i + 1);
+				const t = z - 0.5 + p.length;
+				return sqrt(Math.TAU) * t ** (z + 0.5) * exp(-t) * x
+			}
+		};
 	Math.factorial = function(x)
 	{
 		if ((x = +x) >= 171) return Infinity
@@ -1100,7 +1092,7 @@
 		We could precompute an int lookup table, and use spline interpolation for faster processing.
 		The problem is that if `x` is at the extreme, the output would be `NaN` unless we use extrapolation
 		*/
-		if ( !isInt(x) ) return Gamma(x)
+		if ( !isInt(x) ) return [Gosper, Gamma, Lanczos][2](x)
 		let out = 1;
 		for (let i = 2; i <= x; i++) out *= i;
 		return out
@@ -1117,32 +1109,30 @@
 		/*
 		my algorithm isn't good for BigInts, these are better:
 		http://www.luschny.de/math/factorial/FastFactorialFunctions.htm
-		github.com/PeterLuschny/Fast-Factorial-Functions
+		https://github.com/PeterLuschny/Fast-Factorial-Functions
 		https://web.archive.org/web/20050211005140/http://www.luschny.de/math/factorial/Description.htm
 		*/
 	};
 	//TO-DO: add rising and falling Fs
 	Numeric.factorial = function(x, k = 1)
 	{//if k > 1 returns multifactorial of that degree
-		let s; [s, x] = signabs(toNumeric(x)); k = toNumeric(k);
-		if (!isIntN(k)) k = trunc(k);
-		k *= s;
-		let out = isIntN(x) ? 1n : 1, len = 1n;
-		for (let i = k; len <= x; i += k) {out *= i; if (isInfNan(out)) return out};
+		let s; [s, x] = signabs(toNumeric(x));
+		k = trunc(toNumeric(k)) * s; //TODO: fix error when not same-type
+		let out = autoN(1, x);
+		for (let i = k, len = 1n; len <= x; i += k) {out *= i; len++; if (isInfNan(out)) return out};
 		return out
 	};
 
 	//iterative inverse int Fact
 	//if this got the inverse Gamma function, it would be more accurate
 	Numeric.factorial_inv = function(n, k = 1)
-	{//if k > 1 returns corresponding inv multifactorial
-		n = toNumeric(n); k = toNumeric(k);
-		if (!n || isNan(k)) return NaN;
+	{//if k > 1 returns corresponding inv multifactorial 
+		if ( !(n = toNumeric(n)) || isNan(k = toNumeric(k)) ) return NaN
 		if (isInfNan(n)) return n;
-		let x = sign(n);
-		if (!k) return x;
-		while (abs(n) > 1) {n /= x; x += k}
-		return x
+		let out = sign(n);
+		if (!k) return out
+		while (abs(n) > 1) {n /= out; out += k}
+		return out
 	};
 
 
