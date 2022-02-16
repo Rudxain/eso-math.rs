@@ -5,7 +5,7 @@ As some of you may know, Javascript is based on the ECMAscript standard, which i
 My purpose/goal with this library is to make it easy for developers to use future ES functions today, without writting everything from scratch (reusing code is good practice as long as the license is respected). As you may have noticed, it may seem I'm *obsessed* with `BigInt`s, that's because JS lacks **A LOT** of methods for them, so I decided to reduce "discrimination" against this powerful primitive data-type. I also want to include more *obscure* functions to serve as an educational tool for programmers and math students.
 
 # Usage
-I normally select all text in a file, and copy-paste it into the browser console or a `<script>` tag in a HTML file. This is something that doesn't require installation, because it's not an app by itself, just internal "tools" that an app may use.
+I usually select all text in a file, and copy-paste it into the browser console or a `<script>` tag in a HTML file. This is something that doesn't require installation, because it's not an app by itself, just internal "tools" that an app may use.
 
 # Coding standards
 This section refers to formatting, style, paradigms, idioms, and related stuff. This repo (specially "Main.js") follows some "rules" or standards.
