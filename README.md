@@ -19,6 +19,3 @@ This section refers to formatting, style, paradigms, idioms, and related stuff. 
 
 # DISCLAIMER
 Currently some part of source code in this repo is unfinished, badly optimized, in need of refactoring, or all at the same time (sorry lol). Most of the code is in good state though, so don't worry. If you're unsure and want to avoid problems, just read the code comments, most bugs and unfinished stuff are described there.
-
-# Naming?
-The name of this repo is a vestige of its original purpose. It was a chaotic pack of functions polluting the global namespace. Some were useful, a lot were only useful in very specific cases, and others were straight up *obscure sequence generators* from Number Theory. Even the functions themselves had extra unnecessary features, like `factorial` having extra args to compute *multifactorials*, and a boolean arg for switching between "inverse mode" or "standard mode", and support for negative integer inputs where the sequence of return values is the same standard sequence but with alternating sign (-1, 2, -6, 24, ...). Also a fast `BigInt` implementation of the **Ackermann** function, which isn't very related to math (there were other functions that weren't closely related to math)
