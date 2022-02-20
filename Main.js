@@ -1,6 +1,5 @@
 //IIFE with closure, for encapsulation and localization
-(function()
-{
+(function(){
 	'use strict';
 	const Float = Number, IntN = BigInt, Str = String,
 		TypeErr = TypeError, RangeErr = RangeError, Err = Error,
@@ -78,7 +77,7 @@
 	@param {(boolean|string|bigint)} x
 	@return {bigint}
 	*/
-	const toBigInt = x =>
+	const toIntN = x =>
 	{
 		const B = typeof x?.valueOf();
 		if (B == 'string' || B == 'boolean' || B == 'bigint') return IntN(x)
@@ -101,23 +100,26 @@
 		roundInf = x => (x < 0 ? floor : ceil)(x); //"complement" of `trunc`
 
 	//TO-DO: fix wrong output when strings are large (minor bug, because the original/built-in also has it)
-	globalThis.isFinite = function(value) {return isIntN(value) || !isInfNan(+value)}
+	globalThis.isFinite = function(value) {return isIntN(value) || !isInfNan(Float(value))};
 	//both `parseInt` AND `parseFloat` never throw on bigints, so I decided to "fix" these other functions
-	globalThis.isNaN = function(value) {return !isIntN(value) || isNan(+value)}
+	globalThis.isNaN = function(value) {return isNan(Float(value))};
 
+	const IntNArr = BigUint64Array, FloatArr = Float64Array,
+		castFloatToIntN = f => new IntNArr(new FloatArr([f]).buffer)[0],
+		castIntNToFloat = n => new FloatArr(new IntNArr([f]).buffer)[0];
 	/**
 	get the internal bits (binary64 IEEE 754 representation)
 	@param {number} number
 	@return {bigint}
 	*/
-	Float.castBigInt = function(number) {return new BigUint64Array(new Float64Array([number]).buffer)[0]};
+	Float.castBigInt = function(number) {return castFloatToIntN(Float(number))};
 
 	/**
 	mask the 64 LSBs and read as IEEE-754 binary64 floating-point format
 	@param {bigint} n
 	@return {number}
 	*/
-	IntN.castNumber = function(n) {return new Float64Array(new BigUint64Array([n]).buffer)[0]};
+	IntN.castNumber = function(n) {return castIntNToFloat(toIntN(n))};
 
 	//parseInt for bigints
 	IntN.parse = function(string, radix)
@@ -325,12 +327,12 @@
 	Float.signbit = function(number)
 		{return typeof number == 'number' && !isNan(number) && number < 0 || isNegZero(number)};
 
-	IntN.sign = function(n) {return sign(toBigInt(n))}; IntN.abs = function(n) {return abs(toBigInt(n))};
+	IntN.sign = function(n) {return sign(toIntN(n))}; IntN.abs = function(n) {return abs(toIntN(n))};
 	Numeric.sign = function(x) {return sign(toNumeric(x))}; Numeric.abs = function(x) {return abs(toNumeric(x))};
 
 	//should these really return 0 when `y == 0`?
 	Math.copySign = function(x, y) {return +x * sign(+y)};
-	IntN.copySign = function(x, y) {return toBigInt(x) * sign(toBigInt(y))};
+	IntN.copySign = function(x, y) {return toIntN(x) * sign(toIntN(y))};
 	Numeric.copySign = function(x, y) {x = toNumeric(x); return x * autoN(sign(toNumeric(y)), x)};
 
 	const minmax = (arr, op, f) =>
@@ -339,8 +341,8 @@
 		while (++i < arr.length) {v = f(arr[i]); if (op ? v > m : v < m) m = v}
 		return m
 	};
-	IntN.max = function(...values) {return minmax(values, true, toBigInt)};
-	IntN.min = function(...values) {return minmax(values, false, toBigInt)};
+	IntN.max = function(...values) {return minmax(values, true, toIntN)};
+	IntN.min = function(...values) {return minmax(values, false, toIntN)};
 
 	Numeric.max = function(...values) {return minmax(values, true, toNumeric)};
 	//TO-DO: return Number type only if it's safe, otherwise BigInt type.
@@ -353,7 +355,7 @@
 		return x > max ? max : x < min ? min : x
 	};
 	Math.clamp = function(x, min, max) {return clamp(+x, +min, +max)};
-	IntN.clamp = function(x, min, max) {return clamp(toBigInt(x), IntN(min), IntN(max))};
+	IntN.clamp = function(x, min, max) {return clamp(toIntN(x), IntN(min), IntN(max))};
 
 	//if the args are not coerced to the same type, the output isn't guaranteed to be the same type as `x`
 	Numeric.clamp = function(x, min, max) {return clamp(toNumeric(x), toNumeric(min), toNumeric(max))};
@@ -397,18 +399,18 @@
 	//is the size of 0 really 1?
 	IntN.sizeOf = function(n, b = 8)
 	{
-		if (b = abs(IntN(b))) return sizeOf(abs(toBigInt(n)), b, 1n);
+		if (b = abs(IntN(b))) return sizeOf(abs(toIntN(n)), b, 1n);
 		throw new TypeErr('Invalid measurement unit')
 	};
 
 	//lb(bigint)
 	IntN.log2 = function(n)
-		{if ((n = toBigInt(n)) > 0n) return sizeOf(n, 1n, 0n); throw new RangeErr('Non-positive logarithmation')};
+		{if ((n = toIntN(n)) > 0n) return sizeOf(n, 1n, 0n); throw new RangeErr('Non-positive logarithmation')};
 
 	//3 is the closest integer to `Math.E`
 	IntN.logB = function(n, b = 3n)
 	{
-		n = toBigInt(n); b = IntN(b);
+		n = toIntN(n); b = IntN(b);
 		if (n < 1n || b < 2n) throw new RangeErr('return value is -Infinity or NaN');
 		let i = 0n; while (n /= b) i++;
 		return i
@@ -424,7 +426,7 @@
 	};
 
 	Math.root = function(x, y = 2) {return root(+x, +y)};
-	IntN.root = function(n, i = 2n) {return root(toBigInt(n), toBigInt(i))};
+	IntN.root = function(n, i = 2n) {return root(toIntN(n), toIntN(i))};
 	Numeric.root = function(x, n)
 	{
 		x = toNumeric(x); n = toNumeric(n);
@@ -436,7 +438,7 @@
 		if (!a) return ZERO;
 		return (isIntN(x) && isIntN(n) ? IntN : Math).root(x, n)
 	};
-	IntN.sqrt = function(n) {return sqrt(toBigInt(n))};
+	IntN.sqrt = function(n) {return sqrt(toIntN(n))};
 	Numeric.sqrt = function(x) {return (x = toNumeric(x)) < 0 ? NaN : sqrt(x)};
 
 	assert(isInt(random01() * 2 ** 52), 'expected 52 random bits, but got more')
@@ -454,7 +456,7 @@
 	//interval [0, n), or (n, 0] if negative. By default, it returns an uInt64
 	IntN.random = function(n = 1n << 0x40n)
 	{
-		n = toBigInt(n);
+		n = toIntN(n);
 		const n_len = sizeOf(n, 1n, 1n), s = n < 0n; if (s) n = -n; //abs
 		if (n < 2n) {if (n) {return 0n} else throw new RangeErr('requested an int equal and NOT equal to zero')}
 		let x, x_len, max;
@@ -499,7 +501,7 @@
 	*/
 	IntN.div = function(n, d, F)
 	{
-		n = toBigInt(n); d = toBigInt(d);
+		n = toIntN(n); d = toIntN(d);
 		const q = n / d;
 		//this could be wrong when using "euclid"
 		if ( !(n % d) ) return q;
@@ -536,7 +538,7 @@
 
 	IntN.mod = function(n, d, F)
 	{
-		n = toBigInt(n); d = toBigInt(d);
+		n = toIntN(n); d = toIntN(d);
 		F = Str(F).trim().toLowerCase();
 		if (F == 'euclid') d = abs(d);
 		if (!['floor', 'trunc', 'ceil', 'round', 'roundInf'].includes(F)) F = 'floor';
@@ -570,7 +572,7 @@
 	IntN.modPow = function(b, e, m, F)
 	{
 		const mod = IntN.mod;
-		b = toBigInt(b); e = toBigInt(e); m = toBigInt(m);
+		b = toIntN(b); e = toIntN(e); m = toIntN(m);
 		//TO-DO: fix potential OOM error
 		if (e < 2n) return mod(e < 0n ? 1n / b ** -e : b ** e, m, F);
 		b = mod(b, m, F);
@@ -659,7 +661,7 @@
 	//logarithmic binary search is faster than linear, but the engine will do it for us
 	Math.ctz32 = function(x) {return ctz(+x >>> 0)};
 
-	IntN.ctz = function(n) {if (n = toBigInt(n)) return ctz(n); throw new RangeErr('return value is Infinity')};
+	IntN.ctz = function(n) {if (n = toIntN(n)) return ctz(n); throw new RangeErr('return value is Infinity')};
 
 	Numeric.ctz = function(n)
 	{
@@ -709,7 +711,7 @@
 	Math.popcnt32 = function(x) {return popcnt(+x >>> 0)};
 	IntN.popcnt = function(n)
 	{
-		if ((n = toBigInt(n)) >= 0n) return popcnt(n)
+		if ((n = toIntN(n)) >= 0n) return popcnt(n)
 		throw new RangeErr('return value is Infinity')
 	};
 	Numeric.popcnt = function(n)
@@ -732,7 +734,7 @@
 	//IDK if the naive definition is fast
 	IntN.clmul = function(a, b)
 	{
-		a = toBigInt(a); b = toBigInt(b);
+		a = toIntN(a); b = toIntN(b);
 		//can it be defined?
 		if (a < 0n || b < 0n) throw new RangeErr('negative carryless product is undefined');
 		let out = 0n;
@@ -854,7 +856,7 @@
 	IntN.gcd = function(a, b)
 	{
 		//simplify future operations
-		a = abs(toBigInt(a)); b = abs(toBigInt(b));
+		a = abs(toIntN(a)); b = abs(toIntN(b));
 		if (a == b || !a) return b; if (!b) return a;
 		if (abs(a - b) == 1n) return 1n; //does this improve speed?
 		const i = ctz(a), j = ctz(b), k = i < j ? i : j; //min
@@ -959,7 +961,7 @@
 
 	IntN.lcm = function(a, b)
 	{
-		a = abs(toBigInt(a)); b = abs(toBigInt(b));
+		a = abs(toIntN(a)); b = abs(toIntN(b));
 		return a / IntN.gcd(a, b) * b
 		//better performance than `a * b / BigInt.gcd(a, b)`
 	};
@@ -1101,7 +1103,7 @@
 	//https://en.wikipedia.org/wiki/Factorial#Properties
 	IntN.factorial = function(n)
 	{
-		if ((n = toBigInt(n)) < 0n) throw new RangeErr('return value is NaN')
+		if ((n = toIntN(n)) < 0n) throw new RangeErr('return value is NaN')
 		let out = 1n;
 		for (let i = 3n; i <= n; i++) out *= i >> ctz(i); //reduce size
 		//https://en.wikipedia.org/wiki/Legendre%27s_formula#Alternate_form
