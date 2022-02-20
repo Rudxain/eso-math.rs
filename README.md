@@ -5,7 +5,7 @@ As some of you may know, Javascript is based on the ECMAscript standard, which i
 My purpose/goal with this library extension (because it extends the Standard Library) is to make it easy for developers to use future ES mathematic functions today, without writting everything from scratch (reusing code is good practice as long as the license is respected). As you may have noticed, it may seem I'm *obsessed* with `BigInt`s, that's because JS lacks **A LOT** of methods for them, so I decided to reduce "discrimination" against this powerful primitive data-type. I also want to include more *obscure* functions to serve as an educational tool for programmers and math students.
 
 # Usage
-This library is doesn't require installation, because it's not an app by itself (nor a NPM package), just internal "tools" that an app may use. So I usually select all text in a file, and 📋copy-paste it into the browser console or in a `<script>` tag within a HTML file. An alternative way is the traditional HTML tag with `src` attribute:
+This library doesn't require installation, because it's not an app by itself (nor a NPM package), just internal "tools" that an app may use. So I usually select all text in a file, and 📋copy-paste it into the browser console or in a `<script>` tag within a HTML file. An alternative way is the traditional HTML tag with `src` attribute:
 ```html
 <script src=https://raw.githubusercontent.com/Rudxain/more-math-for-JS/main/Main.js></script>
 ```
