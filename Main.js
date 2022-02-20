@@ -105,7 +105,7 @@
 
 	const IntNArr = BigUint64Array, FloatArr = Float64Array,
 		castFloatToIntN = f => new IntNArr(new FloatArr([f]).buffer)[0],
-		castIntNToFloat = n => new FloatArr(new IntNArr([f]).buffer)[0];
+		castIntNToFloat = n => new FloatArr(new IntNArr([n]).buffer)[0];
 	/**
 	get the internal bits (binary64 IEEE 754 representation)
 	@param {number} number
