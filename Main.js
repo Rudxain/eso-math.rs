@@ -6,7 +6,7 @@
 		AssertionError = class extends Err {constructor(m) {super(m)}},
 		//for non-Deno environments
 		assert = function(c, m) {if (!c) throw new AssertionError(m)},
-		sine = Math.sin, exp = Math.exp;
+		exp = Math.exp;
 
 	/**
 	*Short edition of `defineProperty`
@@ -611,6 +611,7 @@
 	*/
 	Math.radToAngle = function(x, y = 360) {return +x / (Math.TAU / +y)};
 
+	const sine = Math.sin;
 	/**
 	*bouncing sine waveform (periodic parabola)
 	*@param {number} x
