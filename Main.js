@@ -5,8 +5,7 @@
 		TypeErr = TypeError, RangeErr = RangeError, Err = Error,
 		AssertionError = class extends Err {constructor(m) {super(m)}},
 		//for non-Deno environments
-		assert = function(c, m) {if (!c) throw new AssertionError(m)},
-		exp = Math.exp;
+		assert = function(c, m) {if (!c) throw new AssertionError(m)};
 
 	/**
 	*Short edition of `defineProperty`
@@ -1068,10 +1067,11 @@
 		if (x > 1) {out.set(x, (out.get(x) || 0) + rt); Pd.add(x)}
 		return out
 	};
-	
-	//factorial approximations for non-ints.
-	//These 3 are trash, none make use of full Float precision. I need help to make these more accurate
-	const Gosper = x => sqrt((+x + 1 / 6) * Math.TAU) * (x / Math.E) ** x, //improvement of Stirling
+
+	const exp = Math.exp,
+		//factorial approximations for non-ints.
+		//These 3 are trash, none make use of full precision. I need help to make these more accurate
+		Gosper = x => sqrt((+x + 1 / 6) * Math.TAU) * (x / Math.E) ** x, //improvement of Stirling
 		//Gamma Function (+1) defined as Summation instead of Integration
 		Gamma = x => {let t = 1, s0, s1 = 0 ** x; do {s0 = s1; s1 += t ** x * exp(-t); t++} while (s0 != s1); return s0},
 		//https://en.wikipedia.org/wiki/Lanczos_approximation#Simple_implementation
