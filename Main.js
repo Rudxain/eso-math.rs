@@ -654,9 +654,9 @@
 	//count trailing zeros in binary
 	const ctz = n =>
 	{
-		const B = isIntN(n), U = B ? 1n : 1;
-		let c = U ^ U;
-		while (!(n & U)) {c += U; n = B ? n >> 1n : n >>> 1}
+		const B = isIntN(n), ONE = B ? 1n : 1;
+		let c = ONE ^ ONE; //autoN(0, n)
+		while ( !(n & ONE) ) {c += ONE; n = B ? n >> 1n : n >>> 1}
 		return c
 	};
 	//logarithmic binary search is faster than linear, but the engine will do it for us
@@ -671,7 +671,7 @@
 		if (isInfNan(n)) return NaN;
 		if (!n) return 0x400; //(rounded) `Math.log2(Number.MAX_VALUE)` = (truncated) ilb(2 ^ 1024 - 1) + 1
 		if (n % 2) return 0;
-		n = Float.castBigInt(n);
+		n = castFloatToIntN(n);
 		const e = ((n >> 52n) & 0x3ffn) - 51n; //get exponent
 		n &= Mersenne(52n); //mask mantissa
 		n = n ? ctz(n) : 52n;
@@ -721,7 +721,7 @@
 		if (isInfNan(n)) return NaN;
 		n = abs(trunc(+n));
 		//mantissa popcount, because exponent doesn't matter
-		return Float(popcnt(Float.castBigInt(n) & Mersenne(52n)) + 1n)
+		return Float(popcnt(castFloatToIntN(n) & Mersenne(52n)) + 1n)
 	};
 
 	//bitwise (logical base 2, not artihmetic) carryless multiplication
@@ -781,7 +781,7 @@
 		n /= 2 ** ctz;
 		//math.stackexchange.com/a/2190888
 		let m = abs(n % 9); if (m > 1 && m != 8) return false
-		    m = abs(n % 7); if (m > 1 && m != 6) return false
+			m = abs(n % 7); if (m > 1 && m != 6) return false
 		return isInt(cbrt(n))
 	};
 	//assert(Math.isCube((random01() * 2 ** 17) ** 3), '`Math.isCube` is bugged')
@@ -802,7 +802,7 @@
 		However, this micro-algorithm is deprecated because computing the `abs` of a remainder < 9 is faster
 		*/
 		let m = abs(n % 9n); if (m > 1n && m != 8n) return false
-		    m = abs(n % 7n); if (m > 1n && m != 6n) return false
+			m = abs(n % 7n); if (m > 1n && m != 6n) return false
 		return cbrt(n) ** 3n == n
 	};
 	//assert(BigInt.isCube(BigInt.random() ** 3n), '`BigInt.isCube` is bugged')
@@ -1130,7 +1130,7 @@
 	//iterative inverse int Fact
 	//if this got the inverse Gamma function, it would be more accurate
 	Numeric.factorial_inv = function(n, k = 1)
-	{//if k > 1 returns corresponding inv multifactorial 
+	{//if k > 1 returns corresponding inv multifactorial
 		if ( !(n = toNumeric(n)) || isNan(k = toNumeric(k)) ) return NaN
 		if (isInfNan(n)) return n;
 		let out = sign(n);
