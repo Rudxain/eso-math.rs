@@ -205,6 +205,11 @@
 	Math.sum = function(...values)
 	{
 		let sum = 0, cs = 0, ccs = 0, c = 0, cc = 0;
+		/*
+		iterators can be replaced by using `ITERABLE.prototype[Symbol.iterator]`
+		where "ITERABLE" can be an array, string, or any other object (it also allows adding an iterator)
+		so `for ... of` loops must be avoided (this is a to-do)
+		*/
 		for (let v of values)
 		{
 			v = +v; let t = sum + v;
