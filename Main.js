@@ -2,31 +2,31 @@
 (function(){
 	'use strict';
 	const Float = Number, IntN = BigInt, Str = String,
+		IntNArr = BigUint64Array, FloatArr = Float64Array,
 		TypeErr = TypeError, RangeErr = RangeError, Err = Error,
 		AssertionError = class extends Err {constructor(m) {super(m)}},
 		//for non-Deno environments
-		assert = function(c, m) {if (!c) throw new AssertionError(m)};
-
-	/**
-	Short edition of `defineProperty`
-	@function defProp
-	@param {object} O
-	@param {PropertyKey} p
-	@param {*} v value to set
-	@param {(boolean[]|numeric|string)} a bool descriptor with format [W, E, C]
-	*/
-	const defProp = (O, p, v, a) =>
-	{
-		switch (typeof a)
+		assert = function(c, m) {if (!c) throw new AssertionError(m)},
+		/**
+		Short edition of `defineProperty`
+		@function defProp
+		@param {object} O
+		@param {PropertyKey} p
+		@param {*} v value to set
+		@param {(boolean[]|numeric|string)} a bool descriptor with format [W, E, C]
+		*/
+		defProp = (O, p, v, a) =>
 		{
-			case 'number': a &= 7; a = [a & 4, a & 2, a & 1]; break
-			case 'bigint': a &= 7n; a = [a & 4n, a & 2n, a & 1n]; break
-			case 'string': a = [/w/i.test(a), /e/i.test(a), /c/i.test(a)]; break
-			//Linux chmod lol (rwx)
-		}
-		return Object.defineProperty(O, p, {value: v, writable: !!a[0], enumerable: !!a[1], configurable: !!a[2]})
-	},
-		isPrimitive = x => x === null || !(typeof x == 'object' || typeof x == 'function');
+			switch (typeof a)
+			{
+				case 'number': a &= 7; a = [a & 4, a & 2, a & 1]; break
+				case 'bigint': a &= 7n; a = [a & 4n, a & 2n, a & 1n]; break
+				case 'string': a = [/w/i.test(a), /e/i.test(a), /c/i.test(a)]; break
+				//Linux chmod lol (rwx)
+			}
+			return Object.defineProperty(O, p, {value: v, writable: !!a[0], enumerable: !!a[1], configurable: !!a[2]})
+		},
+		isPrimitive = x => x === null || !(typeof x == 'object' || typeof x == 'function')
 
 	//github.com/tc39/proposal-relative-indexing-method#polyfill
 	for (const C of [Array, Str, Reflect.getPrototypeOf(Int8Array)])
@@ -35,12 +35,13 @@
 		defProp(C.prototype, 'at', function at(n)
 		{
 			//throw the same error as built-in implementation
-			if (this === null || this === undefined) throw new TypeErr('Cannot convert undefined or null to object');
-			let l = this.length;
+			if (this === null || this === undefined) throw new TypeErr('Cannot convert undefined or null to object')
+			let l = this.length
 			if (isIntN(n)) l = IntN(l) //BigInt (and object-wrapped bigint) support
 			else n = trunc(+n) || 0; //ECMAscript "toIntegerOrInfinity"
-			if (n < 0) n += l; return n < 0 || n >= l ? undefined : this[n]
-		}, 0b101);
+			if (n < 0) n += l
+			return n < 0 || n >= l ? undefined : this[n]
+		}, 0b101)
 
 
 	/*
@@ -56,21 +57,21 @@
 	@typedef {(number|bigint)} numeric
 	*/
 
-	const isFloat = x => typeof x?.valueOf() == 'number';
+	const isFloat = x => typeof x?.valueOf() == 'number'
 	//check if primitive number or object-wrapped number, to ensure it can be operated as a number
-	Float.isNumber = function(value) {return isFloat(value)};
+	Float.isNumber = function(value) {return isFloat(value)}
 
-	const isIntN = x => typeof x?.valueOf() == 'bigint';
+	const isIntN = x => typeof x?.valueOf() == 'bigint'
 	//check prim or obj-wrap BigInt (ensure operability as bigint)
-	IntN.isBigInt = function(value) {return isIntN(value)};
+	IntN.isBigInt = function(value) {return isIntN(value)}
 
-	const isNumeric = x => isFloat(x) || isIntN(x);
+	const isNumeric = x => isFloat(x) || isIntN(x)
 	//check if any numeric value
-	Numeric.isNumeric = function(value) {return isNumeric(value)};
+	Numeric.isNumeric = function(value) {return isNumeric(value)}
 
-	const isNegZero = x => x === 0 && 1 / x < 0;
+	const isNegZero = x => x === 0 && 1 / x < 0
 	//check signed/negative zero
-	Float.isMinusZero = function(number) {return isNegZero(number)};
+	Float.isMinusZero = function(number) {return isNegZero(number)}
 
 	/**
 	https://tc39.es/ecma262/multipage/abstract-operations.html#sec-tobigint
@@ -79,13 +80,12 @@
 	*/
 	const toIntN = x =>
 	{
-		const B = typeof x?.valueOf();
+		const B = typeof x?.valueOf()
 		if (B == 'string' || B == 'boolean' || B == 'bigint') return IntN(x)
 		throw new TypeErr(`Cannot convert ${x} to BigInt`)
-	};
-
-	//localization increases performance, and protects against external side-effects
-	const autoN = (n, x) => (isIntN(x) ? IntN : Float)(n), //copyType, but only for Numericals
+	},
+		//localization increases performance, and protects against external side-effects
+		autoN = (n, x) => (isIntN(x) ? IntN : Float)(n), //`copyType` (like `copySign`), but only for Numericals
 		abs = x => x < 0 || isNegZero(x) ? -x : x,
 		sign = x => x && (x < 0 ? -autoN(1, x) : autoN(1, x)),
 		signabs = x => [sign(x), abs(x)],
@@ -97,35 +97,34 @@
 		floor = x => isInt(x) ? x : trunc(x) - (x < 0 ? 1 : 0),
 		ceil = x => isInt(x) ? x : trunc(x) + (x > 0 ? 1 : 0),
 		round = x => isInt(x) || isInfNan(x) ? x : x < 0 && x >= -0.5 ? -0 : abs(x) % 1 < 0.5 ? floor(x) : ceil(x),
-		roundInf = x => (x < 0 ? floor : ceil)(x); //"complement" of `trunc`
+		roundInf = x => (x < 0 ? floor : ceil)(x), //"complement" of `trunc`
+		castFloatToIntN = f => new IntNArr(new FloatArr([f]).buffer)[0],
+		castIntNToFloat = n => new FloatArr(new IntNArr([n]).buffer)[0]
 
 	//TO-DO: fix wrong output when strings are large (minor bug, because the original/built-in also has it)
-	globalThis.isFinite = function(value) {return isIntN(value) || !isInfNan(Float(value))};
+	globalThis.isFinite = function(value) {return isIntN(value) || !isInfNan(Float(value))}
 	//both `parseInt` AND `parseFloat` never throw on bigints, so I decided to "fix" these other functions
-	globalThis.isNaN = function(value) {return isNan(Float(value))};
+	globalThis.isNaN = function(value) {return isNan(Float(value))}
 
-	const IntNArr = BigUint64Array, FloatArr = Float64Array,
-		castFloatToIntN = f => new IntNArr(new FloatArr([f]).buffer)[0],
-		castIntNToFloat = n => new FloatArr(new IntNArr([n]).buffer)[0];
 	/**
 	get the internal bits (binary64 IEEE 754 representation)
 	@param {number} number
 	@return {bigint}
 	*/
-	Float.castBigInt = function(number) {return castFloatToIntN(Float(number))};
+	Float.castBigInt = function(number) {return castFloatToIntN(Float(number))}
 
 	/**
 	mask the 64 LSBs and read as IEEE-754 binary64 floating-point format
 	@param {bigint} n
 	@return {number}
 	*/
-	IntN.castNumber = function(n) {return castIntNToFloat(toIntN(n))};
+	IntN.castNumber = function(n) {return castIntNToFloat(toIntN(n))}
 
 	//parseInt for bigints
 	IntN.parse = function(string, radix)
 	{
-		string = Str(string).trimStart().toLowerCase();
-		let sign = 1n;
+		string = Str(string).trimStart().toLowerCase()
+		let sign = 1n
 		if (string) //the only falsy primitive string is empty, no need to check length
 		{
 			switch (string[0])
@@ -134,8 +133,8 @@
 				case '\x2B': string = string.substring(1)
 			}
 		}
-		radix = Float(radix) | 0; //TO-DO: fix precision loss when bigint or string
-		let stripPrefix = true;
+		radix = Float(radix) | 0 //TO-DO: fix precision loss when bigint or string
+		let stripPrefix = true
 		if (radix) //it will never be NaN, no need to check for zero
 		{
 			if (radix < 2 || radix > 36) throw new RangeErr('Invalid base')
@@ -145,67 +144,64 @@
 			radix = 10;
 		if (stripPrefix && string.length >= 2 && string[0] == '0' && string[1] == 'x')
 		{//why only 'x'? it should include 'b' and 'o'
-			string = string.substring(2);
-			radix = 0x10
+			string = string.substring(2); radix = 0x10
 		}
-		const charset = new Map;
-		for (let i = 0n; i < radix; i++) charset.set('0123456789abcdefghijklmnopqrstuvwxyz'[i], i);
-		let end = -1;
-		while (++end < string.length)
-			if (!charset.has(string[end])) break;
-		string = string.substring(0, end);
-		let int = 0n;
-		if (!string) return int; //no need to throw, 0 fits better
-		radix = IntN(radix); end = IntN(end);
+		const charset = new Map
+		for (let i = 0n; i < radix; i++) charset.set('0123456789abcdefghijklmnopqrstuvwxyz'[i], i)
+		let end = -1
+		while (++end < string.length) if (!charset.has(string[end])) break
+		string = string.substring(0, end)
+		let int = 0n
+		if (!string) return int //no need to throw, 0 fits better
+		radix = IntN(radix); end = IntN(end)
 		//DO NOT REVERSE iteration order
-		for (let i = end - 1n; i >= 0; i--) int += charset.get(string[end - i - 1n]) * radix ** i;
+		for (let i = end - 1n; i >= 0; i--) int += charset.get(string[end - i - 1n]) * radix ** i
 		return sign * int
-	};
+	}
 
 	//TO-DO: fix error when strings have 1 "." (dot)
 	IntN.from = function(value)
 	{
-		if (isIntN(value)) return value.valueOf();
+		if (isIntN(value)) return value.valueOf()
 		if (isFloat(value)) return (value = trunc(+value)) ?
-			(isInf(value) ? (value < 0 ? -1n : 1n) : IntN(value)) : 0n;
-		if (!value) return 0n;
-		value = value.valueOf();
-		if (!value) return 0n;
-		if (!isPrimitive(value)) return 1n;
-		return IntN(value);
-	};
+			(isInf(value) ? (value < 0 ? -1n : 1n) : IntN(value)) : 0n
+		if (!value) return 0n
+		value = value.valueOf()
+		if (!value) return 0n
+		if (!isPrimitive(value)) return 1n
+		return IntN(value)
+	}
 
 	const toNumeric = x =>
 	{
-		if (isFloat(x)) return +x; if (isIntN(x)) return IntN(x);
-		if (x === null) return 0;
-		if (x === undefined || typeof (x = x.valueOf()) == 'symbol') return NaN;
-		if (!isPrimitive(x)) x = Str(x);
+		if (isFloat(x)) return +x; if (isIntN(x)) return IntN(x)
+		if (x === null) return 0
+		if (x === undefined || typeof (x = x.valueOf()) == 'symbol') return NaN
+		if (!isPrimitive(x)) x = Str(x)
 		if (!+x || abs(+x) < 2 ** 53 ||
 			//I know /\s/ exists, but `trim` is faster and more readable
-			/^[-+]?Infinity$/.test(Str(x).trim())) return +x;
-		if (typeof x == 'string' && x.includes('.')) return IntN(x.substring(0, x.indexOf('.')));
-		return IntN(x)
-	};
+			/^[-+]?Infinity$/.test(Str(x).trim())) return +x
+		return IntN(typeof x == 'string' && x.includes('.') ? x.substring(0, x.indexOf('.')) : x)
+	}
 	/**
 	Coerce to numeric by using the least invasive/intrusive algorithm I know.
 	DO NOT confuse with ES' `toNumeric` "abstract operation", it's not the same
 	@param {*} value
 	@return {numeric}
 	*/
-	Numeric.from = function(value) {return toNumeric(value)};
+	Numeric.from = function(value) {return toNumeric(value)}
 
-	Numeric.isInteger = function(x) {return isInt(x)};
-	Numeric.isFinite = function(x) {return isNumeric(x) && !isInfNan(x)};
+	Numeric.isInteger = function(x) {return isInt(x)}
+	Numeric.isFinite = function(x) {return isNumeric(x) && !isInfNan(x)}
 
-	Float.MIN_NORMAL = 2 ** -1022; //docs.oracle.com/javase/8/docs/api/java/lang/Double.html#MIN_NORMAL
+	Float.MIN_NORMAL = 2 ** -1022 //docs.oracle.com/javase/8/docs/api/java/lang/Double.html#MIN_NORMAL
 	Float.isSafeNumber = function(number)
-		{return typeof number == 'number' && abs(number) >= Float.MIN_NORMAL && abs(number) <= Float.MAX_SAFE_INTEGER};
+		{return typeof number == 'number' && abs(number) >= Float.MIN_NORMAL && abs(number) <= Float.MAX_SAFE_INTEGER}
 
 	//"KahanBabushkaKleinSum". Summation with minimal rounding errors
 	Math.sum = function(...values)
 	{
-		let sum = 0, cs = 0, ccs = 0, c = 0, cc = 0;
+		let sum = 0, cs = 0, ccs = 0, c = 0, cc = 0
 		/*
 		iterators can be replaced by using `ITERABLE.prototype[Symbol.iterator]`
 		where "ITERABLE" can be an array, string, or any other object (it also allows adding an iterator)
@@ -213,14 +209,14 @@
 		*/
 		for (let v of values)
 		{
-			v = +v; let t = sum + v;
+			v = +v; let t = sum + v
 			c = abs(sum) >= abs(v) ? (sum - t) + v : (v - t) + sum;
 			sum = t; t = cs + c;
 			cc = abs(cs) >= abs(c) ? (cs - t) + c : (c - t) + cs;
 			cs = t; ccs = ccs + cc
 		}
 		return sum + cs + ccs
-	};
+	}
 
 	/**
 	@param {bigint} n binary numeral to measure
@@ -228,25 +224,24 @@
 	@param {numeric} i initial counter. if b = 1 then: 0: lb, 1: length (ignore sign), 2: length (include sign)
 	@return {numeric}
 	*/
-	const sizeOf = (n, b, i) => {n = abs(n); while (n >>= b) i++; return i};
+	const sizeOf = (n, b, i) => {n = abs(n); while (n >>= b) i++; return i},
 
 	//ith (degree i) root of x
-	const root = (x, i = 2) =>
+	root = (x, i = 2) =>
 	{
-		if (i == 1) return x;
+		if (i == 1) return x
 		if (isIntN(x))
 		{
-			i = IntN(i);
-			if (i == -1n) return 1n / x;
+			i = IntN(i)
+			if (i == -1n) return 1n / x
 			if (!i) {if (x > 1n) throw new RangeErr('return value is NaN'); return 0n}
-			const s = sign(x); x = abs(x);
-			if (s == -1 && !(i & 1n)) throw new RangeErr('return value is a Complex number');
+			const s = sign(x); x = abs(x)
+			if (s == -1 && !(i & 1n)) throw new RangeErr('return value is a Complex number')
 			if (i < 0n) {if (!x) throw new RangeErr('return value is Infinity'); return x == 1 ? s : 0n}
-			if (!x) return 0n;
-			if (x == 1) return s == -1 ? s ** i : x;
-			const j = i - 1n;
+			if (!x) return 0n
+			if (x == 1) return s == -1 ? s ** i : x
 			//identity: a ^ (1 / k) = b ^ (log_b(a) / k)
-			const lb = sizeOf(x, 1n, 0n);
+			const j = i - 1n, lb = sizeOf(x, 1n, 0n)
 			//using the MSBs instead of generating a power of 2 is a better approximation
 			let x0 = x >> (lb - lb / i - 1n), x1 = (x0 * j + x / x0 ** j) / i
 			//Heron/Newton/Babylonian Method, thanks to https://stackoverflow.com/a/30869049
@@ -255,121 +250,121 @@
 		}
 		else //I hate the complexity of this entire function
 		{
-			if (isInf(x ** (1 / i))) return x ** (1 / i);
+			if (isInf(x ** (1 / i))) return x ** (1 / i)
 			if (isNan(x) || isNan(i)) return NaN
-			if (i == -1) return 1 / x;
+			if (i == -1) return 1 / x
 			if (!i) return 0
-			const s = sign(x); x = abs(x);
-			if (s == -1 && !(i % 2)) return NaN;
-			if (i < 0n) return x ? (x == 1 ? s : 0) : Infinity;
-			if (!x) return x;
-			if (x == 1) return s == -1 ? s ** i : x;
-			const j = i - 1;
-			let x1 = x ** (1 / i);
-			if (x1 ** i != x) x1 = (x1 * j + x / x1 ** j) / i;
+			const s = sign(x); x = abs(x)
+			if (s == -1 && !(i % 2)) return NaN
+			if (i < 0n) return x ? (x == 1 ? s : 0) : Infinity
+			if (!x) return x
+			if (x == 1) return s == -1 ? s ** i : x
+			const j = i - 1
+			let x1 = x ** (1 / i)
+			if (x1 ** i != x) x1 = (x1 * j + x / x1 ** j) / i
 			return x1 * s
 		}
 	},
 	//I defined this dedicated (instead of just `root(x, 2)`) `sqrt` because of performance and bug concerns
 	sqrt = x =>
 	{
-		if (!isIntN(x)) return x && x ** 0.5; //preserve `-0`
+		if (!isIntN(x)) return x && x ** 0.5 //preserve `-0`
 		if (x < 2n) {if (x < 0n) throw new RangeErr('return value is Complex number'); return x}
-		let x0 = x >> (sizeOf(x, 1n, 0n) >> 1n), x1 = (x / x0 + x0) >> 1n;
+		let x0 = x >> (sizeOf(x, 1n, 0n) >> 1n), x1 = (x / x0 + x0) >> 1n
 		while (x1 < x0) {x0 = x1; x1 = (x / x1 + x1) >> 1n}
 		return x0
-	}, cbrt = x => root(x, 3);
+	}, cbrt = x => root(x, 3)
 
-	Math.TAU = Math.PI * 2; //no precision loss, because multiplier is power of two
+	Math.TAU = Math.PI * 2 //no precision loss, because multiplier is power of two
 
-	Math.SQRT5 = sqrt(5); Math.PHI = Math.SQRT5 / 2 + 0.5; //Golden Ratio
+	Math.SQRT5 = sqrt(5); Math.PHI = Math.SQRT5 / 2 + 0.5 //Golden Ratio
 
 	//in general, lb has better precision and performance than ln
-	const logB = (function(log) {return function(x, b = Math.E) {return log(x) / log(b)}})(Math.log2);
+	const lb = Math.log2, logB = (x, b = Math.E) => lb(x) / lb(b)
 	/**
 	@param {number} x get exponent of this
 	@param {number} [y=Math.E] base of logarithm
 	@return {number}
 	*/
-	Math.logB = function(x, y = Math.E) {return logB(+x, +y)};
+	Math.logB = function(x, y = Math.E) {return logB(+x, +y)}
 
-	Math.LOG2PHI = Math.log2(Math.PHI); Math.LNPHI = Math.log(Math.PHI); Math.LOG10PHI = Math.log10(Math.PHI);
+	Math.LOG2PHI = Math.log2(Math.PHI); Math.LNPHI = Math.log(Math.PHI); Math.LOG10PHI = Math.log10(Math.PHI)
 
-	Math.logPHI = function(x) {return logB(+x, Math.PHI)};
+	Math.logPHI = function(x) {return logB(+x, Math.PHI)}
 
-	Math.LOGPHI2 = Math.logPHI(2); Math.LOGPHIE = Math.logPHI(Math.E); Math.LOGPHI10 = Math.logPHI(10);
+	Math.LOGPHI2 = Math.logPHI(2); Math.LOGPHIE = Math.logPHI(Math.E); Math.LOGPHI10 = Math.logPHI(10)
 
-	Math.SQRT3 = sqrt(3);
-	Math.LN3 = Math.log(3); Math.LOG2_3 = Math.log2(3);
-	Math.LOG10_3 = Math.log10(3); Math.LOGPHI3 = Math.logPHI(3);
+	Math.SQRT3 = sqrt(3)
+	Math.LN3 = Math.log(3); Math.LOG2_3 = Math.log2(3)
+	Math.LOG10_3 = Math.log10(3); Math.LOGPHI3 = Math.logPHI(3)
 	//ternary lives also matter
-	Math.log3 = function(x) {return logB(+x, 3)};
+	Math.log3 = function(x) {return logB(+x, 3)}
 	//stop discriminating the number 3
-	Math.LOG3_2 = Math.log3(2); Math.LOG3E = Math.log3(Math.E);
-	Math.LOG3_10 = Math.log3(10); Math.LOG3PHI = Math.log3(Math.PHI);
+	Math.LOG3_2 = Math.log3(2); Math.LOG3E = Math.log3(Math.E)
+	Math.LOG3_10 = Math.log3(10); Math.LOG3PHI = Math.log3(Math.PHI)
 	//join The Order of The Triangle Of Power: https://youtu.be/sULa9Lc4pck
 
 	//Scientific Notation in base B
 	defProp(Float.prototype, 'toScientific', function toScientific(b = 10)
 		{
-			let x = this?.valueOf();
+			let x = this?.valueOf()
 			//JIC someone uses the `call` method
-			if (!isFloat(x)) throw new TypeErr("Number.prototype.toScientific requires that 'this' be a Number");
-			x = Float(x); b = Float(b); let e;
+			if (!isFloat(x)) throw new TypeErr("Number.prototype.toScientific requires that 'this' be a Number")
+			x = Float(x); b = Float(b); let e
 			if (!isInfNan(x)) {e = x && trunc(logB(abs(x), b)); x = x / b ** e}
 			else {e = x; x = sign(x)}
 			return x.toString(b) + ' * ' + '10' + '^' + e.toString(b) + ` (base 0d${b})`
 		}, 0b101)
 
-	const Mersenne = n => ~(-1n << n), MAX64 = Mersenne(0x40n);
-	IntN.MAX_UINT64 = MAX64; IntN.MAX_INT64 = MAX64 >> 1n; IntN.MIN_INT64 = -1n << 63n;
-	IntN.MAX_MP_EXP = 82_589_933n; /*Largest known Mersenne Prime exponent
+	const Mersenne = n => ~(-1n << n), MAX64 = Mersenne(0x40n)
+	IntN.MAX_UINT64 = MAX64; IntN.MAX_INT64 = MAX64 >> 1n; IntN.MIN_INT64 = -1n << 63n
+	IntN.MAX_MP_EXP = 82_589_933n /*Largest known Mersenne Prime exponent
 	Yes, the unpacked numeral fits in memory. It's just ~10MB, but ~30MB as decimal string.
 	To "unpack" it use: `Mersenne(IntN.MAX_MP_EXP)`
 	*/
 
 	//github.com/zloirock/core-js/blob/master/packages/core-js/modules/esnext.math.signbit.js
 	Float.signbit = function(number)
-		{return typeof number == 'number' && !isNan(number) && number < 0 || isNegZero(number)};
+		{return typeof number == 'number' && !isNan(number) && number < 0 || isNegZero(number)}
 
-	IntN.sign = function(n) {return sign(toIntN(n))}; IntN.abs = function(n) {return abs(toIntN(n))};
-	Numeric.sign = function(x) {return sign(toNumeric(x))}; Numeric.abs = function(x) {return abs(toNumeric(x))};
+	IntN.sign = function(n) {return sign(toIntN(n))}; IntN.abs = function(n) {return abs(toIntN(n))}
+	Numeric.sign = function(x) {return sign(toNumeric(x))}; Numeric.abs = function(x) {return abs(toNumeric(x))}
 
 	//should these really return 0 when `y == 0`?
-	Math.copySign = function(x, y) {return +x * sign(+y)};
-	IntN.copySign = function(x, y) {return toIntN(x) * sign(toIntN(y))};
-	Numeric.copySign = function(x, y) {x = toNumeric(x); return x * autoN(sign(toNumeric(y)), x)};
+	Math.copySign = function(x, y) {return +x * sign(+y)}
+	IntN.copySign = function(x, y) {return toIntN(x) * sign(toIntN(y))}
+	Numeric.copySign = function(x, y) {x = toNumeric(x); return x * autoN(sign(toNumeric(y)), x)}
 
 	const minmax = (arr, op, f) =>
 	{
-		let i = 0, v = f(arr[i]), m = v;
+		let i = 0, v = f(arr[i]), m = v
 		while (++i < arr.length) {v = f(arr[i]); if (op ? v > m : v < m) m = v}
 		return m
-	};
-	IntN.max = function(...values) {return minmax(values, true, toIntN)};
-	IntN.min = function(...values) {return minmax(values, false, toIntN)};
+	}
+	IntN.max = function(...values) {return minmax(values, true, toIntN)}
+	IntN.min = function(...values) {return minmax(values, false, toIntN)}
 
-	Numeric.max = function(...values) {return minmax(values, true, toNumeric)};
+	Numeric.max = function(...values) {return minmax(values, true, toNumeric)}
 	//TO-DO: return Number type only if it's safe, otherwise BigInt type.
 	//Only do that if there's multiple valid choices
-	Numeric.min = function(...values) {return minmax(values, false, toNumeric)};
+	Numeric.min = function(...values) {return minmax(values, false, toNumeric)}
 
 	const clamp = (x, min, max) =>
 	{
-		if (min > max) [min, max] = [max, min];
+		if (min > max) [min, max] = [max, min]
 		return x > max ? max : x < min ? min : x
-	};
-	Math.clamp = function(x, min, max) {return clamp(+x, +min, +max)};
-	IntN.clamp = function(x, min, max) {return clamp(toIntN(x), IntN(min), IntN(max))};
+	}
+	Math.clamp = function(x, min, max) {return clamp(+x, +min, +max)}
+	IntN.clamp = function(x, min, max) {return clamp(toIntN(x), IntN(min), IntN(max))}
 
 	//if the args are not coerced to the same type, the output isn't guaranteed to be the same type as `x`
-	Numeric.clamp = function(x, min, max) {return clamp(toNumeric(x), toNumeric(min), toNumeric(max))};
+	Numeric.clamp = function(x, min, max) {return clamp(toNumeric(x), toNumeric(min), toNumeric(max))}
 
 	//https://github.com/zloirock/core-js/blob/master/packages/core-js/internals/math-scale.js
 	//https://rwaldron.github.io/proposal-math-extensions/#sec-math.scale
 	Math.scale = function(x, inLow, inHigh, outLow, outHigh)
 	{
-		if (isInfNan(x = +x)) return x;
+		if (isInfNan(x = +x)) return x
 		inLow = +inLow; inHigh = +inHigh;
 		//avoid string concatenation if `outLow` is text
 		outLow = +outLow; outHigh = +outHigh;
@@ -600,42 +595,42 @@
 	}
 
 	/**
-	*converts degrees to radians by default
-	*@param {number} x
-	*@param {number} [y=360] the input scale
-	*@return {number}
+	converts degrees to radians by default
+	@param {number} x
+	@param {number} [y=360] the input scale
+	@return {number}
 	*/
 	Math.angleToRad = function(x, y = 360) {return Math.TAU / +y * +x};
 	//scale = 360: degrees
 	//scale = 1: Tau radians
 
 	/**
-	*converts radians to degrees by default
-	*@param {number} x
-	*@param {number} [y=360] the output scale
-	*@return {number}
+	converts radians to degrees by default
+	@param {number} x
+	@param {number} [y=360] the output scale
+	@return {number}
 	*/
 	Math.radToAngle = function(x, y = 360) {return +x / (Math.TAU / +y)};
 
 	const sine = Math.sin;
 	/**
-	*bouncing sine waveform (periodic parabola)
-	*@param {number} x
-	*@return {number}
+	bouncing sine waveform (periodic parabola)
+	@param {number} x
+	@return {number}
 	*/
 	Math.sinAbs = function(x) {return abs(sine((+x + Math.PI / 3) / 2)) * 2 - 1};
 
 	/**
-	*trigonometric sawtooth waveform
-	*@param {number} x
-	*@return {number}
+	trigonometric sawtooth waveform
+	@param {number} x
+	@return {number}
 	*/
 	Math.sawTrig = function(x) {x = +x / Math.TAU; return (x - floor(x + 0.5)) * 2};
 
 	/**
-	*triangular
-	*@param {number} x
-	*@return {number}
+	triangular
+	@param {number} x
+	@return {number}
 	*/
 	Math.triangleTrig = function(x) {return abs(Math.sawTrig(+x + Math.PI / 2)) * 2 - 1};
 
@@ -836,12 +831,12 @@
 	};
 
 	/**
-	*Euclidean algorithm for finding Highest Common Factor.
-	*returns correct values when inputs are rational numbers
-	*whose denominators are any power of 2 (including 2**0)
-	*@param {numeric} a
-	*@param {numeric} b
-	*@return {numeric}
+	Euclidean algorithm for finding Highest Common Factor.
+	returns correct values when inputs are rational numbers
+	whose denominators are any power of 2 (including 2**0)
+	@param {numeric} a
+	@param {numeric} b
+	@return {numeric}
 	*/
 	const Euclid = (a, b) => {while (b) [a, b] = [b, a % b]; return a};
 
