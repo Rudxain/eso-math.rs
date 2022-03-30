@@ -8,11 +8,12 @@
 		assert = function(c, m) {if (!c) throw new AssertionError(m)};
 
 	/**
-	*Short edition of `defineProperty`
-	*@param {object} O Object to modify
-	*@param {string} p key (property name) to define
-	*@param {*} v value to set
-	*@param {(boolean[]|numeric|string)} a bool descriptor with format [W, E, C]
+	Short edition of `defineProperty`
+	@function defProp
+	@param {object} O
+	@param {PropertyKey} p
+	@param {*} v value to set
+	@param {(boolean[]|numeric|string)} a bool descriptor with format [W, E, C]
 	*/
 	const defProp = (O, p, v, a) =>
 	{
