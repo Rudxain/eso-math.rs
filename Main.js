@@ -798,7 +798,7 @@
 	Numeric.isCube = function(n) {return isInt(n) && (isIntN(n) ? IntN : Math).isCube(n)}
 
 	//TO-DO: call in GCD and `factorize`
-	globalThis.toFraction = x =>
+	const toFraction = x =>
 	{
 		assert(isFloat(x), 'expected float but got ' + x)
 		if (isInt(x) || isNan(x)) return [x, 1]
