@@ -1,4 +1,4 @@
-# Introduction
+# Intro
 As some of you may know, Javascript is based on the ECMAscript standard, which is a language specification that defines how JS source code must be interpreted and how it behaves at runtime. This spec is always evolving, a lot of new functions, objects, methods, syntax, etc. is added or modified, a small amount of things are deprecated and removed. However, even though JS and ES are very well supported by the community, every change must be reviewed using a strict multi-stage process known as "tc39 Process" (that's what I understood, I may be wrong), which slows down the progress to make sure only wanted/necessary things are actually changed officially. There are many proposals, some of these **VERY** useful, others are still useful but in very specific scenarios.
 
 # Purpose
@@ -7,7 +7,7 @@ My purpose/goal with this library extension (because it extends the Standard Lib
 # Usage
 This library doesn't require installation, because it's not an app by itself (nor a NPM package), just internal "tools" that an app may use. So I usually select all text in a file, and 📋copy-paste it into the browser console or in a `<script>` tag within a HTML file.
 
-# Coding standards
+# Rules/Standards
 This section refers to formatting, style, paradigms, idioms, and related stuff. This repo (specially "Main.js") follows some "rules" or standards.
 1. **Every function must behave as if it was built-in.** This means strictly following the ES standard and extrapolating from there, to preserve consistency as much as possible, including the smallest details.
 2. **Keep it readable, simple, and educational.** Sometimes, these 3 are mutually exclusive, so I may include comments to add educational value, not just as clarification of what/why the code is doing. In the past, I sacrificed simplicity in exchange of unnecessary potential performance, but I realized the engine will (usually) know how to perfectly optimize something, and minificaton is very important because some minifiers may not recognize complex code. So keeping it simple has a net gain for everyone and everything, even though it can sacrifice educational value.
@@ -16,7 +16,7 @@ This section refers to formatting, style, paradigms, idioms, and related stuff. 
 5. **Formatting isn't strict.** Consistency and readability are appreciated, but formatting doesn't change the behavior of code, so it doesn't have too much priority.
 
 # DISCLAIMER
-Currently some part of source code in this repo is unfinished, badly optimized, in need of refactoring, or all at the same time (sorry lol). Most of the code is in good state though, so don't worry. If you're unsure and want to avoid problems, just read the code comments, most bugs and unfinished stuff are described there.
+Currently some part of source code in this repo is unfinished, badly optimized, in need of refactoring, or all at the same time (sorry lol). Most of the code is in good state though, so don't worry. If you're unsure and want to avoid problems, just read the code comments, most bugs and unfinished stuff are described there. I'm moving all of these to the Issues tab
 
-# WARNING: Side effects
-Some built-in methods are modified by this library. This library only modifies built-ins that "need fixing" (such as `isFinite`), so most built-ins are intact. The lack of localization of vars can allow external code to change the behavior of this library, or even cause error-throwing. I'll ensure (in the future) that all vars that need localization are localized by the closure.
+## WARNING: Side effects
+Some built-in methods are modified by this library. This library only modifies built-ins that "need fixing" (such as `isFinite`), so most built-ins are intact
