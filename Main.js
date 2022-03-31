@@ -273,26 +273,30 @@
 		let x0 = x >> (sizeOf(x, 1n, 0n) >> 1n), x1 = (x / x0 + x0) >> 1n
 		while (x1 < x0) {x0 = x1; x1 = (x / x1 + x1) >> 1n}
 		return x0
-	}, cbrt = x => root(x, 3)
+	},
+	cbrt = x => root(x, 3), {PI, E} = Math, TAU = Math.TAU = PI * 2 //no precision loss, because multiplier is power of two
 
-	Math.TAU = Math.PI * 2 //no precision loss, because multiplier is power of two
+	Math.SQRT5 = sqrt(5)
+	const PHI = Math.PHI = Math.SQRT5 / 2 + 0.5, //Golden Ratio
+		//in general, lb has better precision and performance than ln
+		lb = Math.log2, logB = (x, b = E) => lb(x) / lb(b),
+		random01 = Math.random, sine = Math.sin
 
-	Math.SQRT5 = sqrt(5); Math.PHI = Math.SQRT5 / 2 + 0.5 //Golden Ratio
+	assert(isInt(random01() * 2 ** 53), 'invalid RNG')
+	const fullRNG = !isInt(random01() * 2 ** 52) //future-proofing, JIC the spec includes the implicit bit
 
-	//in general, lb has better precision and performance than ln
-	const lb = Math.log2, logB = (x, b = Math.E) => lb(x) / lb(b)
 	/**
 	@param {number} x get exponent of this
-	@param {number} [y=Math.E] base of logarithm
+	@param {number} [y=E] base of logarithm
 	@return {number}
 	*/
-	Math.logB = function(x, y = Math.E) {return logB(+x, +y)}
+	Math.logB = function(x, y = E) {return logB(+x, +y)}
 
-	Math.LOG2PHI = Math.log2(Math.PHI); Math.LNPHI = Math.log(Math.PHI); Math.LOG10PHI = Math.log10(Math.PHI)
+	Math.LOG2PHI = Math.log2(PHI); Math.LNPHI = Math.log(PHI); Math.LOG10PHI = Math.log10(PHI)
 
-	Math.logPHI = function(x) {return logB(+x, Math.PHI)}
+	Math.logPHI = function(x) {return logB(+x, PHI)}
 
-	Math.LOGPHI2 = Math.logPHI(2); Math.LOGPHIE = Math.logPHI(Math.E); Math.LOGPHI10 = Math.logPHI(10)
+	Math.LOGPHI2 = Math.logPHI(2); Math.LOGPHIE = Math.logPHI(E); Math.LOGPHI10 = Math.logPHI(10)
 
 	Math.SQRT3 = sqrt(3)
 	Math.LN3 = Math.log(3); Math.LOG2_3 = Math.log2(3)
@@ -300,21 +304,21 @@
 	//ternary lives also matter
 	Math.log3 = function(x) {return logB(+x, 3)}
 	//stop discriminating the number 3
-	Math.LOG3_2 = Math.log3(2); Math.LOG3E = Math.log3(Math.E)
-	Math.LOG3_10 = Math.log3(10); Math.LOG3PHI = Math.log3(Math.PHI)
+	Math.LOG3_2 = Math.log3(2); Math.LOG3E = Math.log3(E)
+	Math.LOG3_10 = Math.log3(10); Math.LOG3PHI = Math.log3(PHI)
 	//join The Order of The Triangle Of Power: https://youtu.be/sULa9Lc4pck
 
 	//Scientific Notation in base B
 	defProp(Float.prototype, 'toScientific', function toScientific(b = 10)
-		{
-			let x = this?.valueOf()
-			//JIC someone uses the `call` method
-			if (!isFloat(x)) throw new TypeErr("Number.prototype.toScientific requires that 'this' be a Number")
-			x = Float(x); b = Float(b); let e
-			if (!isInfNan(x)) {e = x && trunc(logB(abs(x), b)); x = x / b ** e}
-			else {e = x; x = sign(x)}
-			return x.toString(b) + ' * ' + '10' + '^' + e.toString(b) + ` (base 0d${b})`
-		}, 0b101)
+	{
+		let x = this?.valueOf()
+		//JIC someone uses the `call` method
+		if (!isFloat(x)) throw new TypeErr("Number.prototype.toScientific requires that 'this' be a Number")
+		x = Float(x); b = Float(b); let e
+		if (!isInfNan(x)) {e = x && trunc(logB(abs(x), b)); x = x / b ** e}
+		else {e = x; x = sign(x)}
+		return x.toString(b) + ' * ' + '10' + '^' + e.toString(b) + ` (base 0d${b})`
+	}, 0b101)
 
 	const Mersenne = n => ~(-1n << n), MAX64 = Mersenne(0x40n)
 	IntN.MAX_UINT64 = MAX64; IntN.MAX_INT64 = MAX64 >> 1n; IntN.MIN_INT64 = -1n << 63n
@@ -369,10 +373,10 @@
 		//avoid string concatenation if `outLow` is text
 		outLow = +outLow; outHigh = +outHigh;
 		return (x - inLow) * (outHigh - outLow) / (inHigh - inLow) + outLow
-	};
+	}
 
 	//round towards unsigned (any) Infinity
-	Math.roundInf = function(x) {return roundInf(+x)};
+	Math.roundInf = function(x) {return roundInf(+x)}
 
 	//reverse the order of bits using "binary chop"
 	Math.rev32 = function(x)
@@ -384,7 +388,7 @@
 		x = ((x & 0xcccccccc) >>>  2) | ((x & 0x33333333) <<  2);
 		x = ((x & 0xaaaaaaaa) >>>  1) | ((x & 0x55555555) <<  1);
 		return x >>> 0 //toUint32
-	};
+	}
 
 	//circular left shift
 	Math.rotl32 = function(n, b)
@@ -392,106 +396,94 @@
 		n = +n; b = +b & 31; //coerce and throw the same error as built-ins, then apply mod 32
 		n = (n << b) | (n >>> (32 - b));
 		return n >>> 0
-	};
+	}
 	//circular right shift
-	Math.rotr32 = function(n, b) {n = +n; b = +b & 31; return ((n >>> b) | (n << (32 - b))) >>> 0};
+	Math.rotr32 = function(n, b) {n = +n; b = +b & 31; return ((n >>> b) | (n << (32 - b))) >>> 0}
 
 	//is the size of 0 really 1?
 	IntN.sizeOf = function(n, b = 8)
 	{
-		if (b = abs(IntN(b))) return sizeOf(abs(toIntN(n)), b, 1n);
+		if (b = abs(IntN(b))) return sizeOf(abs(toIntN(n)), b, 1n)
 		throw new TypeErr('Invalid measurement unit')
-	};
+	}
 
 	//lb(bigint)
 	IntN.log2 = function(n)
-		{if ((n = toIntN(n)) > 0n) return sizeOf(n, 1n, 0n); throw new RangeErr('Non-positive logarithmation')};
+		{if ((n = toIntN(n)) > 0n) return sizeOf(n, 1n, 0n); throw new RangeErr('Non-positive logarithmation')}
 
-	//3 is the closest integer to `Math.E`
+	//3 is the closest integer to `E`
 	IntN.logB = function(n, b = 3n)
 	{
-		n = toIntN(n); b = IntN(b);
-		if (n < 1n || b < 2n) throw new RangeErr('return value is -Infinity or NaN');
-		let i = 0n; while (n /= b) i++;
+		n = toIntN(n); b = IntN(b)
+		if (n < 1n || b < 2n) throw new RangeErr('return value is -Infinity or NaN')
+		let i = 0n; while (n /= b) i++
 		return i
-	};
+	}
 
 	Numeric.logB = function(x, b = 2)
 	{
-		x = toNumeric(x); b = toNumeric(b);
-		if (isNan(x) || isNan(b) || x < 0 || b <= 1) return NaN;
-		if (x == 0) return -Infinity;
-		if (x == 1) return 0;
+		x = toNumeric(x); b = toNumeric(b)
+		if (isNan(x) || isNan(b) || x < 0 || b <= 1) return NaN
+		if (x == 0) return -Infinity
+		if (x == 1) return 0
 		return (isIntN(x) && isIntN(b) ? IntN : Math).logB(x, b)
-	};
+	}
 
-	Math.root = function(x, y = 2) {return root(+x, +y)};
-	IntN.root = function(n, i = 2n) {return root(toIntN(n), toIntN(i))};
+	Math.root = function(x, y = 2) {return root(+x, +y)}
+	IntN.root = function(n, i = 2n) {return root(toIntN(n), toIntN(i))}
 	Numeric.root = function(x, n)
 	{
-		x = toNumeric(x); n = toNumeric(n);
-		if (isNan(x) || isNan(n)) return NaN;
-		const a = abs(x), ZERO = autoN(0, x); //x^x
-		if (!n) return a > 1 ? NaN : ZERO;
-		if (x < 0 && (isIntN(n) && !(n & 1n))) return NaN;
-		if (n < 0) return a ? (a == 1 ? sign(x) : ZERO) : Infinity;
-		if (!a) return ZERO;
-		return (isIntN(x) && isIntN(n) ? IntN : Math).root(x, n)
-	};
-	IntN.sqrt = function(n) {return sqrt(toIntN(n))};
-	Numeric.sqrt = function(x) {return (x = toNumeric(x)) < 0 ? NaN : sqrt(x)};
+		x = toNumeric(x); n = toNumeric(n)
+		if (isNan(x) || isNan(n)) return NaN
+		const a = abs(x), ZERO = autoN(0, x) //x XOR x
+		//TO-DO: minus 0 is never returned, fix later
+		if (!n) return a > 1 ? NaN : ZERO
+		if (x < 0 && (isIntN(n) && !(n & 1n))) return NaN
+		if (n < 0) return a ? (a == 1 ? sign(x) : ZERO) : Infinity
+		return a && root(x, n)
+	}
+	IntN.sqrt = function(n) {return sqrt(toIntN(n))}
+	Numeric.sqrt = function(x) {return (x = toNumeric(x)) < 0 ? NaN : sqrt(x)}
 
-	const random01 = Math.random;
-	assert(isInt(random01() * 2 ** 52), 'expected 52 random bits, but got 53')
-	/*
-	get random safe integer (with random sign).
-	only 52bits are generated by `Math.random`,
-	so "rand() << 53" must be used to allocate space for the missing bit.
-	TO-DO: make it return -0
+	/**
+	Returns a pseudorandom signed "Safe Integer". TO-DO: make it return -0
+	@return {number}
 	*/
-	Math.randomSafe = function()
+	Math.randomSafeInt = function()
 	{
-		const b = random01() * 4 | 0; //instead of calling thrice, we call it only twice
-		return random01() * (b & 2 ? -2 : 2) ** 53 + (b & 1)
-	};
+		//we need 54 bits, so only 2 calls are needed in both cases
+		if (fullRNG) {return random01() * (random01() < 0.5 ? -2 : 2) ** 53}
+		else {const b = random01() * 4 | 0; return random01() * (b & 2 ? -2 : 2) ** 53 + (b & 1)}
+	}
 
 	//interval [0, n), or (n, 0] if negative. By default, it returns an uInt64
 	IntN.random = function(n = 1n << 0x40n)
 	{
-		n = toIntN(n);
-		const n_len = sizeOf(n, 1n, 1n), s = n < 0n; if (s) n = -n; //abs
+		n = toIntN(n); const s = (n) < 0n
+		if (s) n = -n; //abs
 		if (n < 2n) {if (n) {return 0n} else throw new RangeErr('requested an int equal and NOT equal to zero')}
-		let x, x_len, max;
+		const n_len = sizeOf(n, 1n, 1n), b = fullRNG ? 53n : 52n
+		let x, x_len, max
 		do {
 			//in this context, the size of 0 is defined as zero instead of 1
 			x = x_len = 0n;
 			do {
-				//build the bigint in 52b blocks, to discard less rand data
-				x <<= 52n; x_len += 52n;
-				/*
-				"`crypto.getRandomValues` is overkill" I was mistaken:
-				Repeatedly calling the RNG causes each 52b block in the bigint to be correlated to its neighbors.
-				One solution is to call RNG at random locations within the bigint, XORing it with whatever bits are there.
-				But that would increase the number of times RNG gets called, potentially exhausting the internal state,
-				and therefore repeating the period for the entire browser window,
-				unless the engine notices and re-seeds the state.
-				It seems the easiest solution is the slowest, calling `getRandomValues`.
-				On the plus side, it would make this function crypto-secure,
-				which would render redundant any dedicated method (something like `BigInt.cryptoRandom`).
-				*/
-				x |= IntN(random01() * 2 ** 52)
+				//build the bigint in `b` blocks, to discard less rand data
+				x <<= b; x_len += b;
+				//`crypto.getRandomValues` is probably unnecesary
+				x |= IntN(random01() * 2 ** (52 + fullRNG))
 			} while (x_len <= n_len)
 			//this condition and the `-1` allow `%` to never be no-op
 			const len_d = x_len - n_len - 1n;
 			x >>= len_d; x_len -= len_d;
-			max = Mersenne(x_len);
+			max = Mersenne(x_len)
 			//https://stackoverflow.com/a/10984975
 		} while (x >= max - max % n)
 		x %= n; return s ? -x : x
-	};
+	}
 
 	//Euclidean division
-	Math.divEuclid = function(x, y) {return floor(+x / abs(+y)) * sign(+y)};
+	Math.divEuclid = function(x, y) {return floor(+x / abs(+y)) * sign(+y)}
 	//the other variants of int-div are too short
 
 	/**
@@ -517,7 +509,7 @@
 			case 'trunc': return q
 			case 'roundInf': return q + (s ? -1 : 1)
 		}
-	};
+	}
 
 	//Standard Mathematical Modulo (floor). NOT remainder
 	//if args are floats, it can have precision errors, similarly to the naive divison-based definition
@@ -536,7 +528,7 @@
 		//fallback to 'floor' if 'F' is "euclid" or just invalid
 		if (!['floor', 'trunc', 'ceil', 'round', 'roundInf'].includes(F)) F = 'floor';
 		return n - d * Macro[F](q);
-	};
+	}
 
 	IntN.mod = function(n, d, F)
 	{
@@ -545,31 +537,31 @@
 		if (F == 'euclid') d = abs(d);
 		if (!['floor', 'trunc', 'ceil', 'round', 'roundInf'].includes(F)) F = 'floor';
 		return n - d * IntN.div(n, d, F);
-	};
+	}
 
 	Numeric.mod = function(n, d, F)
 	{
 		n = toNumeric(n); d = toNumeric(d);
 		return (isIntN(n) && isIntN(d) ? IntN : Math).mod(n, d, F)
-	};
+	}
 
 	Math.modPow = function(b, e, m, F)
 	{
-		if (isNan(b = +b) || isNan(e = +e) || isNan(m = +m)) return NaN;
-		const mod = Math.mod;
+		if (isNan(b = +b) || isNan(e = +e) || isNan(m = +m)) return NaN
+		const mod = Math.mod
 		//WARNING: precision won't be preserved if exponent isn't int
-		if (e < 2 || e % 1) return mod(b ** e, m, F);
-		b = mod(b, m, F);
-		if (!b) return b;
-		let out = 1;
+		if (e < 2 || e % 1) return mod(b ** e, m, F)
+		b = mod(b, m, F)
+		if (!b) return b
+		let out = 1
 		while (e)
 		{
-			if (e % 2) out = mod(out * b, m, F);
+			if (e % 2) out = mod(out * b, m, F)
 			e = trunc(e / 2);
-			b = mod(b * b, m, F);
+			b = mod(b * b, m, F)
 		}
 		return out
-	};
+	}
 
 	IntN.modPow = function(b, e, m, F)
 	{
@@ -600,7 +592,7 @@
 	@param {number} [y=360] the input scale
 	@return {number}
 	*/
-	Math.angleToRad = function(x, y = 360) {return Math.TAU / +y * +x};
+	Math.angleToRad = function(x, y = 360) {return TAU / +y * +x}
 	//scale = 360: degrees
 	//scale = 1: Tau radians
 
@@ -610,71 +602,70 @@
 	@param {number} [y=360] the output scale
 	@return {number}
 	*/
-	Math.radToAngle = function(x, y = 360) {return +x / (Math.TAU / +y)};
+	Math.radToAngle = function(x, y = 360) {return +x / (TAU / +y)}
 
-	const sine = Math.sin;
 	/**
 	bouncing sine waveform (periodic parabola)
 	@param {number} x
 	@return {number}
 	*/
-	Math.sinAbs = function(x) {return abs(sine((+x + Math.PI / 3) / 2)) * 2 - 1};
+	Math.sinAbs = function(x) {return abs(sine((+x + PI / 3) / 2)) * 2 - 1}
 
 	/**
 	trigonometric sawtooth waveform
 	@param {number} x
 	@return {number}
 	*/
-	Math.sawTrig = function(x) {x = +x / Math.TAU; return (x - floor(x + 0.5)) * 2};
+	Math.sawTrig = function(x) {x = +x / TAU; return (x - floor(x + 0.5)) * 2}
 
 	/**
 	triangular
 	@param {number} x
 	@return {number}
 	*/
-	Math.triangleTrig = function(x) {return abs(Math.sawTrig(+x + Math.PI / 2)) * 2 - 1};
+	Math.triangleTrig = function(x) {return abs(Math.sawTrig(+x + PI / 2)) * 2 - 1}
 
 	//square wave defined as piecewise
 	//because Math.sign(Math.sin(x)) is inefficient
 	Math.squareTrig = function(x)
 	{
-		x = Math.mod(x, Math.TAU); //normalize
+		x = mod(+x, TAU); //normalize
 		//is -0 returned correctly?
-		return x && sign(Math.PI - x)
-	};
+		return x && sign(PI - x)
+	}
 
 	//https://math.stackexchange.com/a/1019099
 	//semicircular cicloid
 	Math.circleTrig = function(x)
 	{
-		x = Math.mod(x, Math.TAU);
-		const F = x => sqrt(1 - (x / (Math.PI / 2) - 1) ** 2);
-		return x < Math.PI ? F(x) : -F(x - Math.PI)
-	};
+		x = mod(+x, TAU);
+		const F = x => sqrt(1 - (x / (PI / 2) - 1) ** 2);
+		return x < PI ? F(x) : -F(x - PI)
+	}
 	//missing periodic Gauss and arcsin, but It's not important
 
 	//count trailing zeros in binary
 	const ctz = n =>
 	{
-		const B = isIntN(n), ONE = B ? 1n : 1;
-		let c = ONE ^ ONE; //autoN(0, n)
+		const B = isIntN(n), ONE = B ? 1n : 1
+		let c = ONE ^ ONE //autoN(0, n)
 		while ( !(n & ONE) ) {c += ONE; n = B ? n >> 1n : n >>> 1}
 		return c
-	};
+	}
 	//logarithmic binary search is faster than linear, but the engine will do it for us
-	Math.ctz32 = function(x) {return ctz(+x >>> 0)};
+	Math.ctz32 = function(x) {return ctz(+x >>> 0)}
 
-	IntN.ctz = function(n) {if (n = toIntN(n)) return ctz(n); throw new RangeErr('return value is Infinity')};
+	IntN.ctz = function(n) {if (n = toIntN(n)) return ctz(n); throw new RangeErr('return value is Infinity')}
 
 	Numeric.ctz = function(n)
 	{
-		if (isIntN(n = toNumeric(n))) return n ? ctz(n) : Infinity;
-		n = trunc(abs(+n));
-		if (isInfNan(n)) return NaN;
-		if (!n) return 0x400; //(rounded) `Math.log2(Number.MAX_VALUE)` = (truncated) ilb(2 ^ 1024 - 1) + 1
-		if (n % 2) return 0;
-		n = castFloatToIntN(n);
-		const e = ((n >> 52n) & 0x3ffn) - 51n; //get exponent
+		if (isIntN(n = toNumeric(n))) return n ? ctz(n) : Infinity
+		n = trunc(abs(+n))
+		if (isInfNan(n)) return NaN
+		if (!n) return 0x400 //(rounded) `Math.log2(Number.MAX_VALUE)` = (truncated) ilb(2 ^ 1024 - 1) + 1
+		if (n % 2) return 0
+		n = castFloatToIntN(n)
+		const e = ((n >> 52n) & 0x3ffn) - 51n //get exponent
 		n &= Mersenne(52n); //mask mantissa
 		n = n ? ctz(n) : 52n;
 		return Float(e + n)
@@ -686,109 +677,105 @@
 		//floats larger than 53b always have trailing zeros, so there's no need for `trunc`
 		return (c > 0 && c) + Math.ctz32(n) + (n | 0 ? 0 : n >= 2 ** 32 && Math.ctz32(n / 2 ** 32))
 		*/
-	};
+	}
 
 	Numeric.isDivisible = function(n, d)
 	{
 		n = n?.valueOf(); d = d?.valueOf();
 		return typeof n == typeof d && isInt(n) && isInt(d) && d && !(n % d)
-	};
+	}
 
 	//1 is odd, so it's not a power of 2. It's a trivial power, because 1 is a power of any real number
-	const isPow2 = x => x > 1 && !(x & (x - 1n));
-	IntN.isPow2 = function(n) {return isIntN(n) && isPow2(n)};
-	IntN.isMersenne = function(n) {return isIntN(n) && n > 0n && !(n & (n + 1n))};
-	Math.isPow2 = function(n) {return isInt(n = +n) && isPow2(IntN(n))};
+	const isPow2 = x => x > 1 && !(x & (x - 1n))
+	IntN.isPow2 = function(n) {return isIntN(n) && isPow2(n)}
+	IntN.isMersenne = function(n) {return isIntN(n) && n > 0n && !(n & (n + 1n))}
+	Math.isPow2 = function(n) {return isInt(n = +n) && isPow2(IntN(n))}
 	//every unsafe int has trailing zeros
-	Math.isMersenne = function(n) {return isInt(n = +n) && n < 2 ** 53 && IntN.isMersenne(IntN(n))};
+	Math.isMersenne = function(n) {return isInt(n = +n) && n < 2 ** 53 && IntN.isMersenne(IntN(n))}
 
 	//for educational purposes see: en.wikipedia.org/wiki/Hamming_weight#Efficient_implementation
 	//without optimization, it would be very slow
 	const popcnt = x =>
 	{
-		const B = isIntN(x);
-		let c = B ? 0n : 0;
+		const B = isIntN(x); let c = B ? 0n : 0
 		while (x) {c += x & (B ? 1n : 1); x = B ? x >> 1n : x >>> 1}
 		return c
-	};
-	Math.popcnt32 = function(x) {return popcnt(+x >>> 0)};
+	}
+	Math.popcnt32 = function(x) {return popcnt(+x >>> 0)}
 	IntN.popcnt = function(n)
 	{
 		if ((n = toIntN(n)) >= 0n) return popcnt(n)
 		throw new RangeErr('return value is Infinity')
-	};
+	}
 	Numeric.popcnt = function(n)
 	{
-		if (isIntN(n = toNumeric(n))) return n < 0n ? Infinity : popcnt(n);
-		if (isInfNan(n)) return NaN;
-		n = abs(trunc(+n));
+		if (isIntN(n = toNumeric(n))) return n < 0n ? Infinity : popcnt(n)
+		if (isInfNan(n)) return NaN
+		n = abs(trunc(+n))
 		//mantissa popcount, because exponent doesn't matter
 		return Float(popcnt(castFloatToIntN(n) & Mersenne(52n)) + 1n)
-	};
+	}
 
 	//bitwise (logical base 2, not artihmetic) carryless multiplication
 	Math.clmul32 = function(x, y)
 	{
 		x = +x >>> 0; y = +y >>> 0;
-		let prod = 0;
+		let prod = 0
 		while (y) {prod ^= (y & 1) && x; y >>>= 1; x <<= 1}
 		return prod >>> 0
-	};
+	}
 	//IDK if the naive definition is fast
 	IntN.clmul = function(a, b)
 	{
-		a = toIntN(a); b = toIntN(b);
+		a = toIntN(a); b = toIntN(b)
 		//can it be defined?
-		if (a < 0n || b < 0n) throw new RangeErr('negative carryless product is undefined');
-		let out = 0n;
-		while (b) {out ^= (b & 1n) && a; b >>= 1n; a <<= 1n}
-		return out
-	};
+		if (a < 0n || b < 0n) throw new RangeErr('negative carryless product is undefined')
+		let prod = 0n
+		while (b) {prod ^= (b & 1n) && a; b >>= 1n; a <<= 1n}
+		return prod
+	}
 
 	Numeric.clmul = function(a, b)
 	{
-		a = toNumeric(a); b = toNumeric(b);
-		if (a < 0 || b < 0 || isInfNan(a) || isInfNan(b)) return NaN;
-		a = IntN(trunc(a)); b = IntN(trunc(b));
+		a = toNumeric(a); b = toNumeric(b)
+		if (a < 0 || b < 0 || isInfNan(a) || isInfNan(b)) return NaN
+		a = IntN(trunc(a)); b = IntN(trunc(b))
 		return IntN.clmul(a, b)
-	};
+	}
 
 	Math.isSquare = function(n)
 	{
 		if (!isInt(n = +n)) return false
 		if (n < 2) return n >= 0
-		const c = Numeric.ctz(n);
-		if (c % 2) return false;
-		n /= 2 ** c;
+		const c = Numeric.ctz(n)
+		if (c % 2) return false
+		n /= 2 ** c
 		return n % 8 == 1 && isInt(sqrt(n))
-	};
+	}
 
 	IntN.isSquare = function(n)
 	{
 		if (!isIntN(n)) return false
 		if (n < 2n) return n >= 0n
-		const c = ctz(n);
-		if (c & 1n) return false;
-		n >>= c;
+		const c = ctz(n)
+		if (c & 1n) return false
+		n >>= c
 		return n & 7n == 1n && sqrt(n) ** 2n == n
-	};
+	}
 
-	Numeric.isSquare = function(n) {return isInt(n) && (isIntN(n) ? IntN : Math).isSquare(n)};
+	Numeric.isSquare = function(n) {return isInt(n) && (isIntN(n) ? IntN : Math).isSquare(n)}
 
 	Math.isCube = function(n)
 	{
 		if (!isInt(n = abs(+n))) return false
-		if (n < 2) return true;
-		const ctz = Numeric.ctz(n); if (ctz % 3) return false;
-		n /= 2 ** ctz;
-		//math.stackexchange.com/a/2190888
+		if (n < 2) return true
+		const c = Numeric.ctz(n); if (c % 3) return false
+		n /= 2 ** c
+		//https://math.stackexchange.com/a/2190888
 		let m = abs(n % 9); if (m > 1 && m != 8) return false
 			m = abs(n % 7); if (m > 1 && m != 6) return false
 		return isInt(cbrt(n))
-	};
-	//assert(Math.isCube((random01() * 2 ** 17) ** 3), '`Math.isCube` is bugged')
-	//currently, this throws
-
+	}
 	IntN.isCube = function(n)
 	{
 		if (!isIntN(n)) return false; if (!n) return true
@@ -800,35 +787,34 @@
 		Inverting the math sign of an odd number doesn't need sum, just (~n | 1n).
 		But we can reduce those 2 ops to 1. XORing with minus-two flips all bits except LSB,
 		like this: `if (n < 0n) n ^= -2n`
-		bitwise ops are parallelizable, increasing potential speed.
+		bitwise ops are fully parallelizable, increasing potential speed.
 		However, this micro-algorithm is deprecated because computing the `abs` of a remainder < 9 is faster
 		*/
 		let m = abs(n % 9n); if (m > 1n && m != 8n) return false
 			m = abs(n % 7n); if (m > 1n && m != 6n) return false
 		return cbrt(n) ** 3n == n
-	};
-	//assert(BigInt.isCube(BigInt.random() ** 3n), '`BigInt.isCube` is bugged')
-	//it seems `cbrt` has problems
+	}
 
-	Numeric.isCube = function(n) {return isInt(n) && (isIntN(n) ? IntN : Math).isCube(n)};
+	Numeric.isCube = function(n) {return isInt(n) && (isIntN(n) ? IntN : Math).isCube(n)}
 
 	//TO-DO: call in GCD and `factorize`
-	const toFraction = x =>
+	globalThis.toFraction = x =>
 	{
 		assert(isFloat(x), 'expected float but got ' + x)
-		if (isInt(x) || isNan(x)) return [x, 1];
-		const s = x < 0; if (s) x = -x; //abs
-		if (x == Infinity) return [s ? -1 : 1, 0];
-		const n = trunc(x); x -= n;
-		for (let f0 = [0, 1], f1 = [1, 1];;)
+		if (isInt(x) || isNan(x)) return [x, 1]
+		const s = x < 0; if (s) x = -x //abs
+		if (x == Infinity) return [s ? -1 : 1, 0]
+		const n = trunc(x); x -= n
+		let f0 = [0, 1], f1 = [1, 1], midOld = NaN //ensure same-type comparison
+		for (;;)
 		{
-			const fm = [f0[0] + f1[0], f0[1] + f1[1]], mid = fm[0] / fm[1];
-			//TO-DO: compare new `mid` with old `mid`, to avoid infinite loops
-			//fractions like `28 / 3` cause it to never halt
-			if (mid == x) {fm[0] += n * fm[1]; if (s) fm[0] *= -1; return fm}
-			else if (mid < x) {f0 = fm} else f1 = fm
+			const fm = [f0[0] + f1[0], f0[1] + f1[1]], mid = fm[0] / fm[1]
+			//guaranteed to halt
+			if (mid == x || midOld == mid) {fm[0] += n * fm[1]; if (s) fm[0] *= -1; return fm}
+			mid < x ? f0 = fm : f1 = fm
+			midOld = mid
 		}
-	};
+	}
 
 	/**
 	Euclidean algorithm for finding Highest Common Factor.
@@ -838,7 +824,7 @@
 	@param {numeric} b
 	@return {numeric}
 	*/
-	const Euclid = (a, b) => {while (b) [a, b] = [b, a % b]; return a};
+	const Euclid = (a, b) => {while (b) [a, b] = [b, a % b]; return a}
 
 	Math.gcd = function(x, y)
 	{
@@ -853,7 +839,7 @@
 		return (Math.isMersenne(x) && Math.isMersenne(y)
 			? 2 ** Math.gcd(trunc(Math.log2(x)) + 1, trunc(Math.log2(y)) + 1) - 1
 			: Euclid(x, y)) * 2 ** k
-	};
+	}
 
 	//BEHOLD THE ULTIMATE GCD ALGORITHM (ok maybe I exaggerated)
 	IntN.gcd = function(a, b)
@@ -947,30 +933,30 @@
 			if (b) continue;
 		}
 		return a << k
-	};
+	}
 
 	Numeric.gcd = function(a, b)
 	{
 		a = abs(toNumeric(a)); b = abs(toNumeric(b));
 		return isIntN(a) && isIntN(b) ? IntN.gcd(a, b) : Math.gcd(a, b)
-	};
+	}
 	//should `abs` be a tail-call in all of these (GCDs and LCMs)? it seems better to use it at the start
 	Math.lcm = function(x, y)
 	{
 		x = abs(+x); y = abs(+y);
 		return x / Math.gcd(x, y) * y
 		//lower overflow probability than `a * b / Math.gcd(a, b)`
-	};
+	}
 
 	IntN.lcm = function(a, b)
 	{
 		a = abs(toIntN(a)); b = abs(toIntN(b));
 		return a / IntN.gcd(a, b) * b
 		//better performance than `a * b / BigInt.gcd(a, b)`
-	};
+	}
 
 	Numeric.lcm = function(a, b)
-		{a = abs(toNumeric(a)); b = abs(toNumeric(b)); return a / Numeric.gcd(a, b) * b};
+		{a = abs(toNumeric(a)); b = abs(toNumeric(b)); return a / Numeric.gcd(a, b) * b}
 
 	//2nd lowest common divisor
 	//the 1st is always 1
@@ -980,7 +966,7 @@
 		const rt = sqrt(a * b), ONE = autoN(1, a);
 		for (let i = autoN(2, ONE); i <= rt; i++) if (!(a % i || b % i)) return i;
 		return ONE
-	};
+	}
 
 	//Arithmetic-Geometric Mean. This is just an approximation, because of rounding errors
 	Math.agm = function(x, y)
@@ -994,7 +980,7 @@
 		100% halt guarantee. If it doesn't halt, you get a refund lol
 		*/
 		return x
-	};
+	}
 
 	//returns non-trivial divisors (proper divs) of x
 	Math.divisors = function(x)
@@ -1013,7 +999,7 @@
 		for (i = 1; i <= c; i++) bin[bin.length] = 2 ** i;
 		//TO-DO: add and fix missing multiplication and insertion
 		return out
-	};
+	}
 
 	//array of sorted Primes, no gaps (dense)
 	const Pa = [3, 5], //2 is unnecessary because CTZ
@@ -1034,7 +1020,7 @@
 				Pd.add(x); break;
 			}
 			Pa[Pa.length] = x
-		};
+		}
 	//remember, those 3 constants are static, so their data is preserved between calls to `factorize`
 
 	Math.factorize = function(x)
@@ -1068,12 +1054,12 @@
 		}
 		if (x > 1) {out.set(x, (out.get(x) || 0) + rt); Pd.add(x)}
 		return out
-	};
+	}
 
 	const exp = Math.exp,
 		//factorial approximations for non-ints.
 		//These 3 are trash, none make use of full precision. I need help to make these more accurate
-		Gosper = x => sqrt((+x + 1 / 6) * Math.TAU) * (x / Math.E) ** x, //improvement of Stirling
+		Gosper = x => sqrt((+x + 1 / 6) * TAU) * (x / E) ** x, //improvement of Stirling
 		//Gamma Function (+1) defined as Summation instead of Integration
 		Gamma = x => {let t = 1, s0, s1 = 0 ** x; do {s0 = s1; s1 += t ** x * exp(-t); t++} while (s0 != s1); return s0},
 		//https://en.wikipedia.org/wiki/Lanczos_approximation#Simple_implementation
@@ -1081,15 +1067,15 @@
 		{
 			const p = [676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059,
 				12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
-			if (z < 0.5) return Math.PI / (sine(Math.PI * z) * Lanczos(1 - z))
+			if (z < 0.5) return PI / (sine(PI * z) * Lanczos(1 - z))
 			else
 			{
 				z--; let x = 0.99999999999980993;
 				for (let i = 0; i < p.length; i++) x += p[i] / (z + i + 1);
 				const t = z - 0.5 + p.length;
-				return sqrt(Math.TAU) * t ** (z + 0.5) * exp(-t) * x
+				return sqrt(TAU) * t ** (z + 0.5) * exp(-t) * x
 			}
-		};
+		}
 	Math.factorial = function(x)
 	{
 		if ((x = +x) >= 171) return Infinity
@@ -1102,7 +1088,7 @@
 		let out = 1;
 		for (let i = 2; i <= x; i++) out *= i;
 		return out
-	};
+	}
 
 	//https://en.wikipedia.org/wiki/Factorial#Properties
 	IntN.factorial = function(n)
@@ -1118,16 +1104,16 @@
 		https://github.com/PeterLuschny/Fast-Factorial-Functions
 		https://web.archive.org/web/20050211005140/http://www.luschny.de/math/factorial/Description.htm
 		*/
-	};
+	}
 	//TO-DO: add rising and falling Fs
 	Numeric.factorial = function(x, k = 1)
 	{//if k > 1 returns multifactorial of that degree
 		let s; [s, x] = signabs(toNumeric(x));
 		k = trunc(toNumeric(k)) * s; //TODO: fix error when not same-type
 		let out = autoN(1, x);
-		for (let i = k, len = 1n; len <= x; i += k) {out *= i; len++; if (isInfNan(out)) return out};
+		for (let i = k, len = 1n; len <= x; i += k) {out *= i; len++; if (isInfNan(out)) return out}
 		return out
-	};
+	}
 
 	//iterative inverse int Fact
 	//if this got the inverse Gamma function, it would be more accurate
@@ -1139,7 +1125,7 @@
 		if (!k) return out
 		while (abs(n) > 1) {n /= out; out += k}
 		return out
-	};
+	}
 
 
 	//"Termial/Additorial/Sumatorial" Fs
@@ -1151,11 +1137,11 @@
 		const ONE = autoN(1, x = toNumeric(x)), TWO = autoN(2, ONE);
 		//lower overflow probability
 		return x % TWO ? (x + ONE) / TWO * x : x / TWO * (x + ONE)
-	};
+	}
 
 	//get index of a trinum
 	Numeric.triNum_inv = function(x)
-		{return isIntN(x = toNumeric(x)) ? (sqrt((x << 3n) | 1n) - 1n) >> 1n : (sqrt(8 * x + 1) - 1) / 2};
+		{return isIntN(x = toNumeric(x)) ? (sqrt((x << 3n) | 1n) - 1n) >> 1n : (sqrt(8 * x + 1) - 1) / 2}
 
 	//get TriNums up to index x (inclusive)
 	Numeric.triSeq = function(x)
@@ -1164,23 +1150,23 @@
 		const out = [x ^ x]; //auto-type Zero
 		for (let i = s; out.length <= x; i += s) out[out.length] = i + out[out.length - 1];
 		return out
-	};
+	}
 
 	//get Nth Fibonacci faster than recursion
 	Math.Fib = function(x)
 	{
 		let s; [s, x] = signabs(+x);
-		return round(Math.PHI ** x / Math.SQRT5) * (s == -1 && x % 2 == 0 ? -1 : 1)
-	};
+		return round(PHI ** x / Math.SQRT5) * (s == -1 && x % 2 == 0 ? -1 : 1)
+	}
 	//en.wikipedia.org/wiki/Generalizations_of_Fibonacci_numbers#Extension_to_negative_integers
 
 	//get index of a Fib num `x`
 	Math.Fib_inv = function(x)
 	{
 		let s; [s, x] = signabs(+x);
-		const i = floor(logB(x * Math.SQRT5 + 0.5, Math.PHI))
+		const i = floor(logB(x * Math.SQRT5 + 0.5, PHI))
 		return !(i % 2) && s == -1 ? NaN : i * s
-	};
+	}
 
 	//en.wikipedia.org/wiki/Lucas_sequence
 	//co-recursive Lucas function
@@ -1193,7 +1179,7 @@
 			L = F ? [autoN(2, ONE), P] : [ZERO, ONE];
 		while (L.length <= n) L[L.length] = P * L[L.length - 1] - Q * L[L.length - 2];
 		return L
-	};
+	}
 
 	//TO-DO: maybe insert Dot-Product here
 
