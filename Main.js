@@ -198,7 +198,11 @@
 	Float.isSafeNumber = function(number)
 		{return typeof number == 'number' && abs(number) >= Float.MIN_NORMAL && abs(number) <= Float.MAX_SAFE_INTEGER}
 
-	//"KahanBabushkaKleinSum". Summation with minimal rounding errors
+	/**
+	"KahanBabushkaKleinSum". Summation with minimal rounding errors
+	@param {number} values
+	@return {number}
+	*/
 	Math.sum = function(...values)
 	{
 		let sum = 0, cs = 0, ccs = 0, c = 0, cc = 0
@@ -286,6 +290,7 @@
 	const fullRNG = !isInt(random01() * 2 ** 52) //future-proofing, JIC the spec includes the implicit bit
 
 	/**
+	Logarithm in any base
 	@param {number} x get exponent of this
 	@param {number} [y=E] base of logarithm
 	@return {number}
@@ -798,7 +803,7 @@
 	Numeric.isCube = function(n) {return isInt(n) && (isIntN(n) ? IntN : Math).isCube(n)}
 
 	//TO-DO: call in GCD and `factorize`
-	const toFraction = x =>
+	globalThis.toFraction = x =>
 	{
 		assert(isFloat(x), 'expected float but got ' + x)
 		if (isInt(x) || isNan(x)) return [x, 1]
@@ -1189,8 +1194,9 @@
 		//`for in` is slower and has more potential side-effects
 		for (const k of Object.keys(O))
 		{
-			defProp(O, k, O[k], +(typeof O[k] == 'function') && 0b101)
-			if (typeof O[k] == 'function') defProp(O[k], 'name', O[k].name || k, 1)
+			const isF = typeof O[k] == 'function'
+			defProp(O, k, O[k], +isF && 0b101)
+			if (isF) defProp(O[k], 'name', O[k].name || k, 1) //name all anonymous funcs
 		}
 	}
 })()
