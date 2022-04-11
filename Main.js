@@ -101,7 +101,6 @@
 		castFloatToIntN = f => new IntNArr(new FloatArr([f]).buffer)[0],
 		castIntNToFloat = n => new FloatArr(new IntNArr([n]).buffer)[0]
 
-	//TO-DO: fix wrong output when strings are large (minor bug, because the original/built-in also has it)
 	globalThis.isFinite = function(value) {return isIntN(value) || !isInfNan(Float(value))}
 	//both `parseInt` AND `parseFloat` never throw on bigints, so I decided to "fix" these other functions
 	globalThis.isNaN = function(value) {return isNan(Float(value))}
@@ -133,7 +132,7 @@
 				case '\x2B': string = string.substring(1)
 			}
 		}
-		radix = Float(radix) | 0 //TO-DO: fix precision loss when bigint or string
+		radix = Float(radix) | 0
 		let stripPrefix = true
 		if (radix) //it will never be NaN, no need to check for zero
 		{
@@ -159,15 +158,12 @@
 		return sign * int
 	}
 
-	//TO-DO: fix error when strings have 1 "." (dot)
 	IntN.from = function(value)
 	{
 		if (isIntN(value)) return value.valueOf()
 		if (isFloat(value)) return (value = trunc(+value)) ?
 			(isInf(value) ? (value < 0 ? -1n : 1n) : IntN(value)) : 0n
-		if (!value) return 0n
-		value = value.valueOf()
-		if (!value) return 0n
+		if ( !(value && (value = value.valueOf())) ) return 0n
 		if (!isPrimitive(value)) return 1n
 		return IntN(value)
 	}
@@ -209,11 +205,11 @@
 		/*
 		iterators can be replaced by using `ITERABLE.prototype[Symbol.iterator]`
 		where "ITERABLE" can be an array, string, or any other object (it also allows adding an iterator)
-		so `for ... of` loops must be avoided (this is a to-do)
+		so `for ... of` loops must be avoided
 		*/
-		for (let v of values)
+		for (let i = 0; i < values.length; i++)
 		{
-			v = +v; let t = sum + v
+			const v = +values[i]; let t = sum + v
 			c = abs(sum) >= abs(v) ? (sum - t) + v : (v - t) + sum;
 			sum = t; t = cs + c;
 			cc = abs(cs) >= abs(c) ? (cs - t) + c : (c - t) + cs;
@@ -354,8 +350,6 @@
 	IntN.min = function(...values) {return minmax(values, false, toIntN)}
 
 	Numeric.max = function(...values) {return minmax(values, true, toNumeric)}
-	//TO-DO: return Number type only if it's safe, otherwise BigInt type.
-	//Only do that if there's multiple valid choices
 	Numeric.min = function(...values) {return minmax(values, false, toNumeric)}
 
 	const clamp = (x, min, max) =>
@@ -441,7 +435,6 @@
 		x = toNumeric(x); n = toNumeric(n)
 		if (isNan(x) || isNan(n)) return NaN
 		const a = abs(x), ZERO = autoN(0, x) //x XOR x
-		//TO-DO: minus 0 is never returned, fix later
 		if (!n) return a > 1 ? NaN : ZERO
 		if (x < 0 && (isIntN(n) && !(n & 1n))) return NaN
 		if (n < 0) return a ? (a == 1 ? sign(x) : ZERO) : Infinity
@@ -451,7 +444,7 @@
 	Numeric.sqrt = function(x) {return (x = toNumeric(x)) < 0 ? NaN : sqrt(x)}
 
 	/**
-	Returns a pseudorandom signed "Safe Integer". TO-DO: make it return -0
+	Returns a pseudorandom signed "Safe Integer".
 	@return {number}
 	*/
 	Math.randomSafeInt = function()
@@ -500,11 +493,11 @@
 	*/
 	IntN.div = function(n, d, F)
 	{
-		n = toIntN(n); d = toIntN(d);
-		const q = n / d;
+		n = toIntN(n); d = toIntN(d)
+		const q = n / d
 		//this could be wrong when using "euclid"
-		if ( !(n % d) ) return q;
-		const s = (n < 0n) != (d < 0n) ? 1n : 0n; //XOR of sign bits
+		if ( !(n % d) ) return q
+		const s = (n < 0n) != (d < 0n) ? 1n : 0n //XOR of sign bits
 		switch (Str(F).trim().toLowerCase())
 		{
 			case 'floor': default: return q - s
@@ -519,34 +512,29 @@
 	//Standard Mathematical Modulo (floor). NOT remainder
 	//if args are floats, it can have precision errors, similarly to the naive divison-based definition
 	const mod = (n, d) => (n % d + d) % d;
-	//TO-DO: localize a multi-mod function.
-	//TO-DO: maybe do not use "multi-mod", make each one independent,
-	//floor and euclid are the most used
 
 	//en.wikipedia.org/wiki/Modulo_operation#Variants_of_the_definition
-	Math.mod = function(n, d, F)
-	{
-		n = +n; d = +d;
-		//TO-DO: fix mod(x, Infinity) == NaN
-		F = Str(F).trim().toLowerCase();
-		if (F == 'euclid') d = abs(d);
+	Math.mod = function(n, d, F) {
+		n = +n; d = +d
 		//fallback to 'floor' if 'F' is "euclid" or just invalid
-		if (!['floor', 'trunc', 'ceil', 'round', 'roundInf'].includes(F)) F = 'floor';
-		return n - d * Macro[F](q);
+		switch (F = Str(F).trim().toLowerCase()) {
+			case 'floor': case 'trunc': case 'ceil': case 'round': case 'roundInf': break
+			case 'euclid': d = abs(d); default: F = 'floor'
+		}
+		return n - d * Math[F](n / d)
 	}
 
-	IntN.mod = function(n, d, F)
-	{
-		n = toIntN(n); d = toIntN(d);
-		F = Str(F).trim().toLowerCase();
-		if (F == 'euclid') d = abs(d);
-		if (!['floor', 'trunc', 'ceil', 'round', 'roundInf'].includes(F)) F = 'floor';
-		return n - d * IntN.div(n, d, F);
+	IntN.mod = function(n, d, F) {
+		n = toIntN(n); d = toIntN(d)
+		switch (F = Str(F).trim().toLowerCase()) {
+			case 'floor': case 'trunc': case 'ceil': case 'round': case 'roundInf': break
+			case 'euclid': d = abs(d); default: F = 'floor'
+		}
+		return n - d * IntN.div(n, d, F)
 	}
 
-	Numeric.mod = function(n, d, F)
-	{
-		n = toNumeric(n); d = toNumeric(d);
+	Numeric.mod = function(n, d, F) {
+		n = toNumeric(n); d = toNumeric(d)
 		return (isIntN(n) && isIntN(d) ? IntN : Math).mod(n, d, F)
 	}
 
@@ -554,7 +542,6 @@
 	{
 		if (isNan(b = +b) || isNan(e = +e) || isNan(m = +m)) return NaN
 		const mod = Math.mod
-		//WARNING: precision won't be preserved if exponent isn't int
 		if (e < 2 || e % 1) return mod(b ** e, m, F)
 		b = mod(b, m, F)
 		if (!b) return b
@@ -570,23 +557,22 @@
 
 	IntN.modPow = function(b, e, m, F)
 	{
-		const mod = IntN.mod;
-		b = toIntN(b); e = toIntN(e); m = toIntN(m);
-		//TO-DO: fix potential OOM error
-		if (e < 2n) return mod(e < 0n ? 1n / b ** -e : b ** e, m, F);
-		b = mod(b, m, F);
-		if (!b) return b;
-		let out = 1n;
+		const mod = IntN.mod
+		b = toIntN(b); e = toIntN(e); m = toIntN(m)
+		if (e < 2n) return mod(e < 0n ? 1n / b ** -e : b ** e, m, F)
+		b = mod(b, m, F)
+		if (!b) return b
+		let out = 1n
 		while (e)
 		{
-			if (e & 1n) out = mod(out * b, m, F);
-			e >>= 1n;
-			b = mod(b * b, m, F);
+			if (e & 1n) out = mod(out * b, m, F)
+			e >>= 1n
+			b = mod(b * b, m, F)
 		}
 		return out
 	};
 	{
-		const b = IntN.asIntN(0x40, IntN.random()), e = IntN.random(1n << 8n), m = IntN.asIntN(0x40, IntN.random()),
+		const b = IntN.asIntN(0x40, IntN.random()), e = IntN.random(0xffn), m = IntN.asIntN(0x40, IntN.random()),
 			F = ['euclid', 'floor', 'trunc', 'ceil', 'round', 'roundInf'][trunc(random01() * 6)];
 		assert(IntN.modPow(b, e, m, F) == IntN.mod(b ** e, m, F), 'wrong modular exponentiation')
 	}
@@ -786,7 +772,7 @@
 		if (!isIntN(n)) return false; if (!n) return true
 		const c = ctz(n); if (c % 3n) return false
 		//the engine will probably reuse the shifted local copy of `n` inside `ctz`
-		n >>= c;
+		n >>= c
 		/*
 		`abs` is O(n) in worst-case only, so we must use it sparingly.
 		Inverting the math sign of an odd number doesn't need sum, just (~n | 1n).
@@ -802,8 +788,7 @@
 
 	Numeric.isCube = function(n) {return isInt(n) && (isIntN(n) ? IntN : Math).isCube(n)}
 
-	//TO-DO: call in GCD and `factorize`
-	globalThis.toFraction = x =>
+	const toFraction = x =>
 	{
 		assert(isFloat(x), 'expected float but got ' + x)
 		if (isInt(x) || isNan(x)) return [x, 1]
@@ -990,19 +975,19 @@
 	//returns non-trivial divisors (proper divs) of x
 	Math.divisors = function(x)
 	{
-		x = trunc(abs(+x));
-		if (isInfNan(x)) return;
-		if (x < 2) return [];
-		const c = Numeric.ctz(x);
+		x = trunc(abs(+x))
+		if (isInfNan(x)) return
+		if (x < 2) return []
+		const c = Numeric.ctz(x)
 		//prevent infinite loop, increase sqrt accuracy, and improve overall speed
-		x /= 2 ** c;
-		const m = sqrt(x), out = []; let i;
-		for (i = 3; i <= m; i += 2) if ( !(x % i) ) out[out.length] = i;
-		i = out.length - Math.isSquare(x) - 1;
-		while (i >= 0) out[out.length] = x / out[i--];
-		const bin = []; //unique powers of 2
-		for (i = 1; i <= c; i++) bin[bin.length] = 2 ** i;
-		//TO-DO: add and fix missing multiplication and insertion
+		x /= 2 ** c
+		const m = sqrt(x), out = []; let i
+		for (i = 3; i <= m; i += 2) if ( !(x % i) ) out[out.length] = i //push 1st half of all odd divs
+		i = out.length - isInt(m) - 1 //handle perfect square
+		//iterate backwards to preserve output order
+		while (i >= 0) out[out.length] = x / out[i--] //insert the other half of odd divs
+		const bin = [] //unique powers of 2
+		for (i = 1; i <= c; i++) bin[bin.length] = 2 ** i
 		return out
 	}
 
@@ -1107,16 +1092,15 @@
 		my algorithm isn't good for BigInts, these are better:
 		http://www.luschny.de/math/factorial/FastFactorialFunctions.htm
 		https://github.com/PeterLuschny/Fast-Factorial-Functions
-		https://web.archive.org/web/20050211005140/http://www.luschny.de/math/factorial/Description.htm
 		*/
 	}
-	//TO-DO: add rising and falling Fs
+
 	Numeric.factorial = function(x, k = 1)
 	{//if k > 1 returns multifactorial of that degree
 		let s; [s, x] = signabs(toNumeric(x));
-		k = trunc(toNumeric(k)) * s; //TODO: fix error when not same-type
-		let out = autoN(1, x);
-		for (let i = k, len = 1n; len <= x; i += k) {out *= i; len++; if (isInfNan(out)) return out}
+		k = trunc(toNumeric(k)) * s
+		let out = autoN(1, x)
+		for (let i = k, len = 1n; len <= x && !isInfNan(out); i += k) {out *= i; len++}
 		return out
 	}
 
@@ -1185,8 +1169,6 @@
 		while (L.length <= n) L[L.length] = P * L[L.length - 1] - Q * L[L.length - 2];
 		return L
 	}
-
-	//TO-DO: maybe insert Dot-Product here
 
 	//correction of data descriptors, to make everything equal to vanilla JS
 	for (const O of [Float, Math, IntN, Numeric])
