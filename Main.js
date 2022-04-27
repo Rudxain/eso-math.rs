@@ -102,10 +102,6 @@
 		castFloatToIntN = f => new IntNArr(new FloatArr([f]).buffer)[0],
 		castIntNToFloat = n => new FloatArr(new IntNArr([n]).buffer)[0]
 
-	globalThis.isFinite = function(value) {return isIntN(value) || !isInfNan(Float(value))}
-	//both `parseInt` AND `parseFloat` never throw on bigints, so I decided to "fix" these other functions
-	globalThis.isNaN = function(value) {return isNan(Float(value))}
-
 	/**
 	get the internal bits (binary64 IEEE 754 representation)
 	@param {number} number
@@ -188,8 +184,9 @@
 	*/
 	Numeric.from = function(value) {return toNumeric(value)}
 
+	Numeric.isFinite = function(x) {return isIntN(x) || !isInfNan(x)}
+	Numeric.isNaN = function(x) {return isNan(x)}
 	Numeric.isInteger = function(x) {return isInt(x)}
-	Numeric.isFinite = function(x) {return isNumeric(x) && !isInfNan(x)}
 
 	Float.MIN_NORMAL = 2 ** -1022 //docs.oracle.com/javase/8/docs/api/java/lang/Double.html#MIN_NORMAL
 	Float.isSafeNumber = function(number)
@@ -931,16 +928,16 @@
 	//should `abs` be a tail-call in all of these (GCDs and LCMs)? it seems better to use it at the start
 	Math.lcm = function(x, y)
 	{
-		x = abs(+x); y = abs(+y);
+		x = abs(+x); y = abs(+y)
 		return x / Math.gcd(x, y) * y
 		//lower overflow probability than `a * b / Math.gcd(a, b)`
 	}
 
 	IntN.lcm = function(a, b)
 	{
-		a = abs(toIntN(a)); b = abs(toIntN(b));
+		a = abs(toIntN(a)); b = abs(toIntN(b))
 		return a / IntN.gcd(a, b) * b
-		//better performance than `a * b / BigInt.gcd(a, b)`
+		//better performance than `a * b / IntN.gcd(a, b)`
 	}
 
 	Numeric.lcm = function(a, b)
@@ -951,7 +948,7 @@
 	Numeric.lcd = function(a, b)
 	{
 		a = abs(toNumeric(a)); b = abs(toNumeric(b));
-		const rt = sqrt(a * b), ONE = autoN(1, a);
+		const rt = sqrt(a * b), ONE = autoN(1, a)
 		for (let i = autoN(2, ONE); i <= rt; i++) if (!(a % i || b % i)) return i;
 		return ONE
 	}
