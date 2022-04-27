@@ -16,7 +16,9 @@ This section refers to formatting, style, paradigms, idioms, and related stuff. 
 5. **Formatting isn't strict.** Consistency and readability are appreciated, but formatting doesn't change the behavior of code, so it doesn't have too much priority.
 
 # DISCLAIMER
-Currently some part of source code in this repo is unfinished, badly optimized, in need of refactoring, or all at the same time (sorry lol). Most of the code is in good state though, so don't worry. If you're unsure and want to avoid problems, just read the Issues tab, most bugs and unfinished stuff are described there
+Currently some part of source code in this repo is unfinished, badly optimized, in need of refactoring, or all at the same time (sorry lol). Most of the code is in good state though, so don't worry. If you're unsure and want to avoid problems, just read the Issues tab, most bugs and unfinished stuff are described there.
+
+Another tip, **don't use in production.** Specially if it's something with a lot of users. Your projects shouldn't depend/rely too much on this library. This is better suited for local/private use
 
 ## WARNING: Side effects
 Some built-in methods are modified by this library. This library only modifies built-ins that "need fixing" (such as `isFinite`), so most built-ins are intact
