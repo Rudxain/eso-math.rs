@@ -3,7 +3,8 @@
 	'use strict';
 	const Float = Number, IntN = BigInt, Str = String,
 		IntNArr = BigUint64Array, FloatArr = Float64Array,
-		TypeErr = TypeError, RangeErr = RangeError, Err = Error,
+		Map = Map, Set = Set,
+		Err = Error, TypeErr = TypeError, RangeErr = RangeError,
 		AssertionError = class extends Err {constructor(m) {super(m)}},
 		//for non-Deno environments
 		assert = function(c, m) {if (!c) throw new AssertionError(m)},
@@ -293,14 +294,14 @@
 	*/
 	Math.logB = function(x, y = E) {return logB(+x, +y)}
 
-	Math.LOG2PHI = Math.log2(PHI); Math.LNPHI = Math.log(PHI); Math.LOG10PHI = Math.log10(PHI)
+	Math.LOG2PHI = lb(PHI); Math.LNPHI = Math.log(PHI); Math.LOG10PHI = Math.log10(PHI)
 
 	Math.logPHI = function(x) {return logB(+x, PHI)}
 
 	Math.LOGPHI2 = Math.logPHI(2); Math.LOGPHIE = Math.logPHI(E); Math.LOGPHI10 = Math.logPHI(10)
 
 	Math.SQRT3 = sqrt(3)
-	Math.LN3 = Math.log(3); Math.LOG2_3 = Math.log2(3)
+	Math.LN3 = Math.log(3); Math.LOG2_3 = lb(3)
 	Math.LOG10_3 = Math.log10(3); Math.LOGPHI3 = Math.logPHI(3)
 	//ternary lives also matter
 	Math.log3 = function(x) {return logB(+x, 3)}
@@ -620,7 +621,7 @@
 	//because Math.sign(Math.sin(x)) is inefficient
 	Math.squareTrig = function(x)
 	{
-		x = mod(+x, TAU); //normalize
+		x = mod(+x, TAU) //normalize
 		//is -0 returned correctly?
 		return x && sign(PI - x)
 	}
@@ -629,8 +630,8 @@
 	//semicircular cicloid
 	Math.circleTrig = function(x)
 	{
-		x = mod(+x, TAU);
-		const F = x => sqrt(1 - (x / (PI / 2) - 1) ** 2);
+		x = mod(+x, TAU)
+		const F = x => sqrt(1 - (x / (PI / 2) - 1) ** 2)
 		return x < PI ? F(x) : -F(x - PI)
 	}
 	//missing periodic Gauss and arcsin, but It's not important
@@ -640,34 +641,18 @@
 	{
 		const B = isIntN(n), ONE = B ? 1n : 1
 		let c = ONE ^ ONE //autoN(0, n)
-		while ( !(n & ONE) ) {c += ONE; n = B ? n >> 1n : n >>> 1}
+		while ( !(n & ONE) ) {c++; n = B ? n >> 1n : trunc(n / 2)}
 		return c
 	}
 	//logarithmic binary search is faster than linear, but the engine will do it for us
 	Math.ctz32 = function(x) {return ctz(+x >>> 0)}
-
 	IntN.ctz = function(n) {if (n = toIntN(n)) return ctz(n); throw new RangeErr('return value is Infinity')}
-
 	Numeric.ctz = function(n)
 	{
 		if (isIntN(n = toNumeric(n))) return n ? ctz(n) : Infinity
-		n = trunc(abs(+n))
-		if (isInfNan(n)) return NaN
+		if (isInfNan(n = trunc(+n))) return NaN
 		if (!n) return 0x400 //(rounded) `Math.log2(Number.MAX_VALUE)` = (truncated) ilb(2 ^ 1024 - 1) + 1
-		if (n % 2) return 0
-		n = castFloatToIntN(n)
-		const e = ((n >> 52n) & 0x3ffn) - 51n //get exponent
-		n &= Mersenne(52n); //mask mantissa
-		n = n ? ctz(n) : 52n;
-		return Float(e + n)
-		/*
-		//the following algorithm is ditched because I doubt it's efficient.
-		//It's kept here for historical and educational purposes.
-		const c = trunc(Math.log2(n)) - 52;
-		if (c > 0) n /= 2 ** c; //remove all but the most significant 53b
-		//floats larger than 53b always have trailing zeros, so there's no need for `trunc`
-		return (c > 0 && c) + Math.ctz32(n) + (n | 0 ? 0 : n >= 2 ** 32 && Math.ctz32(n / 2 ** 32))
-		*/
+		return ctz(n)
 	}
 
 	Numeric.isDivisible = function(n, d)
@@ -676,13 +661,23 @@
 		return typeof n == typeof d && isInt(n) && isInt(d) && d && !(n % d)
 	}
 
-	//1 is odd, so it's not a power of 2. It's a trivial power, because 1 is a power of any real number
-	const isPow2 = x => x > 1 && !(x & (x - 1n))
+	//check if power of +2
+	const isPow2 = x => {
+		//1 is odd, so it's not a power of 2. It's a trivial power, because 1 is a power of any Real num
+		if (!isInt(x) || x < 2) return false
+		if (isIntN(x)) return !(x & (x - 1n))
+		if (isInt(lb(x))) return true
+	},
+		isMersenne = x => {
+			if (!isInt(x) || x < 1) return false
+			if (isIntN(x)) return !(x & (x + 1n))
+			if (x >= 2 ** 53) return false //every "unsafe" int has trailing zeros
+			if (isPow2(x + 1)) return true
+		}
 	IntN.isPow2 = function(n) {return isIntN(n) && isPow2(n)}
-	IntN.isMersenne = function(n) {return isIntN(n) && n > 0n && !(n & (n + 1n))}
-	Math.isPow2 = function(n) {return isInt(n = +n) && isPow2(IntN(n))}
-	//every unsafe int has trailing zeros
-	Math.isMersenne = function(n) {return isInt(n = +n) && n < 2 ** 53 && IntN.isMersenne(IntN(n))}
+	IntN.isMersenne = function(n) {return isIntN(n) && isMersenne(n)}
+	Math.isPow2 = function(x) {return isPow2(+x)}
+	Math.isMersenne = function(x) {return isMersenne(+x)}
 
 	//for educational purposes see: en.wikipedia.org/wiki/Hamming_weight#Efficient_implementation
 	//without optimization, it would be very slow
@@ -734,59 +729,62 @@
 		return IntN.clmul(a, b)
 	}
 
-	Math.isSquare = function(n)
-	{
-		if (!isInt(n = +n)) return false
-		if (n < 2) return n >= 0
-		const c = Numeric.ctz(n)
-		if (c % 2) return false
-		n /= 2 ** c
-		return n % 8 == 1 && isInt(sqrt(n))
+	const isSquare = x => {
+		if (!isInt(x)) return false
+		if (x < 2) return x >= 0
+		const c = ctz(x)
+		if (isIntN(x))
+		{
+			if (c & 1n) return false
+			x >>= c
+			return (x & 7n) == 1n && sqrt(n) ** 2n == x
+		}
+		else
+		{
+			if (c % 2) return false
+			x /= 2 ** c
+			return x % 8 == 1 && isInt(sqrt(x))
+		}
 	}
+	Math.isSquare = function(x) {return isSquare(+x)}
+	IntN.isSquare = function(n) {return isIntN(n) && isSquare(n)}
+	Numeric.isSquare = function(n) {return isNumeric(n) && isSquare(n)}
 
-	IntN.isSquare = function(n)
-	{
-		if (!isIntN(n)) return false
-		if (n < 2n) return n >= 0n
-		const c = ctz(n)
-		if (c & 1n) return false
-		n >>= c
-		return n & 7n == 1n && sqrt(n) ** 2n == n
+	const isCube = x => {
+		if (!isInt(x)) return false
+		if (!x) return true
+		const c = ctz(x)
+		if (isIntN(x))
+		{
+			if (c % 3n) return false
+			//the engine will probably reuse the shifted local copy of `n` inside `ctz`
+			x >>= c
+			/*
+			`abs` is O(n) in worst-case only, so we must use it sparingly.
+			Inverting the math sign of an odd number doesn't need sum, just (~n | 1n).
+			But we can reduce those 2 ops to 1. XORing with minus-two flips all bits except LSB,
+			like this: `if (n < 0n) n ^= -2n`
+			bitwise ops are fully parallelizable, increasing potential speed.
+			However, this micro-algorithm is deprecated because computing the `abs` of a remainder < 9 is faster
+			*/
+			let m = abs(x % 9n); if (m > 1n && m != 8n) return false
+				m = abs(x % 7n); if (m > 1n && m != 6n) return false
+			return cbrt(x) ** 3n == x
+		}
+		else
+		{
+			if ((x = abs(x)) < 2) return true
+			if (c % 3) return false
+			x /= 2 ** c
+			//https://math.stackexchange.com/a/2190888
+			let m = x % 9; if (m > 1 && m != 8) return false
+				m = x % 7; if (m > 1 && m != 6) return false
+			return isInt(cbrt(x))
+		}
 	}
-
-	Numeric.isSquare = function(n) {return isInt(n) && (isIntN(n) ? IntN : Math).isSquare(n)}
-
-	Math.isCube = function(n)
-	{
-		if (!isInt(n = abs(+n))) return false
-		if (n < 2) return true
-		const c = Numeric.ctz(n); if (c % 3) return false
-		n /= 2 ** c
-		//https://math.stackexchange.com/a/2190888
-		let m = abs(n % 9); if (m > 1 && m != 8) return false
-			m = abs(n % 7); if (m > 1 && m != 6) return false
-		return isInt(cbrt(n))
-	}
-	IntN.isCube = function(n)
-	{
-		if (!isIntN(n)) return false; if (!n) return true
-		const c = ctz(n); if (c % 3n) return false
-		//the engine will probably reuse the shifted local copy of `n` inside `ctz`
-		n >>= c
-		/*
-		`abs` is O(n) in worst-case only, so we must use it sparingly.
-		Inverting the math sign of an odd number doesn't need sum, just (~n | 1n).
-		But we can reduce those 2 ops to 1. XORing with minus-two flips all bits except LSB,
-		like this: `if (n < 0n) n ^= -2n`
-		bitwise ops are fully parallelizable, increasing potential speed.
-		However, this micro-algorithm is deprecated because computing the `abs` of a remainder < 9 is faster
-		*/
-		let m = abs(n % 9n); if (m > 1n && m != 8n) return false
-			m = abs(n % 7n); if (m > 1n && m != 6n) return false
-		return cbrt(n) ** 3n == n
-	}
-
-	Numeric.isCube = function(n) {return isInt(n) && (isIntN(n) ? IntN : Math).isCube(n)}
+	Math.isCube = function(x) {return isCube(+x)}
+	IntN.isCube = function(n) {return isIntN(n) && isCube(n)}
+	Numeric.isCube = function(x) {return isNumeric(x) && isCube(x)}
 
 	const toFraction = x =>
 	{
@@ -818,16 +816,16 @@
 
 	Math.gcd = function(x, y)
 	{
-		x = abs(+x); y = abs(+y);
+		x = abs(+x); y = abs(+y)
 		if (isNan(x) || isNan(y)) return NaN
 		if (!isInt(x) || !isInt(y)) return Euclid(x, y)
 		//borrowed from Stein, lol
-		const i = Numeric.ctz(x), j = Numeric.ctz(y),
+		const i = ctz(x), j = ctz(y),
 			k = i < j ? i : j; //min
 		//ensure the max length is 53b
-		x /= 2 ** i; y /= 2 ** j;
+		x /= 2 ** i; y /= 2 ** j
 		return (Math.isMersenne(x) && Math.isMersenne(y)
-			? 2 ** Math.gcd(trunc(Math.log2(x)) + 1, trunc(Math.log2(y)) + 1) - 1
+			? 2 ** Math.gcd(trunc(lb(x)) + 1, trunc(lb(y)) + 1) - 1
 			: Euclid(x, y)) * 2 ** k
 	}
 
@@ -958,19 +956,43 @@
 		return ONE
 	}
 
-	//Arithmetic-Geometric Mean. This is just an approximation, because of rounding errors
-	Math.agm = function(x, y)
-	{
-		if ((x = +x) == (y = +y)) return x //avoid round-errors and increase efficiency
-		let a;
-		do [x, y, a] = [(x + y) / 2, sqrt(x * y), x]
-		while (x != a && x == x) /*
-		the 1st condition "squeezes" all the precision.
-		the 2nd prevents EVERY possible infinite loop (the 1st also helps).
-		100% halt guarantee. If it doesn't halt, you get a refund lol
-		*/
-		return x
+	//test if `n` is a strict perfect power. n = b ^ e, e > 1
+	const isPower = x => {
+		if (!isInt(x)) return false
+		//sign doesn't matter because Complex numbers exist
+		if ((x = abs(x)) < 4) return x < 2
+		if (isPow2(x) || isSquare(x) || isCube(x)) return true
+		if (isIntN(x)) {
+			const lb = sizeOf(x, 1n, 0n)
+			for (let e = 5n; e < lb; e += 2n)
+			{
+				let lo = 1n, hi = 1n << (lb / e + 1n)
+				while (lo < hi - 1n)
+				{
+					const mid = (lo + hi) >> 1n, pow = mid ** e
+					if (pow == x) return true
+					pow > x ? hi = mid : lo = mid
+				}
+			}
+			return false
+		} else {
+			const lb = trunc(lb(x))
+			for (let e = 5; e < lb; e += 2)
+			{
+				let lo = 1, hi = 2 ** (lb / e + 1)
+				while (lo < hi - 1)
+				{
+					const mid = trunc((lo + hi) / 2), pow = mid ** e
+					if (pow == x) return true
+					pow > x ? hi = mid : lo = mid
+				}
+			}
+			return false
+		}
 	}
+	Math.isPower = function(x) {return isPower(+x)}
+	IntN.isPower = function(n) {return isIntN(n) && isPower(n)}
+	Numeric.isPower = function(x) {return isNumeric(x) && isPower(x)}
 
 	//returns non-trivial divisors (proper divs) of x
 	Math.divisors = function(x)
@@ -978,7 +1000,7 @@
 		x = trunc(abs(+x))
 		if (isInfNan(x)) return
 		if (x < 2) return []
-		const c = Numeric.ctz(x)
+		const c = ctz(x)
 		//prevent infinite loop, increase sqrt accuracy, and improve overall speed
 		x /= 2 ** c
 		const m = sqrt(x), out = []; let i
@@ -998,16 +1020,16 @@
 	//find next prime and store it
 		addP = function()
 		{
-			let x = Pa[Pa.length - 1] + 2;
+			let x = Pa[Pa.length - 1] + 2
 			loop: for (;; x += 2)
 			{
-				if (Pd.has(x)) break;
-				if (Math.isSquare(x)) continue;
-				let j = 0;
+				if (Pd.has(x)) break
+				if (isSquare(x)) continue
+				let j = 0
 				//`sqrt` will never return a different value each call
 				//so the engine will call it once then store the result in a "ghost var"
-				while (Pa[j] <= sqrt(x)) if (x % Pa[j++] == 0) continue loop;
-				Pd.add(x); break;
+				while (Pa[j] <= sqrt(x)) if (x % Pa[j++] == 0) continue loop
+				Pd.add(x); break
 			}
 			Pa[Pa.length] = x
 		}
@@ -1015,18 +1037,18 @@
 
 	Math.factorize = function(x)
 	{
-		x = trunc(abs(+x));
-		if (isInfNan(x)) return; //returning `undefined` is "more correct"
-		const out = new Map, ctz = Numeric.ctz(x);
+		x = trunc(abs(+x))
+		if (isInfNan(x)) return //returning `undefined` is "more correct"
+		const out = new Map, ctz = ctz(x)
 		if (ctz) {out.set(2, ctz); x /= 2 ** ctz}
-		if (x < 2) return out;
-		let rt = 1, y = sqrt(x);
+		if (x < 2) return out
+		let rt = 1, y = sqrt(x)
 		//trial rooting
-		while (Math.isSquare(x)) {x = y; y = sqrt(y); rt *= 2}
-		y = cbrt(x);
-		while (Math.isCube(x)) {x = y; y = cbrt(y); rt *= 3}
+		while (isSquare(x)) {x = y; y = sqrt(y); rt *= 2}
+		y = cbrt(x)
+		while (isCube(x)) {x = y; y = cbrt(y); rt *= 3}
 		if (Pd.has(x)) {out.set(x, rt); return out}
-		let i = 0; y = sqrt(x);
+		let i = 0; y = sqrt(x)
 		//trial division on steroids
 		while (Pa[i] <= y && Pa[i] <= x)
 		{
@@ -1168,6 +1190,20 @@
 			L = F ? [autoN(2, ONE), P] : [ZERO, ONE];
 		while (L.length <= n) L[L.length] = P * L[L.length - 1] - Q * L[L.length - 2];
 		return L
+	}
+
+	//Arithmetic-Geometric Mean. This is just an approximation, because of rounding errors
+	Math.agm = function(x, y)
+	{
+		if ((x = +x) == (y = +y)) return x //avoid round-errors and increase efficiency
+		let a;
+		do [x, y, a] = [(x + y) / 2, sqrt(x * y), x]
+		while (x != a && x == x) /*
+		the 1st condition "squeezes" all the precision.
+		the 2nd prevents EVERY possible infinite loop (the 1st also helps).
+		100% halt guarantee. If it doesn't halt, you get a refund lol
+		*/
+		return x
 	}
 
 	//correction of data descriptors, to make everything equal to vanilla JS
