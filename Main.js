@@ -963,6 +963,8 @@
 			const lb = sizeOf(x, 1n, 0n)
 			for (let e = 5n; e < lb; e += 2n)
 			{
+				//we already discarded cubes, so we can skip all of them
+				if (!(e % 3n)) continue
 				let lo = 1n, hi = 1n << (lb / e + 1n)
 				while (lo < hi - 1n)
 				{
@@ -976,6 +978,7 @@
 			const lb = trunc(lb(x))
 			for (let e = 5; e < lb; e += 2)
 			{
+				if (!(e % 3)) continue
 				let lo = 1, hi = 2 ** (lb / e + 1)
 				while (lo < hi - 1)
 				{
