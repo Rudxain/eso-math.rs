@@ -1,8 +1,5 @@
 name: "CodeQL"
 
-ignore:
-  - "README.md" # IDK if this will work
-
 on:
   push:
     branches: [ main ]
