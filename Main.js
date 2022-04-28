@@ -273,12 +273,11 @@
 		return x0
 	},
 	cbrt = x => root(x, 3), {PI, E} = Math, TAU = Math.TAU = PI * 2 //no precision loss, because multiplier is power of two
-
 	Math.SQRT5 = sqrt(5)
 	const PHI = Math.PHI = Math.SQRT5 / 2 + 0.5, //Golden Ratio
 		//in general, lb has better precision and performance than ln
 		lb = Math.log2, logB = (x, b = E) => lb(x) / lb(b),
-		random01 = Math.random, sine = Math.sin
+		random01 = Math.random, sine = Math.sin, exp = Math.exp
 
 	assert(isInt(random01() * 2 ** 53), 'invalid RNG')
 	const fullRNG = !isInt(random01() * 2 ** 52) //future-proofing, JIC the spec includes the implicit bit
@@ -677,25 +676,25 @@
 	Math.isMersenne = function(x) {return isMersenne(+x)}
 
 	//for educational purposes see: en.wikipedia.org/wiki/Hamming_weight#Efficient_implementation
-	//without optimization, it would be very slow
+	//without optimization, it would be slow
 	const popcnt = x =>
 	{
 		const B = isIntN(x); let c = B ? 0n : 0
 		while (x) {c += x & (B ? 1n : 1); x = B ? x >> 1n : x >>> 1}
 		return c
 	}
-	Math.popcnt32 = function(x) {return popcnt(+x >>> 0)}
-	IntN.popcnt = function(n)
+	Math.popCount32 = function(x) {return popcnt(+x >>> 0)}
+	IntN.popCount = function(n)
 	{
 		if ((n = toIntN(n)) >= 0n) return popcnt(n)
 		throw new RangeErr('return value is Infinity')
 	}
-	Numeric.popcnt = function(n)
+	Numeric.popCount = function(n)
 	{
 		if (isIntN(n = toNumeric(n))) return n < 0n ? Infinity : popcnt(n)
 		if (isInfNan(n)) return NaN
-		n = abs(trunc(+n))
-		//mantissa popcount, because exponent doesn't matter
+		n = abs(trunc(n))
+		//mantissa popcnt, because exponent doesn't matter
 		return Float(popcnt(castFloatToIntN(n) & Mersenne(52n)) + 1n)
 	}
 
@@ -717,13 +716,18 @@
 		while (b) {prod ^= (b & 1n) && a; b >>= 1n; a <<= 1n}
 		return prod
 	}
-
 	Numeric.clmul = function(a, b)
 	{
 		a = toNumeric(a); b = toNumeric(b)
 		if (a < 0 || b < 0 || isInfNan(a) || isInfNan(b)) return NaN
 		a = IntN(trunc(a)); b = IntN(trunc(b))
 		return IntN.clmul(a, b)
+	}
+
+	IntN.hypot = function(...values){
+		let sum = 0n
+		for (; values.length; values.length--) sum += toIntN(values[values.length - 1n]) ** 2n
+		return sqrt(sum)
 	}
 
 	const isSquare = x => {
@@ -804,7 +808,7 @@
 	/**
 	Euclidean algorithm for finding Highest Common Factor.
 	returns correct values when inputs are rational numbers
-	whose denominators are any power of 2 (including 2**0)
+	whose denominators are any power of 2 (including 2^0)
 	@param {numeric} a
 	@param {numeric} b
 	@return {numeric}
@@ -821,7 +825,7 @@
 			k = i < j ? i : j; //min
 		//ensure the max length is 53b
 		x /= 2 ** i; y /= 2 ** j
-		return (Math.isMersenne(x) && Math.isMersenne(y)
+		return (isMersenne(x) && isMersenne(y)
 			? 2 ** Math.gcd(trunc(lb(x)) + 1, trunc(lb(y)) + 1) - 1
 			: Euclid(x, y)) * 2 ** k
 	}
@@ -831,8 +835,8 @@
 	{
 		//simplify future operations
 		a = abs(toIntN(a)); b = abs(toIntN(b));
-		if (a == b || !a) return b; if (!b) return a;
-		if (abs(a - b) == 1n) return 1n; //does this improve speed?
+		if (a == b || !a) return b; if (!b) return a
+		if (abs(a - b) == 1n) return 1n //does this improve speed?
 		const i = ctz(a), j = ctz(b), k = i < j ? i : j; //min
 		//reduce sizes
 		a >>= i; b >>= j;
@@ -855,13 +859,13 @@
 		I did some research and apparently it works for ANY base, not just 2:
 		math.stackexchange.com/a/11570
 		*/
-		if (IntN.isMersenne(a) && IntN.isMersenne(b)) return Mersenne(IntN.gcd(sizeOf(a, 1n, 1n), sizeOf(b, 1n, 1n))) << k;
+		if (isMersenne(a) && isMersenne(b)) return Mersenne(IntN.gcd(sizeOf(a, 1n, 1n), sizeOf(b, 1n, 1n))) << k;
 
 		//set base ("Beta") of Lehmer's algo to `2 ** (2 ** BIN)`
 		const BIN = 8n;
 
-		if (b > a) [a, b] = [b, a];
-		const a_len = sizeOf(a, 1n << BIN, 1n), b_len = sizeOf(b, 1n << BIN, 1n);
+		if (b > a) [a, b] = [b, a]
+		const a_len = sizeOf(a, 1n << BIN, 1n), b_len = sizeOf(b, 1n << BIN, 1n)
 		if (b_len < 2)
 		{
 			//both are small, Euclid is best here
@@ -874,9 +878,9 @@
 			*/
 			for(;;) //`undefined == true` lol
 			{
-				if (a > b) [a, b] = [b, a];
-				b -= a;
-				if (!b) return a << k;
+				if (a > b) [a, b] = [b, a]
+				b -= a
+				if (!b) return a << k
 				b >>= ctz(b)
 			}
 		}
@@ -885,15 +889,15 @@
 		definitely use Lehmer's algorithm
 		en.wikipedia.org/wiki/Lehmer%27s_GCD_algorithm#Algorithm
 		*/
-		let m = a_len - b_len;
+		let m = a_len - b_len
 		//this will sometimes make `b > a` true, I will fix it soon
-		b <<= m << BIN; m = a_len;
+		b <<= m << BIN; m = a_len
 		while (a && b)
 		{
-			m--;
+			m--
 			let x = a >> (m << BIN),
 				y = b >> (m << BIN),
-				[A, B, C, D] = [1n, 0n, 0n, 1n];
+				[A, B, C, D] = [1n, 0n, 0n, 1n]
 			for(;;)
 			{
 				let w0 = (x + A) / (y + C),
@@ -906,16 +910,16 @@
 					C, D, y,
 					A - w*C, B - w*D, x - w*y
 				];
-				if (B) continue;
+				if (B) continue
 			}
 			if (!B)
 			{
 				//is the order correct? if a < b, this will just swap them
-				if (b) [a, b] = [b, a % b];
+				if (b) [a, b] = [b, a % b]
 				continue
 			}
-			[a, b] = [a*A + b*B, C*a + D*b];
-			if (b) continue;
+			[a, b] = [a*A + b*B, C*a + D*b]
+			if (b) continue
 		}
 		return a << k
 	}
@@ -965,13 +969,7 @@
 			{
 				//we already discarded cubes, so we can skip all of them
 				if (!(e % 3n)) continue
-				let lo = 1n, hi = 1n << (lb / e + 1n)
-				while (lo < hi - 1n)
-				{
-					const mid = (lo + hi) >> 1n, pow = mid ** e
-					if (pow == x) return true
-					pow > x ? hi = mid : lo = mid
-				}
+				if (root(x, e) ** e == x) return true
 			}
 			return false
 		} else {
@@ -979,13 +977,7 @@
 			for (let e = 5; e < lb; e += 2)
 			{
 				if (!(e % 3)) continue
-				let lo = 1, hi = 2 ** (lb / e + 1)
-				while (lo < hi - 1)
-				{
-					const mid = trunc((lo + hi) / 2), pow = mid ** e
-					if (pow == x) return true
-					pow > x ? hi = mid : lo = mid
-				}
+				if (isInt(root(x, e))) return true
 			}
 			return false
 		}
@@ -1068,10 +1060,9 @@
 		return out
 	}
 
-	const exp = Math.exp,
 		//factorial approximations for non-ints.
 		//These 3 are trash, none make use of full precision. I need help to make these more accurate
-		Gosper = x => sqrt((+x + 1 / 6) * TAU) * (x / E) ** x, //improvement of Stirling
+	const Gosper = x => sqrt((+x + 1 / 6) * TAU) * (x / E) ** x, //improvement of Stirling
 		//Gamma Function (+1) defined as Summation instead of Integration
 		Gamma = x => {let t = 1, s0, s1 = 0 ** x; do {s0 = s1; s1 += t ** x * exp(-t); t++} while (s0 != s1); return s0},
 		//https://en.wikipedia.org/wiki/Lanczos_approximation#Simple_implementation
