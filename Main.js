@@ -3,7 +3,7 @@
 	'use strict';
 	const Float = Number, IntN = BigInt, Str = String,
 		IntNArr = BigUint64Array, FloatArr = Float64Array,
-		Map = Map, Set = Set,
+		_Map = Map, _Set = Set,
 		Err = Error, TypeErr = TypeError, RangeErr = RangeError,
 		AssertionError = class extends Err {constructor(m) {super(m)}},
 		//for non-Deno environments
@@ -142,7 +142,7 @@
 		{//why only 'x'? it should include 'b' and 'o'
 			string = string.substring(2); radix = 0x10
 		}
-		const charset = new Map
+		const charset = new _Map
 		for (let i = 0n; i < radix; i++) charset.set('0123456789abcdefghijklmnopqrstuvwxyz'[i], i)
 		let end = -1
 		while (++end < string.length) if (!charset.has(string[end])) break
@@ -734,7 +734,7 @@
 		{
 			if (c & 1n) return false
 			x >>= c
-			return (x & 7n) == 1n && sqrt(n) ** 2n == x
+			return (x & 7n) == 1n && sqrt(x) ** 2n == x
 		}
 		else
 		{
@@ -947,9 +947,9 @@
 	//the 1st is always 1
 	Numeric.lcd = function(a, b)
 	{
-		a = abs(toNumeric(a)); b = abs(toNumeric(b));
+		a = abs(toNumeric(a)); b = abs(toNumeric(b))
 		const rt = sqrt(a * b), ONE = autoN(1, a)
-		for (let i = autoN(2, ONE); i <= rt; i++) if (!(a % i || b % i)) return i;
+		for (let i = autoN(2, ONE); i <= rt; i++) if (!(a % i || b % i)) return i
 		return ONE
 	}
 
@@ -1016,7 +1016,7 @@
 	//array of sorted Primes, no gaps (dense)
 	const Pa = [3, 5], //2 is unnecessary because CTZ
 	//Primality "dictionary", any order, gaps allowed (sparse)
-		Pd = new Set([2, 3, 5]),
+		Pd = new _Set([2, 3, 5]),
 	//find next prime and store it
 		addP = function()
 		{
@@ -1039,8 +1039,8 @@
 	{
 		x = trunc(abs(+x))
 		if (isInfNan(x)) return //returning `undefined` is "more correct"
-		const out = new Map, ctz = ctz(x)
-		if (ctz) {out.set(2, ctz); x /= 2 ** ctz}
+		const out = new _Map, tz = ctz(x)
+		if (tz) {out.set(2, tz); x /= 2 ** tz}
 		if (x < 2) return out
 		let rt = 1, y = sqrt(x)
 		//trial rooting
@@ -1106,15 +1106,10 @@
 	IntN.factorial = function(n)
 	{
 		if ((n = toIntN(n)) < 0n) throw new RangeErr('return value is NaN')
-		let out = 1n;
-		for (let i = 3n; i <= n; i++) out *= i >> ctz(i); //reduce size
+		let out = 1n
+		for (let i = 3n; i <= n; i++) out *= i >> ctz(i) //reduce size
 		//https://en.wikipedia.org/wiki/Legendre%27s_formula#Alternate_form
 		return out << (n - popcnt(n)) //recover TZ
-		/*
-		my algorithm isn't good for BigInts, these are better:
-		http://www.luschny.de/math/factorial/FastFactorialFunctions.htm
-		https://github.com/PeterLuschny/Fast-Factorial-Functions
-		*/
 	}
 
 	Numeric.factorial = function(x, k = 1)
@@ -1127,7 +1122,6 @@
 	}
 
 	//iterative inverse int Fact
-	//if this got the inverse Gamma function, it would be more accurate
 	Numeric.factorial_inv = function(n, k = 1)
 	{//if k > 1 returns corresponding inv multifactorial
 		if ( !(n = toNumeric(n)) || isNan(k = toNumeric(k)) ) return NaN
