@@ -24,5 +24,5 @@ Another tip, **don't use in production.** Specially if it's something with a lot
 Some built-in methods are modified by this library. This library only modifies built-ins that "need fixing" (such as `isFinite`), so most built-ins are intact.
 
 # Related
-[BigInt Math TC39 proposal](https://github.com/tc39/proposal-bigint-math)  
-[Math Extensions proposal](https://github.com/rwaldron/proposal-math-extensions)
+* [BigInt Math TC39 proposal](https://github.com/tc39/proposal-bigint-math)
+* [Math Extensions proposal](https://github.com/rwaldron/proposal-math-extensions)
