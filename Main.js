@@ -725,8 +725,9 @@
 	}
 
 	IntN.hypot = function(...values){
+		if (values.length == 1) return abs(toIntN(values[0]))
 		let sum = 0n
-		for (; values.length; values.length--) sum += toIntN(values[values.length - 1n]) ** 2n
+		for (; values.length; values.length--) sum += toIntN(values[values.length - 1]) ** 2n
 		return sqrt(sum)
 	}
 
