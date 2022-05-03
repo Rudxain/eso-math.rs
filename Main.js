@@ -543,13 +543,12 @@
 		b = mod(b, m, F)
 		if (!b) return b
 		let out = 1
-		while (e)
-		{
+		do {
 			if (e % 2) out = mod(out * b, m, F)
-			e = trunc(e / 2);
+			e = trunc(e / 2)
 			b = mod(b * b, m, F)
-		}
-		return out
+		} while (e > 1)
+		return mod(out * b, m, F)
 	}
 
 	IntN.modPow = function(b, e, m, F)
@@ -560,13 +559,12 @@
 		b = mod(b, m, F)
 		if (!b) return b
 		let out = 1n
-		while (e)
-		{
+		do {
 			if (e & 1n) out = mod(out * b, m, F)
 			e >>= 1n
 			b = mod(b * b, m, F)
-		}
-		return out
+		} while (e > 1n)
+		return mod(out * b, m, F)
 	};
 	{
 		const b = IntN.asIntN(0x40, IntN.random()), e = IntN.random(0xffn), m = IntN.asIntN(0x40, IntN.random()),
@@ -1152,10 +1150,30 @@
 	//get Nth Fibonacci faster than recursion
 	Math.Fib = function(x)
 	{
-		let s; [s, x] = signabs(+x);
+		let s; [s, x] = signabs(+x)
 		return round(PHI ** x / Math.SQRT5) * (s == -1 && x % 2 == 0 ? -1 : 1)
 	}
 	//en.wikipedia.org/wiki/Generalizations_of_Fibonacci_numbers#Extension_to_negative_integers
+	IntN.Fib = function(n)
+	{
+		n = toIntN(n)
+		const s = n < 0n, e = !(n & 1n)
+		if (s) n = -n
+		if (n < 2n) return n
+		//https://en.wikipedia.org/wiki/Fibonacci_number#Matrix_form
+		let A = [1n, 1n, 1n, 0n], //Fib matrix
+			B = [1n, 0n, 0n, 1n] //identity matrix
+		const mm = (A, B) => [ //multiply 2x2 matrices
+			A[0]*B[0] + A[1]*B[2], A[0]*B[1] + A[1]*B[3],
+			A[2]*B[0] + A[3]*B[2], A[2]*B[1] + A[3]*B[3]
+		]
+		do {
+			if (n & 1n) B = mm(B, A)
+			n >>= 1n
+			A = mm(A, A)
+		} while (n > 1n)
+		return mm(A, B)[1] * (s && e ? -1n : 1n)
+	}
 
 	//get index of a Fib num `x`
 	Math.Fib_inv = function(x)
