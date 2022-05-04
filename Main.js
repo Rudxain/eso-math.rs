@@ -566,11 +566,6 @@
 		} while (e > 1n)
 		return mod(out * b, m, F)
 	};
-	{
-		const b = IntN.asIntN(0x40, IntN.random()), e = IntN.random(0xffn), m = IntN.asIntN(0x40, IntN.random()),
-			F = ['euclid', 'floor', 'trunc', 'ceil', 'round', 'roundInf'][trunc(random01() * 6)];
-		assert(IntN.modPow(b, e, m, F) == IntN.mod(b ** e, m, F), 'wrong modular exponentiation')
-	}
 
 	/**
 	converts degrees to radians by default
@@ -788,7 +783,7 @@
 
 	const toFraction = x =>
 	{
-		assert(isFloat(x), 'expected float but got ' + x)
+		x = x?.valueOf()
 		if (isInt(x) || isNan(x)) return [x, 1]
 		const s = x < 0; if (s) x = -x //abs
 		if (x == Infinity) return [s ? -1 : 1, 0]
