@@ -1082,8 +1082,8 @@
 		The problem is that if `x` is at the extreme, the output would be `NaN` unless we use extrapolation
 		*/
 		if ( !isInt(x) ) return [Gosper, Gamma, Lanczos][2](x)
-		let out = 1;
-		for (let i = 2; i <= x; i++) out *= i;
+		let out = 1
+		while (x > 0) out *= x--
 		return out
 	}
 
@@ -1092,9 +1092,8 @@
 	{
 		if ((n = toIntN(n)) < 0n) throw new RangeErr('return value is NaN')
 		let out = 1n
-		for (let i = 3n; i <= n; i++) out *= i >> ctz(i) //reduce size
-		//https://en.wikipedia.org/wiki/Legendre%27s_formula#Alternate_form
-		return out << (n - popcnt(n)) //recover TZ
+		while (n > 0n) out *= n--
+		return out
 	}
 
 	Numeric.factorial = function(x, k = 1)
