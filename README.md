@@ -21,7 +21,7 @@ Currently some part of source code in this repo is unfinished, badly optimized, 
 Another tip, **don't use in production.** Specially if it's something with a lot of users. Your projects shouldn't depend/rely too much on this library. This is better suited for local/private use
 
 ## WARNING: Side effects
-Some built-in methods are modified by this library. This library only modifies built-ins that "need fixing" (such as `isFinite`), so most built-ins are intact.
+Some built-in methods are modified by this library. This library only modifies built-ins that "need fixing", so most built-ins are intact.
 
 # Related
 * [BigInt Math TC39 proposal](https://github.com/tc39/proposal-bigint-math)
