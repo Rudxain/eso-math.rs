@@ -1,7 +1,5 @@
-# Intro
-
 # Purpose
-My purpose/goal is to make it easy for developers to use future ES mathematic functions today, without writting everything from scratch (reusing code is good practice as long as the license is respected). As you may have noticed, it may seem I'm *obsessed* with `BigInt`s, that's because JS lacks **A LOT** of methods for them, so I decided to reduce "discrimination" against this powerful primitive data-type. I also want to include more *obscure* functions to serve as an educational tool for programmers and math students.
+I want this to be practical and educational library, with some focus in recreational math and Number Theory. I also want to add better support for the `BigInt`data type.
 
 # Usage and directory tree
 If you want to import individual modules, import from [`lib`](./src/lib). If you want the whole lib, import [main `index`](./src/index.js). For polyfills related with the lib use [`polyfills`](./src/polyfills). The [`helper`](./src/helper) dir is just for internal stuff.
