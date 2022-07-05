@@ -1,7 +1,7 @@
 import {isInfNaN} from '../helper/value check'
 import {lcm} from './factors'
 
-const Float = Number, _Set = Set
+const Float = Number, Int = BigInt, _Set = Set
 
 //generalized Collatz
 //en.wikipedia.org/wiki/Collatz_conjecture#Undecidable_generalizations
@@ -59,3 +59,9 @@ export const Collatz_std = (n, k, s) => {
 	return h.slice(1)
 }
 //TO-DO: use remove all CTZ on shortcut mode
+
+//additive seq
+export const Collatz_add = function* (seed) {
+	yield seed = Int(seed)
+	while (true) yield seed += seed & 1n ? 3n * seed + 1n : seed >> 1n
+}
