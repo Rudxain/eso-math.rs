@@ -14,3 +14,14 @@ Yes, the unpacked numeral fits in memory. It's just ~10MB, but ~30MB as decimal 
 To "unpack" it use: `nthMersenne(MAX_MP_EXP)`
 */
 export const MAX_MP_EXP = 82_589_933n
+
+//sum of inverse `pow`s of itself
+export const invPowSum = (_ => {
+	let i = 0, out = 0, tmp
+	while (out !== tmp) {
+		tmp = out
+		out += out ** (-i)
+		i++
+	}
+	return out
+})()
