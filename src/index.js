@@ -8,7 +8,7 @@ any strictly numerical value
 @typedef {(number|bigint)} numeric
 */
 
-const EsoMath = {}
+const NTML = {}
 for (const O of [std, round, bit, rand])
-	Object.assign(EsoMath, O)
-export default EsoMath
+	Object.assign(NTML, O)
+export default NTML
