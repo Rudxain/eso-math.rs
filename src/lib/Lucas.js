@@ -1,8 +1,18 @@
 import {isBigInt as isIntN} from '../helper/type check'
-import {toNumeric} from '../helper/sanitize'
+import {isInt} from '../helper/value check'
+import {autoN, toNumeric} from '../helper/sanitize'
 import {signabs} from './std'
+import {isSquare} from './power'
 import {round, floor} from './rounding'
 import {SQRT5, PHI} from './const'
+
+export const isFib = x => {
+	if (!isInt(x)) return false
+	const n4 = autoN(4, x)
+	//https://en.wikipedia.org/wiki/Fibonacci_number#Identification
+	x *= autoN(5, x) * x
+	return isSquare(x + n4) || isSquare(x - n4)
+}
 
 export const nthFib = x => {
 	x = toNumeric(x)
@@ -25,12 +35,14 @@ export const nthFib = x => {
 	} while (x > 1n)
 	return mm(A, B)[1] * (s && e ? -1n : 1n)
 }
+
 //get index of a Fib
 export const invFib = x => {
 	let s; [s, x] = signabs(Number(x))
 	const i = floor(logB(x * SQRT5 + 0.5, PHI))
 	return !(i % 2) && s == -1 ? NaN : i * s
 }
+
 export const iterFib = function*(x){
 	let a = x ? 0 : 0n, b = x ? 1 : 1n
 	while (Infinity) {yield a; [a, b] = [b, a + b]}

@@ -1,6 +1,6 @@
 import {isBigInt as isIntN} from '../helper/type check'
 import {isInt, isInfNaN} from '../helper/value check'
-import {toNumeric} from '../helper/sanitize'
+import {autoN, toNumeric} from '../helper/sanitize'
 import {abs} from './std'
 import {trunc} from './rounding'
 import {ctz} from './bitwise'
@@ -19,7 +19,7 @@ export const isDivisible = (n, d) => {
 Euclidean algorithm for finding Highest Common Factor.
 returns correct values when inputs are rational numbers
 whose denominators are any power of 2 (including 2^0)
-@return {number|bigint}
+@return {numeric}
 */
 export const Euclid = (a, b) => {while (b) [a, b] = [b, a % b]; return abs(a)}
 
@@ -143,22 +143,16 @@ export const lcd = (a, b) => {
 	return ONE
 }
 
-//returns non-trivial divisors (proper divs) of x
-export const divisors = x => {
-	x = trunc(abs(Float(x)))
+//returns ALL divisors of x, proper and trivial
+//it's a generator, because arrays are too expensive for memory
+export const divisors = function* (x) {
+	x = trunc( abs( toNumeric(x) ) )
 	if (isInfNaN(x)) return
-	if (x < 2) return []
-	const c = ctz(x)
-	//prevent infinite loop, increase sqrt accuracy, and improve overall speed
-	x /= 2 ** c
-	const m = sqrt(x), out = []; let i
-	for (i = 3; i <= m; i += 2) if ( !(x % i) ) out[out.length] = i //push 1st half of all odd divs
-	i = out.length - isInt(m) - 1 //handle perfect square
-	//iterate backwards to preserve output order
-	while (i >= 0) out[out.length] = x / out[i--] //insert the other half of odd divs
-	const bin = [] //unique powers of 2
-	for (i = 1; i <= c; i++) bin[bin.length] = 2 ** i
-	return out
+	yield autoN(1, x)
+	const n2 = autoN(2, x)
+	if ( !(x % n2) ) yield n2
+	for (let i = autoN(3, x); i <= x; i += n2)
+		if ( !(x % i) ) yield i
 }
 
 //array of sorted Primes, no gaps (dense)

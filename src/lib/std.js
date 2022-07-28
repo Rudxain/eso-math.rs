@@ -5,14 +5,18 @@ import {trunc} from './rounding'
 
 const IntN = BigInt, lb = Math.log2 //in general, lb has better precision and performance than ln
 
+//should these use `toNumeric`?
 export const
 	abs = x => x < 0 || isNegZero(x) ? -x : x,
-	sign = x => x && (x < 0 ? -autoN(1, x) : autoN(1, x)),
+	sign = x => x == 0 ? autoN(x, x) : (x < 0 ? autoN(-1, x) : autoN(1, x)),
 	signabs = x => [sign(x), abs(x)],
-	divrem = (x, y) => [trunc(x / y), x % y],
+	divrem = (n, d) => [trunc(n / d), n % d],
 	clamp = (x, min, max) => x > max ? max : x < min ? min : x
 
-//op chooses min or max mode, f is the type coercion fn
+/**
+@param {boolean} op falsy: min, truthy: max
+@param {function} f is the type coercion fn
+*/
 export const minmax = (arr, op, f) => {
 	let i = 0, v = f(arr[i]), m = v
 	while (++i < arr.length) {v = f(arr[i]); if (op ? v > m : v < m) m = v}
