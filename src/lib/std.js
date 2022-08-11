@@ -12,7 +12,10 @@ export const
 	sign = x => x == 0 ? autoN(x, x) : (x < 0 ? autoN(-1, x) : autoN(1, x)),
 	signabs = x => [sign(x), abs(x)],
 	divrem = (n, d) => [trunc(n / d), n % d],
-	divEuclid = (x, y) => floor(+x / abs(+y)) * sign(+y),
+	divEuclid = (n, d) => floor(n / abs(d)) * sign(d), //this is incorrect for `BigInt`s
+	isEven = x => x % autoN(2, x) == 0,
+	//`!isEven` is wrong, because `NaN` is none of them
+	isOdd = x => x % autoN(2, x) != 0,
 	clamp = (x, min, max) => x > max ? max : x < min ? min : x
 
 /**

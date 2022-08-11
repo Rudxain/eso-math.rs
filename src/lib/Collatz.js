@@ -1,19 +1,21 @@
 import '../typedefs'
-import {toNumeric} from '../helper/sanitize'
+import {autoN, toNumeric} from '../helper/sanitize'
+import {isOdd} from './std'
 import {trunc} from './rounding'
+import {trim} from './bitwise'
 import {lcm} from './factors'
 
-const Float = Number, Int = BigInt, Set_ = Set, Arr = Array
+const Float = Number, Arr = Array
 
 /**
 generalized Collatz
 https://en.wikipedia.org/wiki/Collatz_conjecture#Undecidable_generalizations
 @param {Object} kwargs arguments bag.
 */
-export const Collatz_gen = function* (kwargs)
+export const Hailstone_general = function* (kwargs)
 {
-	let {n, a = [[1, 2], [3, 1]], b = [[0, 1], [1, 1]], P = 2} = kwargs
-	n = toNumeric(n)
+	let {x, a = [[1, 2], [3, 1]], b = [[0, 1], [1, 1]], P = 2} = kwargs
+	x = toNumeric(x)
 	a = Arr(a).map(x => Arr(x).map(toNumeric))
 	b = Arr(b).map(x => Arr(x).map(toNumeric))
 	P = trunc(toNumeric(P))
@@ -35,52 +37,51 @@ export const Collatz_gen = function* (kwargs)
 	*/
 	const frac_to_num = f => f[0] / f[1]
 
-	yield n
 	while (true){
-		const i = Float(n % P),
+		yield x
+		const i = Float(x % P) ,
 			//order matters, because of `IntN`s
-			numerator = n * a.at(i)[0] / a.at(i)[1]
+			numerator = x * a.at(i)[0] / a.at(i)[1] ,
 			f = frac_sum([numerator, 1], b.at(i))
-		yield n = frac_to_num(f)
+		x = frac_to_num(f)
 	}
 }
 
 /**
-Returns (Hailstone) seq of n. Supports signed integers.
-@param {numeric} k steps. if unspecified, detects known cycles.
-@param
-Falsy s: Standard
-Truthy s: "Shortcut" version
-"Shortcut" is like Standard but skips some Even numbers
-en.wikipedia.org/wiki/Collatz_conjecture
+All known values that cause known cycles (trivial and non-trivial).
+It's proven correct for all 32bit ints, but conjectured to be correct for all `numeric`als.
+It's only proven correct for ints that satisfy `n <= 1n << 68n && n > -(1n << 33)`
+@type {Set<numeric>}
 */
-export const Collatz_std = (n, k, s) => {
-	n = n?.valueOf(); k = Float(k)
-	const h = []
-	if (typeof n == 'bigint')
-	{
-		h[h.length] = n
-		const CYCLES = new Set_([1n, 0n, -1n, -5n, -17n])
-		while (k ? h.length < k : !CYCLES.has(h.at(-1)))
-			h[h.length] = h.at(-1) & 1n
-				? (3n * h.at(-1) + 1n) / (s ? 2n : 1n)
-				: h.at(-1) / 2n
-	}
-	else
-	{
-		h[h.length] = trunc(n)
-		const CYCLES = new Set_([1, 0, -1, -5, -17, Infinity, -Infinity, NaN])
-		while (k ? h.length < k : !CYCLES.has(h.at(-1)))
-			h[h.length] = h.at(-1) % 2
-				? (3 * h.at(-1) + 1) / (s ? 2 : 1)
-				: h.at(-1) / 2
-	}
-	return h.slice(1)
-}
-//to-do: use remove all CTZ on shortcut mode
+export const CYCLES = new Set([1, 1n, 0, 0n, -1, -1n, -5, -5n, -17, -17n, Infinity, -Infinity, NaN])
 
-//additive seq
-export const Collatz_add = function* (seed) {
-	yield seed = Int(seed)
-	while (true) yield seed += seed & 1n ? 3n * seed + 1n : seed >> 1n
+/**
+The Collatz Function. Applies 1 iteration of The Collatz Algorithm
+@param {numeric} x number to apply fn
+@return {numeric} next num in the Hailstone sequence
+*/
+export const Collatz_fn = x => isOdd(x = toNumeric(x)) ? autoN(3,x) * x + autoN(1,x) : x / autoN(2,x)
+
+/**
+Returns (Hailstone) seq of n. Supports signed integers.
+@param {numeric} x seed
+@param {boolean} skip_even
+https://en.wikipedia.org/wiki/Collatz_conjecture
+*/
+export const Hailstone_std = function* (x, skip_even){
+	x = toNumeric(x)
+	while (true){
+		if (skip_even) x = trim(x)
+		yield x
+		x = Collatz_fn(x)
+	}
+}
+
+/**
+additive sequence
+@param {numeric} x seed
+*/
+export const Hailstone_add = function* (x){
+	yield x = toNumeric(x)
+	while (true) yield x += Collatz_fn(x)
 }
