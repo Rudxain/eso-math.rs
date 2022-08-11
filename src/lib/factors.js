@@ -5,7 +5,7 @@ import {isInt, isInfNaN} from '../helper/value check'
 import {autoN, toNumeric} from '../helper/sanitize'
 import {abs} from './std'
 import {trunc} from './rounding'
-import {ctz, ctztrim} from './bitwise'
+import {ctz, ctztrim, trim} from './bitwise'
 import {M as nthMersenne, isM as isMersenne} from './Mersenne'
 import {isSquare, isCube} from './power'
 import {sqrt, cbrt} from './root'
@@ -85,7 +85,7 @@ export const gcd = (a, b) => {//should be variadic
 				if (a > b) [a, b] = [b, a]
 				b -= a
 				if (!b) return a << k
-				b >>= ctz(b)
+				b = trim(b)
 			}
 		}
 		/*
@@ -215,12 +215,24 @@ export const factorize = x => {
 	return out
 }
 
+/**
+
+@param {numeric} x
+@return {fraction}
+*/
 export const toFraction = x => {
 	x = x?.valueOf()
-	if (isInt(x) || isNan(x)) return [x, 1]
-	const s = x < 0; if (s) x = -x //abs
+
+	if (isInt(x) || isNan(x)) return [x, autoN(1,x)]
+
+	const s = x < 0
+	if (s) x = -x //abs
+
 	if (x == Infinity) return [s ? -1 : 1, 0]
-	const n = trunc(x); x -= n
+
+	const n = trunc(x)
+	x -= n
+
 	let f0 = [0, 1], f1 = [1, 1], midOld = NaN //ensure same-type comparison
 	while (true){
 		const fm = [f0[0] + f1[0], f0[1] + f1[1]], mid = fm[0] / fm[1]
