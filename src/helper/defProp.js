@@ -1,3 +1,5 @@
+import '../typedefs'
+
 /**
 Short edition of `defineProperty`
 @function defProp

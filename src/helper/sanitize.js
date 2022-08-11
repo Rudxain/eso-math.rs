@@ -1,3 +1,4 @@
+import '../typedefs'
 import {
 	isPrimitive as isPrim,
 	isNumber as isFloat,
@@ -10,6 +11,7 @@ const Float = Number, IntN = BigInt, TypeErr = TypeError
 `copyType` (like `copySign`), but only for Numericals
 @param {any} n value to coerce
 @param {numeric} x from which the type is copied
+@return {numeric}
 */
 export const autoN = (n, x) => (isIntN(x) ? IntN : Float)(n)
 
@@ -27,7 +29,11 @@ export const toBigInt = x => {
 	throw new TypeErr(`Cannot convert ${x} to BigInt`)
 }
 
-//permissive BigInt coercion
+/**
+permissive BigInt coercion
+@param {*} x value to coerce
+@return {bigint}
+*/
 export const anyBigInt = x => {
 	if (isIntN(x)) return x.valueOf()
 	if (isFloat(x)) return (x = trunc(+x)) ?
@@ -40,7 +46,7 @@ export const anyBigInt = x => {
 /**
 Coerce to numeric by using the least invasive/intrusive algorithm I know.
 DO NOT confuse with ES' `toNumeric` "abstract operation", it's not the same
-@param {*} x
+@param {*} x value to coerce
 @return {numeric}
 */
 export const toNumeric = x => {
