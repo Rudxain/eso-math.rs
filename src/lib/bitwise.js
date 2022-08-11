@@ -29,8 +29,8 @@ export const ctztrim = n => {
 	if (n === 0) return [0x400, n] //(rounded) `Math.log2(Number.MAX_VALUE)` = (truncated) ilb(2 ^ 1024 - 1) + 1
 	if (n === 0n) return [Infinity, n]
 
-	const B = isIntN(n), ONE = B ? 1n : 1
-	let c = ONE ^ ONE //autoN(0, n)
+	const B = isIntN(n), n1 = B ? 1n : 1
+	let c = n1 ^ n1 //autoN(0, n)
 
 	if (!B && !isInt(+n)) {
 		if (isInfNaN(n = +n)) return [NaN, n]
@@ -38,7 +38,7 @@ export const ctztrim = n => {
 		do {c--; n *= 2} while (n < 1)
 	}
 	else
-		while ( !(n & ONE) ) {c++; n = B ? n >> 1n : n / 2}
+		while ( !(n & n1) ) {c++; n = B ? n >> 1n : n / 2}
 	return [c, n]
 }
 

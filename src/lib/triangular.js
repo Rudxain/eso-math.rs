@@ -20,12 +20,12 @@ export const isTriNum = x => {
 }
 
 export const nthTriNum = x => {
-	const ONE = autoN(1, x = toNumeric(x)),
-		TWO = autoN(2,x),
-		[q, r] = divrem(x, TWO)
+	const n1 = autoN(1, x = toNumeric(x)),
+		n2 = autoN(2,x),
+		[q, r] = divrem(x, n2)
 	return r //lower overflow probability
-		? (x + ONE) / TWO * x
-		: q * (x + ONE)
+		? (x + n1) / n2 * x
+		: q * (x + n1)
 }
 
 /**

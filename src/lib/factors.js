@@ -152,9 +152,9 @@ export const lcm = (a, b) => {
 //the 1st is always 1
 export const lcd = (a, b) => {
 	a = abs(toNumeric(a)); b = abs(toNumeric(b))
-	const rt = sqrt(a * b), ONE = autoN(1, a)
-	for (let i = autoN(2, ONE); i <= rt; i++) if (!(a % i || b % i)) return i
-	return ONE
+	const rt = sqrt(a * b), n1 = autoN(1, a)
+	for (let i = autoN(2, n1); i <= rt; i++) if (!(a % i || b % i)) return i
+	return n1
 }
 
 //returns ALL divisors of x, proper and trivial
