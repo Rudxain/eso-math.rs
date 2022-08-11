@@ -45,7 +45,7 @@ export const invFib = x => {
 
 export const iterFib = function*(x){
 	let a = x ? 0 : 0n, b = x ? 1 : 1n
-	while (Infinity) {yield a; [a, b] = [b, a + b]}
+	while (true) {yield a; [a, b] = [b, a + b]}
 }
 
 //en.wikipedia.org/wiki/Lucas_sequence
@@ -56,5 +56,5 @@ export const Lucas = function*(P = 1, Q = -1, F) {
 	//this XOR is used to throw early when values are not same-type
 	const ZERO = P^P^Q^Q, ONE = ZERO**ZERO
 	let [a, b] = F ? [ONE + ONE, P] : [ZERO, ONE]
-	while (Infinity) {yield a; [a, b] = [b, P * b - Q * a]}
+	while (true) {yield a; [a, b] = [b, P * b - Q * a]}
 }

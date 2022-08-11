@@ -21,7 +21,7 @@ export const VanEck = function*(pad) {
 	//length of sequence, and value before seed, respectively
 	let len = u, pre = NaN
 	//literal infinite loop
-	while (Infinity){
+	while (true){
 		yield pre = seed
 		seed = M[pre] !== undefined ? len - u - M[pre] : pad
 		M[pre] = ++len - u - u

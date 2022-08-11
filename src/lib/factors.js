@@ -1,38 +1,50 @@
+import '../typedefs'
+
 import {isBigInt as isIntN} from '../helper/type check'
 import {isInt, isInfNaN} from '../helper/value check'
 import {autoN, toNumeric} from '../helper/sanitize'
 import {abs} from './std'
 import {trunc} from './rounding'
-import {ctz} from './bitwise'
+import {ctz, ctztrim} from './bitwise'
 import {M as nthMersenne, isM as isMersenne} from './Mersenne'
 import {isSquare, isCube} from './power'
 import {sqrt, cbrt} from './root'
 
 const Float = Number, isNan = x => x != x
 
+/**
+check if `n` is divisible by `d`
+@param {*} n dividend/numerator
+@param {*} d divisor/denominator
+*/
 export const isDivisible = (n, d) => {
-	n = n?.valueOf(); d = d?.valueOf()
-	return typeof n == typeof d && isInt(n) && isInt(d) && d && !(n % d)
+	n = n?.valueOf()
+	d = d?.valueOf()
+	return typeof n == typeof d &&
+		isInt(n) && isInt(d) &&
+		d != 0 &&
+		n % d == 0
 }
 
 /**
 Euclidean algorithm for finding Highest Common Factor.
-returns correct values when inputs are rational numbers
-whose denominators are any power of 2 (including 2^0)
+returns correct values for some non-ints (rounding errors can happen)
+@param {numeric} a
+@param {numeric} b
 @return {numeric}
 */
 export const Euclid = (a, b) => {while (b) [a, b] = [b, a % b]; return abs(a)}
 
-//BEHOLD THE ULTIMATE GCD ALGORITHM (ok maybe I exaggerated)
 export const gcd = (a, b) => {//should be variadic
 	a = abs(toNumeric(a))
 	b = abs(toNumeric(b))
 	if ( isIntN(a) && isIntN(b) ) {
 		if (a == b || !a) return b; if (!b) return a
 		if (abs(a - b) == 1n) return 1n //does this improve speed?
-		const i = ctz(a), j = ctz(b), k = i < j ? i : j; //min
-		//reduce sizes
-		a >>= i; b >>= j
+		let i, j
+		[i, a] = ctztrim(a)
+		[j, b] = ctztrim(b)
+		const k = i < j ? i : j
 		//REMINDER: every `return` after this point MUST be shifted by `k` to the left
 		if (a == b) return a << k //again, does this improve speed?
 		/*
@@ -69,7 +81,7 @@ export const gcd = (a, b) => {//should be variadic
 			so use Stein alg:
 			en.wikipedia.org/wiki/Binary_GCD_algorithm#Implementation
 			*/
-			for (;;){ //`undefined == true` lol
+			while (true){
 				if (a > b) [a, b] = [b, a]
 				b -= a
 				if (!b) return a << k
@@ -84,12 +96,14 @@ export const gcd = (a, b) => {//should be variadic
 		let m = a_len - b_len
 		//this will sometimes make `b > a` true, I will fix it soon
 		b <<= m << BIN; m = a_len
-		while (a && b) {
+		while (a && b)
+		{
 			m--
 			let x = a >> (m << BIN),
 				y = b >> (m << BIN),
 				[A, B, C, D] = [1n, 0n, 0n, 1n]
-			for (;;){
+			while (true)
+			{
 				let w0 = (x + A) / (y + C),
 					w1 = (x + B) / (y + D),
 					w;
@@ -208,7 +222,7 @@ export const toFraction = x => {
 	if (x == Infinity) return [s ? -1 : 1, 0]
 	const n = trunc(x); x -= n
 	let f0 = [0, 1], f1 = [1, 1], midOld = NaN //ensure same-type comparison
-	for (;;){
+	while (true){
 		const fm = [f0[0] + f1[0], f0[1] + f1[1]], mid = fm[0] / fm[1]
 		//guaranteed to halt
 		if (mid == x || midOld == mid) {fm[0] += n * fm[1]; if (s) fm[0] *= -1; return fm}
@@ -218,6 +232,6 @@ export const toFraction = x => {
 }
 
 /*
-TO-DO: add function to test if number equals sum of divisors
+to-do: add function to test if number equals sum of divisors
 with the option to include or exclude 1
 */

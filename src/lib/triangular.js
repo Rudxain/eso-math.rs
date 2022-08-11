@@ -39,5 +39,5 @@ export const iterTri = function*(s, b) {
 	let t = b ? 0 : 0n
 	s = s ? -(t**t) : t**t
 	let i = s
-	while (Infinity) {yield t; t += i; i += s}
+	while (true) {yield t; t += i; i += s}
 }

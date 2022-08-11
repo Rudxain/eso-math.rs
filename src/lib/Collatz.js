@@ -1,35 +1,55 @@
+import '../typedefs'
 import {isInfNaN} from '../helper/value check'
+import {trunc} from './rounding'
 import {lcm} from './factors'
 
 const Float = Number, Int = BigInt, _Set = Set
 
-//generalized Collatz
-//en.wikipedia.org/wiki/Collatz_conjecture#Undecidable_generalizations
-export const Collatz_gen = (n, k = 2, a=[[1, 2], [3, 1]], b=[[0, 1], [1, 1]], P = 2) => {
+/**
+generalized Collatz
+https://en.wikipedia.org/wiki/Collatz_conjecture#Undecidable_generalizations
+@param {Object} kwargs arguments bag.
+*/
+export const Collatz_gen = function* (kwargs)
+{
+	let {n} = kwargs
+	const {a = [[1, 2], [3, 1]], b = [[0, 1], [1, 1]], P = 2} = kwargs
 	n = toNumeric(n)
-	if (isInfNaN(n)) return //`undefined` is more correct than `[]`
-	P = toNumeric(P)
-	if (typeof P != 'bigint') P = trunc(P)
-	let i, tmp
-	const seq = [n]
-	const addFrac = (f0, f1) => {
-		//format is [num, den]
+	P = trunc(toNumeric(P))
+
+
+
+	/**
+	add 2 fractions. format is [num, den]
+	@param {fraction} f0 1st fraction
+	@param {fraction} f1 2nd fraction
+	@return {fraction} sum of input fracs
+	*/
+	const frac_sum = (f0, f1) => {
 		const x = lcm(f0[1], f1[1])
 		return [x / f0[1] * f0[0] + x / f1[1] * f1[0], x]
 	}
-	while (seq.length < Float(k))
-	{
-		i = seq.at(-1) % P
-		const Fi = Float(i)
-		tmp = addFrac([seq.at(-1) * a.at(Fi)[0] / a.at(Fi)[1], 1], b.at(Fi))
-		seq[seq.length] = tmp[0] / tmp[1] //push
+	/**
+	converts a fraction to its expanded binary form
+	@param {fraction} f frac to convert
+	@return {numeric} expanded frac
+	*/
+	const frac_to_num = f => f[0] / f[1]
+
+	yield n
+	while (true){
+		const i = Float(n % P),
+			//order matters, because of `IntN`s
+			numerator = n * a.at(i)[0] / a.at(i)[1]
+			f = frac_sum([numerator, 1], b.at(i))
+		yield n = frac_to_num(f)
 	}
-	return seq.slice(1)
 }
 
-/*
+/**
 Returns (Hailstone) seq of n. Supports signed integers.
-You can explicitly specify the k steps, or let it detect known cycles.
+@param {numeric} k steps. if unspecified, detects known cycles.
+@param
 Falsy s: Standard
 Truthy s: "Shortcut" version
 "Shortcut" is like Standard but skips some Even numbers
@@ -58,7 +78,7 @@ export const Collatz_std = (n, k, s) => {
 	}
 	return h.slice(1)
 }
-//TO-DO: use remove all CTZ on shortcut mode
+//to-do: use remove all CTZ on shortcut mode
 
 //additive seq
 export const Collatz_add = function* (seed) {

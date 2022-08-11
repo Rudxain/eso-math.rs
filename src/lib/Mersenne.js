@@ -18,5 +18,5 @@ export const invM = (m, b) => {
 */
 export const iterM = function*() {
 	let n = 1n
-	while (Infinity) {yield n; n <<= 1n; n |= 1n}
+	while (true) {yield n; n <<= 1n; n |= 1n}
 }

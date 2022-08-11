@@ -6,13 +6,13 @@ export const iterP = function*(b) {
 	const TWO = b ? 2 : 2n
 	let sum = TWO, p = TWO ^ TWO //auto 0
 	yield p
-	while (Infinity) {yield p += sum; sum += TWO}
+	while (true) {yield p += sum; sum += TWO}
 }
 //list recursive Pronics
 export const iterRecurP = function*(b) {
 	let p = b ? 2 : 2n
 	yield p
-	while (Infinity) yield p *= p + (b ? 1 : 1n)
+	while (true) yield p *= p + (b ? 1 : 1n)
 }
 //the Doubly-Pronic (recursive) constant
 export const RecurPronicCONST = (() => {
@@ -25,5 +25,5 @@ export const RecurPronicCONST = (() => {
 export const iterRecurPConstInv = function*() {
 	let p = 2
 	yield p
-	while (Infinity) yield p = round(p / RecurPronicCONST)
+	while (true) yield p = round(p / RecurPronicCONST)
 }

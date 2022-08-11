@@ -1,3 +1,4 @@
+import '../typedefs'
 import {isBigInt as isIntN} from '../helper/type check'
 import {isNegZero} from '../helper/value check'
 import {autoN, toNumeric} from '../helper/sanitize'
@@ -15,8 +16,9 @@ export const
 	clamp = (x, min, max) => x > max ? max : x < min ? min : x
 
 /**
+@param {Array} arr values to compare
 @param {boolean} op falsy: min, truthy: max
-@param {function} f is the type coercion fn
+@param {function} f type coercion fn, eg. `Number`, `BigInt`, `String`
 */
 export const minmax = (arr, op, f) => {
 	let i = 0, v = f(arr[i]), m = v
