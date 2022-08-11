@@ -28,7 +28,11 @@ export const nthTriNum = x => {
 		: q * (x + ONE)
 }
 
-//get index of a trinum
+/**
+get index of a trinum
+@param {numeric} x
+@return {numeric}
+*/
 export const invTriNum = x => {
 	return isIntN(x = toNumeric(x))
 	? ( sqrt((x << 3n) | 1n) & -2n ) >> 1n
@@ -37,7 +41,8 @@ export const invTriNum = x => {
 
 export const iterTri = function*(s, b) {
 	let t = b ? 0 : 0n
-	s = s ? -(t**t) : t**t
+	const n1 = autoN(1,t)
+	s = s ? -n1 : n1
 	let i = s
 	while (true) {yield t; t += i; i += s}
 }
