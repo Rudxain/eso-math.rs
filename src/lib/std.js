@@ -1,7 +1,7 @@
 import {isBigInt as isIntN} from '../helper/type check'
 import {isNegZero} from '../helper/value check'
 import {autoN, toNumeric} from '../helper/sanitize'
-import {trunc} from './rounding'
+import {trunc, floor} from './rounding'
 
 const IntN = BigInt, lb = Math.log2 //in general, lb has better precision and performance than ln
 
@@ -11,6 +11,7 @@ export const
 	sign = x => x == 0 ? autoN(x, x) : (x < 0 ? autoN(-1, x) : autoN(1, x)),
 	signabs = x => [sign(x), abs(x)],
 	divrem = (n, d) => [trunc(n / d), n % d],
+	divEuclid = (x, y) => floor(+x / abs(+y)) * sign(+y),
 	clamp = (x, min, max) => x > max ? max : x < min ? min : x
 
 /**

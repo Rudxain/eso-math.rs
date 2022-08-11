@@ -31,10 +31,6 @@ IntN.logB = function(n, b = 3n) {
 	return logB(n, b)
 }
 
-//Euclidean division
-Math.divEuclid = function(x, y) {return floor(+x / abs(+y)) * sign(+y)}
-//the other variants of int-div are too short
-
 /**
 All the integer division defnitions
 @param {bigint} n numerator | dividend
