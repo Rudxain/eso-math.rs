@@ -8,7 +8,7 @@ Short edition of `defineProperty`
 @param {*} v value to set
 @param {(boolean[]|numeric|string)} a bool descriptor with format [W, E, C]
 */
-export default defProp = (O, p, v, a) => {
+const defProp = (O, p, v, a) => {
 	switch (typeof a) {
 		case 'number': a &= 7; a = [a & 4, a & 2, a & 1]; break
 		case 'bigint': a &= 7n; a = [a & 4n, a & 2n, a & 1n]; break
@@ -18,3 +18,5 @@ export default defProp = (O, p, v, a) => {
 	return Object.defineProperty(O, p, {value: v,
 		writable: !!a[0], enumerable: !!a[1], configurable: !!a[2]})
 }
+
+export default defProp
