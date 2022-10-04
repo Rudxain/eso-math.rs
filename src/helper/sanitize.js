@@ -8,7 +8,11 @@ import { isInf } from './value check'
 import { abs } from '../lib/std'
 import { trunc } from '../lib/rounding'
 
-const Float = Number, IntN = BigInt, Str = String, TypeErr = TypeError
+const
+	Float = Number, IntN = BigInt,
+	Str = String,
+	_Set = Set,
+	TypeErr = TypeError
 
 /**
 `copyType` (like `copySign`), but only for Numericals
@@ -23,12 +27,13 @@ https://tc39.es/ecma262/multipage/abstract-operations.html#sec-tobigint
 @param {(boolean|string|bigint)} x
 */
 export const toBigInt = x => {
-	switch (typeof x?.valueOf()) {
-		case 'boolean': case 'string': case 'bigint':
-			return IntN(x)
-		default:
-			throw new TypeErr(`Cannot convert ${x} to BigInt`)
-	}
+	if (
+		new _Set(['boolean', 'string', 'bigint'])
+			.has(typeof x?.valueOf())
+	)
+		return IntN(x)
+
+	throw new TypeErr(`Cannot convert ${x} to BigInt`)
 }
 
 /**
