@@ -1,0 +1,22 @@
+{
+  "name": "ntml",
+  "version": "0.0.0",
+  "description": "Number Theory Math Library. Includes some polyfills not available in core-js",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rudxain/NTML.js.git"
+  },
+  "author": "Rudxain",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Rudxain/NTML.js/issues"
+  },
+  "homepage": "https://github.com/Rudxain/NTML.js#readme",
+  "devDependencies": {
+    "eslint": "^8.24.0"
+  }
+}
