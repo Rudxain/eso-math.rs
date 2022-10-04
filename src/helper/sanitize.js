@@ -4,8 +4,11 @@ import {
 	isNumber as isFloat,
 	isBigInt as isIntN
 } from './type check'
-import {abs} from '../lib/std'
-const Float = Number, IntN = BigInt, TypeErr = TypeError
+import { isInf } from './value check'
+import { abs } from '../lib/std'
+import { trunc } from '../lib/rounding'
+
+const Float = Number, IntN = BigInt, Str = String, TypeErr = TypeError
 
 /**
 `copyType` (like `copySign`), but only for Numericals
@@ -18,15 +21,14 @@ export const autoN = (n, x) => (isIntN(x) ? IntN : Float)(n)
 /**
 https://tc39.es/ecma262/multipage/abstract-operations.html#sec-tobigint
 @param {(boolean|string|bigint)} x
-@return {bigint}
 */
 export const toBigInt = x => {
-	const t = typeof x?.valueOf()
-	switch (t){
+	switch (typeof x?.valueOf()) {
 		case 'boolean': case 'string': case 'bigint':
 			return IntN(x)
+		default:
+			throw new TypeErr(`Cannot convert ${x} to BigInt`)
 	}
-	throw new TypeErr(`Cannot convert ${x} to BigInt`)
 }
 
 /**
@@ -36,9 +38,11 @@ permissive BigInt coercion
 */
 export const anyBigInt = x => {
 	if (isIntN(x)) return x.valueOf()
-	if (isFloat(x)) return (x = trunc(+x)) ?
-		(isInf(x) ? (x < 0 ? -1n : 1n) : IntN(x)) : 0n
-	if ( !(x && (x = x.valueOf())) ) return 0n
+	if (isFloat(x)) {
+		x = trunc(+x)
+		return x != 0 ? (isInf(x) ? (x < 0 ? -1n : 1n) : IntN(x)) : 0n
+	}
+	if (!(x && (x = x.valueOf()))) return 0n
 	if (!isPrim(x)) return 1n
 	return IntN(x)
 }
