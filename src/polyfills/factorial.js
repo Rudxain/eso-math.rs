@@ -4,6 +4,10 @@ import {Gosper, Gamma, Lanczos} from '../lib/factorial'
 
 const RangeErr = RangeError
 
+/**
+@param {number} x
+@return {number}
+*/
 Math.factorial = function(x) {
 	if ((x = +x) >= 171) return Infinity
 	if (x < 0 || x != x) return NaN
@@ -17,8 +21,9 @@ Math.factorial = function(x) {
 	return out
 }
 //https://en.wikipedia.org/wiki/Factorial#Properties
-BigInt.factorial = function(n) {
-	if ((n = toBigInt(n)) < 0n) throw new RangeErr('return value is NaN')
+BigInt.factorial = function(/**@type {bigint}*/n) {
+	n = toBigInt(n)
+	if (n < 0n) throw new RangeErr('return value is NaN')
 	let out = 1n
 	while (n > 0n) out *= n--
 	return out

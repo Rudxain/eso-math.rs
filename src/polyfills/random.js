@@ -6,9 +6,15 @@ const IntN = BigInt, RangeErr = RangeError, RNG = Math.random
 
 //interval [0, n), or (n, 0] if negative. By default, it returns an uInt64
 IntN.random = function(n = 1n << 0x40n) {
-	n = toIntN(n); const s = n < 0n
+	n = toIntN(n)
+
+	const s = n < 0n
 	if (s) n = -n //abs
-	if (n < 2n) {if (n) return 0n; else throw new RangeErr('requested an int equal and NOT equal to zero')}
+
+	if (n < 2n) {
+		if (n) return 0n
+		throw new RangeErr('requested an int equal and NOT equal to zero')
+	}
 	const n_len = sizeOf(n, 1n, 1n), b = 52n
 	let x, x_len, max
 	do {

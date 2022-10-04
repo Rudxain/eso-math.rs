@@ -15,8 +15,10 @@ const
 	TypeErr = TypeError
 
 /**
-`copyType` (like `copySign`), but only for Numericals
-@param {any} n value to coerce
+`copyType` (like `copySign`), but only for Numericals.
+This is like type-inference
+
+@param {*} n value to coerce
 @param {numeric} x from which the type is copied
 @return {numeric}
 */

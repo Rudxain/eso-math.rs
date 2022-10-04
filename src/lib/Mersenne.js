@@ -2,6 +2,10 @@ import {isBigInt as isIntN} from '../helper/type check'
 import {isInt} from '../helper/value check'
 import {isPow2} from './power'
 
+/**
+@param {numeric} n
+@return {numeric}
+*/
 export const M = n => isIntN(n) ? ~(-1n << n) : 2**n - 1
 export const isM = x => {
 	if (!isInt(x) || x < 1) return false
