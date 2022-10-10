@@ -7,7 +7,7 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 	const
 		IntN = BigInt, Float = Number,
 		TypeErr = TypeError, RangeErr = RangeError,
-		lb = Math.log2
+		lb = Math.log2, sine = Math.sin
 
 	/**https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/Double.html#MIN_NORMAL*/
 	Float.MIN_NORMAL = 2 ** -1022
@@ -124,11 +124,7 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 		return mod(out * b, m)
 	}
 
-	/**
-	@param {number} x
-	@return {number}
-	*/
-	Math.factorial = function (x) {
+	Math.factorial = function (/**@type {number}*/ x) {
 		if ((x = +x) >= 171) return Infinity
 		if (x < 0 || x != x) return NaN
 		/*
@@ -215,5 +211,14 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 		//can it be defined?
 		if (a >= 0n && b >= 0n) return clmul(a, b)
 		throw new RangeErr('negative carryless product is undefined')
+	}
+
+	/**
+	https://en.wikipedia.org/wiki/Sinc_function
+	@param {number} x
+	*/
+	Math.sinc = function(x) {
+		x = +x
+		return sine(x) / x
 	}
 }
