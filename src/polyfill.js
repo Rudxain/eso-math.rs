@@ -219,6 +219,6 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 	*/
 	Math.sinc = function(x) {
 		x = +x
-		return sine(x) / x
+		return x == 0 ? 1 : sine(x) / x
 	}
 }
