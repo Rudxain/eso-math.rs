@@ -10,7 +10,7 @@ I want this to be practical and educational library, with some focus in recreati
 
 ## Usage and directory tree
 
-If you want to import individual modules, import from [`lib`](./src/lib). If you want the whole lib, import [main `index`](./src/index.js). For polyfills related with the lib use [`polyfills`](./src/polyfill.js). The [`helper`](./src/helper) dir is just for internal stuff.
+If you want to import individual modules, import from [`lib`](./src/lib). If you want the whole lib, import [main `index`](./src/index.js). For polyfills related with the lib use [`polyfills`](./src/polyfill.js). The [`helper`](./src/helper) dir is for *internal use* only, **don't import** it.
 
 ### ⚠DISCLAIMER
 
