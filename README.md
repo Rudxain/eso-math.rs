@@ -6,8 +6,7 @@ Most math libs are focused on arithmetic and algebra, and practical applications
 
 ## Purpose
 
-I want this to be practical and educational library, with some focus in recreational math and NT. I also want to add better support for the `BigInt`data type.
-
+I want this to be used for recreational math, NT, and educational stuff, with a few practical use cases.
 ## Usage and directory tree
 
 If you want to import individual modules, import from [`lib`](./src/lib). If you want the whole lib, import [main `index`](./src/index.js). For polyfills related with the lib use [`polyfills`](./src/polyfill.js). The [`helper`](./src/helper) dir is for *internal use* only, **don't import** it.
