@@ -1,4 +1,5 @@
-'use strict' //this will take effect when all imports are removed
+//@ts-nocheck
+'use strict' // this will take effect when all imports are removed
 /**
 # Related
 - [Math Extensions proposal](https://github.com/rwaldron/proposal-math-extensions)
@@ -29,18 +30,18 @@ import { gcd, lcm } from './lib/factors'
 	*/
 	const isFloat = x => typeof x?.valueOf?.() == 'number'
 	/**
-	Short edition of `defineProperty`
-	@param {object} O
-	@param {PropertyKey} p
-	@param {*} v value to set
-	@param {([boolean, boolean, boolean] | numeric | string)} a descriptor with format [W, E, C]
-	*/
+	 * Short edition of `defineProperty`.
+	 * @param {object} O
+	 * @param {PropertyKey} p
+	 * @param {*} v value to set
+	 * @param {([boolean, boolean, boolean] | numeric | string)} a descriptor with format [W, E, C]
+	 */
 	const defProp = (O, p, v, a) => {
 		switch (typeof a) {
 			case 'number': a &= 7; a = [(a & 4) != 0, (a & 2) != 0, (a & 1) != 0]; break
 			case 'bigint': a &= 7n; a = [a & 4n, a & 2n, a & 1n]; break
 			case 'string': a = [/w/i.test(a), /e/i.test(a), /c/i.test(a)]; break
-			//Linux chmod lol (rwx)
+			// Linux chmod lol (rwx)
 		}
 		return Object.defineProperty(O, p, {
 			value: v,
@@ -51,17 +52,20 @@ import { gcd, lcm } from './lib/factors'
 	const
 		IntN = BigInt, Float = Number,
 		TypeErr = TypeError, RangeErr = RangeError,
-		{ PI, E, log2: lb, exp, sin: sine, random: RNG } = Math
+		{ PI, E, log2: lb, exp, sin: sine, random: RNG } = Math,
+		{ MAX_SAFE_INTEGER, isNaN } = Float
 
-	/** 2pi */
+	/** Ratio of the circumference of a circle to its radius. */
 	const TAU = 2 * PI
 
 	/**
 	https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/Double.html#MIN_NORMAL
-	*/const MIN_NORMAL = 2 ** -1022
+	*/
+	const MIN_NORMAL = 2 ** -1022
 	Float.MIN_NORMAL = MIN_NORMAL
 
-	const { MAX_SAFE_INTEGER } = Float
+	/** max bits per RNG call */
+	const MAX_ENTROPY = 52
 
 	Math.TAU = TAU
 	Math.SQRT5 = Math.sqrt(5)
@@ -77,34 +81,61 @@ import { gcd, lcm } from './lib/factors'
 			abs(number) <= MAX_SAFE_INTEGER
 	}
 
-	Math.logB = function (/** @type {string | number} */ x, y = E) { return logB(+x, +y) }
+	/**
+	 * Returns the base `y` logarithm of a number.
+	 * @param {number} x
+	 * @return {number}
+	 */
+	Math.logB = function (x, y = E) { return logB(+x, +y) }
 
-	Math.LOG2PHI = lb(PHI); Math.LNPHI = Math.log(PHI); Math.LOG10PHI = Math.log10(PHI)
+	Math.LOG2PHI = lb(PHI)
+	Math.LNPHI = Math.log(PHI)
+	Math.LOG10PHI = Math.log10(PHI)
 
 	Math.logPHI = function (/** @type {string | number} */ x) { return logB(+x, PHI) }
 
-	Math.LOGPHI2 = Math.logPHI(2); Math.LOGPHIE = Math.logPHI(E); Math.LOGPHI10 = Math.logPHI(10)
+	Math.LOGPHI2 = Math.logPHI(2)
+	Math.LOGPHIE = Math.logPHI(E)
+	Math.LOGPHI10 = Math.logPHI(10)
 
 	Math.SQRT3 = sqrt(3)
-	Math.LN3 = Math.log(3); Math.LOG2_3 = lb(3)
-	Math.LOG10_3 = Math.log10(3); Math.LOGPHI3 = Math.logPHI(3)
-	//ternary lives also matter
-	Math.log3 = function (/** @type {string | number} */ x) { return logB(+x, 3) }
-	//stop discriminating the number 3
+	Math.LN3 = Math.log(3)
+	Math.LOG2_3 = lb(3)
+	Math.LOG10_3 = Math.log10(3)
+	Math.LOGPHI3 = Math.logPHI(3)
+	// ternary lives also matter
+	/**
+	 * Returns the base 3 logarithm of a number.
+	 * @param {number} x
+	 * @return {number}
+	 */
+	Math.log3 = function (x) { return logB(+x, 3) }
+	// stop discriminating the number 3
 	Math.LOG3_2 = Math.log3(2); Math.LOG3E = Math.log3(E)
 	Math.LOG3_10 = Math.log3(10); Math.LOG3PHI = Math.log3(PHI)
-	//join The Order of The Triangle Of Power: https://youtu.be/sULa9Lc4pck
+	// join The Order of The Triangle Of Power: https://youtu.be/sULa9Lc4pck
 
-	//lb(bigint)
+	/**
+	 * Returns the base 2 logarithm of a bigint.
+	 * @param {string | boolean | numeric} n
+	 * @param {string | boolean | numeric} b
+	 * @returns {bigint}
+	 */
 	IntN.log2 = function (/** @type {string | bigint | boolean} */ n) {
 		if ((n = toIntN(n)) > 0n) return sizeOf(n, 1n, 0n)
 		throw new RangeErr('Non-positive logarithmation')
 	}
 
-	//3 is the closest integer to `E`
-	IntN.logB = function (/** @type {string | boolean | numeric} */ n, b = 3n) {
+	/**
+	 * Returns the base `b` logarithm of a bigint.
+	 * @param {string | boolean | numeric} n
+	 * @param {string | boolean | numeric} b
+	 * @returns {bigint}
+	 */
+	IntN.logB = function (n, b) {
 		n = toIntN(n); b = toIntN(b)
-		if (n < 1n || b < 2n) throw new RangeErr('return value is -Infinity or NaN')
+		if (n < 1n || b < 2n)
+			throw new RangeErr('return value is -Infinity or NaN')
 		return logB(n, b)
 	}
 
@@ -115,7 +146,7 @@ import { gcd, lcm } from './lib/factors'
 	Number.signbit = function (number) {
 		const n = number
 		return typeof n == 'number' &&
-			n == n &&
+			isNaN(n) &&
 			n < 0 || isNegZero(n)
 	}
 
@@ -144,7 +175,7 @@ import { gcd, lcm } from './lib/factors'
 
 	IntN.sum = function (/** @type {string | any[]} */ ...values) {
 		let sum = 0n
-		//avoid out-of-memory error
+		// avoid out-of-memory error
 		for (; values.length; values.length--)
 			sum += toIntN(values[values.length - 1])
 		return sum
@@ -174,9 +205,9 @@ import { gcd, lcm } from './lib/factors'
 	IntN.div = function (n, d, F) {
 		n = toIntN(n); d = toIntN(d)
 		const q = n / d
-		//this could be wrong when using "euclid"
+		// this could be wrong when using "euclid"
 		if (!(n % d)) return q
-		const s = (n < 0n) != (d < 0n) ? 1n : 0n //XOR of sign bits
+		const s = (n < 0n) != (d < 0n) ? 1n : 0n // XOR of sign bits
 		switch (String(F).trim().toLowerCase()) {
 			case 'floor': default: return q - s
 			case 'ceil': return q + (s ^ 1n)
@@ -187,31 +218,47 @@ import { gcd, lcm } from './lib/factors'
 		}
 	}
 
-	//Standard Mathematical Modulo (floor). NOT remainder
-	//if args are floats, it can have precision errors, similarly to the naive divison-based definition
+	// Standard Mathematical Modulo (floor). NOT remainder
+	// if args are floats, it can have precision errors, similarly to the naive divison-based definition
 	const mod = (/** @type {number | bigint} */ n, /** @type {number} */ d) => (n % d + d) % d
 
-	//en.wikipedia.org/wiki/Modulo_operation#Variants_of_the_definition
-	Math.mod = function (/** @type {number} */ n, /** @type {numeric} */ d, /** @type {string} */ F) {
+	// https://en.wikipedia.org/wiki/Modulo_operation#Variants_of_the_definition
+	/**
+	 *
+	 * @param {number} n
+	 * @param {number} d
+	 * @param {'floor' | 'trunc' | 'ceil' | 'round' | 'expand' | 'euclid'} F
+	 */
+	Math.mod = function (n, d, F) {
 		n = +n; d = +d
-		//fallback to 'floor' if 'F' is "euclid" or just invalid
+		// fallback to "floor" if `F` is "euclid" or just invalid
 		switch (F = String(F).trim().toLowerCase()) {
-			case 'floor': case 'trunc': case 'ceil': case 'round': case 'expand': break
-			case 'euclid': d = abs(d); default: F = 'floor'
+			case 'floor': case 'trunc': case 'ceil': case 'round': case 'expand':
+				break
+			case 'euclid':
+				d = abs(d)
+			// eslint-disable-next-line no-fallthrough
+			default:
+				F = 'floor'
 		}
 		return n - d * Math[F](n / d)
 	}
 	IntN.mod = function (/** @type {string | number | bigint | boolean} */ n, /** @type {string | boolean | numeric} */ d, /** @type {string} */ F) {
 		n = toIntN(n); d = toIntN(d)
 		switch (F = String(F).trim().toLowerCase()) {
-			case 'floor': case 'trunc': case 'ceil': case 'round': case 'expand': break
-			case 'euclid': d = abs(d); default: F = 'floor'
+			case 'floor': case 'trunc': case 'ceil': case 'round': case 'expand':
+				break
+			case 'euclid':
+				d = abs(d)
+			// eslint-disable-next-line no-fallthrough
+			default:
+				F = 'floor'
 		}
 		return n - d * IntN.div(n, d, F)
 	}
 
 	Math.modPow = function (/** @type {number} */ b, /** @type {numeric} */ e, /** @type {number} */ m) {
-		if (isNan(b = +b) || isNan(e = +e) || isNan(m = +m)) return NaN
+		if (isNaN(b = +b) || isNaN(e = +e) || isNaN(m = +m)) return NaN
 		if (e < 2 || e % 1) return mod(b ** e, m)
 		b = mod(b, m)
 		if (!b) return b
@@ -249,56 +296,60 @@ import { gcd, lcm } from './lib/factors'
 	IntN.cbrt = function (/** @type {string | bigint | boolean} */ n) { return root(toIntN(n), 3n) }
 
 
-//factorial approximations for non-ints.
-//These 3 are trash, none make use of full precision. I need help to make these more accurate
-/**
-improvement of Stirling approximation
-@param {number} x
-*/
-const Gosper = x => Math.sqrt((x + 1 / 6) * TAU) * (x / E) ** x
+	// factorial approximations for non-ints.
+	// These 3 are trash, none make use of full precision. I need help to make these more accurate
+	/**
+	improvement of Stirling approximation
+	@param {number} x
+	*/
+	const Gosper = x => Math.sqrt((x + 1 / 6) * TAU) * (x / E) ** x
 
-/**
-Gamma Function (+1) defined as Summation instead of Integration
-@param {number} x
-*/
-const Gamma = x => {
-	let t = 1, s0, s1 = 0 ** x
-	do {
-		s0 = s1
-		s1 += t ** x * exp(-t)
-		t++
+	/**
+	Gamma Function (+1) defined as Summation instead of Integration
+	@param {number} x
+	*/
+	const Gamma = x => {
+		let t = 1, s0, s1 = 0 ** x
+		do {
+			s0 = s1
+			s1 += t ** x * exp(-t)
+			t++
+		}
+		while (s0 != s1)
+		return s0
 	}
-	while (s0 != s1)
-	return s0
-}
 
-/**
-https://en.wikipedia.org/wiki/Lanczos_approximation#Simple_implementation
-@param {number} z
-@return {number}
-*/
-const Lanczos = z => {
-	const p = [
-		676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059,
-		12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7
-	]
+	/**
+	https://en.wikipedia.org/wiki/Lanczos_approximation#Simple_implementation
+	@param {number} z
+	@return {number}
+	*/
+	const Lanczos = z => {
+		const p = [
+			676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059,
+			12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7
+		]
 
-	if (z < 0.5) return PI / (sine(PI * z) * Lanczos(1 - z))
+		if (z < 0.5) return PI / (sine(PI * z) * Lanczos(1 - z))
 
-	z--
-	let x = 0.99999999999980993
+		z--
+		let x = 0.99999999999980993
 
-	for (let i = 0; i < p.length; i++)
-		x += p[i] / (z + i + 1)
+		for (let i = 0; i < p.length; i++)
+			x += p[i] / (z + i + 1)
 
-	const t = z - 0.5 + p.length
-	return sqrt(TAU) * t ** (z + 0.5) * exp(-t) * x
-}
+		const t = z - 0.5 + p.length
+		return sqrt(TAU) * t ** (z + 0.5) * exp(-t) * x
+	}
 
-	Math.factorial = function (/**@type {number}*/ x) {
+	/**
+	 * Gamma + 1
+	 * @param {number} x
+	 */
+	Math.factorial = function (x) {
 		x = +x
 		if (x >= 171) return Infinity
-		if (x < 0 || x != x) return NaN
+		if (x < 0 || isNaN(x)) return NaN
 		/*
 		We could precompute an int lookup table, and use spline interpolation for faster processing.
 		The problem is that if `x` is at the extreme, the output would be `NaN` unless we use extrapolation
@@ -308,7 +359,8 @@ const Lanczos = z => {
 		while (x > 0) out *= x--
 		return out
 	}
-	//to-do: https://en.wikipedia.org/wiki/Factorial#Properties (optimization)
+
+	// to-do: https://en.wikipedia.org/wiki/Factorial#Properties (optimization)
 	IntN.factorial = function (/**@type {bigint}*/n) {
 		n = toIntN(n)
 		if (n < 0n) throw new RangeErr('return value is NaN')
@@ -317,19 +369,26 @@ const Lanczos = z => {
 		return out
 	}
 
-	//logarithmic binary search is faster than linear, but the engine will do it for us
-	Math.ctz32 = function (/** @type {string | number} */ x) { return ctz(+x >>> 0) }
-	IntN.ctz = function (/** @type {string | boolean | numeric} */ n) { if (n = toIntN(n)) return ctz(n); throw new RangeErr('return value is Infinity') }
+	Math.ctz32 = function (/** @type {number} */ x) { return ctz(+x >>> 0) }
+	IntN.ctz = function (/** @type {string | boolean | numeric} */ n) {
+		n = toIntN(n)
+		if (n) return ctz(n)
+		throw new RangeErr('return value is Infinity')
+	}
 
-	Math.popcnt32 = function (/** @type {string | number} */ x) { return popCount(+x >>> 0) }
+	Math.popcnt32 = function (/** @type {number} */ x) { return popCount(+x >>> 0) }
 	IntN.popcnt = function (/** @type {string | bigint | boolean} */ n) {
 		if ((n = toIntN(n)) >= 0n) return popCount(n)
 		throw new RangeErr('return value is Infinity')
 	}
 
-	//reverse the order of bits using "binary chop"
-	Math.rev32 = function (/** @type {number} */ x) {
+	/**
+	 * Reverse the bit order.
+	 * @param {number} x
+	 */
+	Math.rev32 = function (x) {
 		x = +x | 0
+		// "binary chop"
 		x = ((x & 0xffff0000) >>> 0x10) | ((x & 0x0000ffff) << 0x10)
 		x = ((x & 0xff00ff00) >>> 8) | ((x & 0x00ff00ff) << 8)
 		x = ((x & 0xf0f0f0f0) >>> 4) | ((x & 0x0f0f0f0f) << 4)
@@ -339,20 +398,20 @@ const Lanczos = z => {
 	}
 
 	/**
-	circular left shift
-	@param {number} n
-	@param {number} b
-	*/
+	 * Circular left shift.
+	 * @param {number} n
+	 * @param {number} b
+	 */
 	Math.rotl32 = function (n, b) {
 		n = +n
 		b = +b & 31
 		return (n << b) | (n >>> (32 - b)) >>> 0
 	}
 	/**
-	circular right shift
-	@param {number} n
-	@param {number} b
-	*/
+	 * Circular right shift.
+	 * @param {number} n
+	 * @param {number} b
+	 */
 	Math.rotr32 = function (n, b) {
 		n = +n
 		b = +b & 31
@@ -360,9 +419,9 @@ const Lanczos = z => {
 	}
 
 	/**
-	https://en.wikipedia.org/wiki/Sinc_function
-	@param {number} x
-	*/
+	 * https://en.wikipedia.org/wiki/Sinc_function
+	 * @param {number} x
+	 */
 	Math.sinc = function (x) {
 		x = +x
 		return x == 0 ? 1 : sine(x) / x
@@ -374,39 +433,49 @@ const Lanczos = z => {
 	IntN.random = function (n = 1n << 0x40n) {
 		n = toIntN(n)
 
-		const s = n < 0n
-		if (s) n = -n //abs
+		const sgn = n < 0n
+		if (sgn) n = -n //abs
 
 		if (n < 2n) {
 			if (n) return 0n
 			throw new RangeErr('requested an int equal and NOT equal to zero')
 		}
-		const n_len = sizeOf(n, 1n, 1n), b = 52n
-		let x, x_len, max
+		const n_len = sizeOf(n, 1n, 1n), bits_per_block = IntN(MAX_ENTROPY)
+		let out, out_len, max
 		do {
-			//in this context, the size of 0 is defined as zero instead of 1
-			x = x_len = 0n
+			// in this context, the size of 0 is defined as zero instead of 1
+			out = out_len = 0n
 			do {
-				//build the bigint in `b` blocks, to discard less rand data
-				x <<= b; x_len += b
-				//`crypto.getRandomValues` is probably unnecesary
-				x |= IntN(RNG() * 2 ** 52)
-			} while (x_len <= n_len)
-			//this condition and the `-1` allow `%` to never be no-op
-			const len_d = x_len - n_len - 1n
-			x >>= len_d; x_len -= len_d
-			max = nthMersenne(x_len)
-			//https://stackoverflow.com/a/10984975
-		} while (x >= max - max % n)
-		x %= n
-		return s ? -x : x
+				// build the bigint in `bits_per_block`b blocks, to discard less rand data
+				out <<= bits_per_block
+				out_len += bits_per_block
+
+				// `crypto.getRandomValues` is unnecesary
+				out |= IntN(RNG() * 2 ** MAX_ENTROPY)
+			} while (out_len <= n_len)
+			// this condition and the `-1` allow `%` to never be no-op
+			const len_d = out_len - n_len - 1n
+			out >>= len_d; out_len -= len_d
+			max = nthMersenne(out_len)
+			// https://stackoverflow.com/a/10984975
+		} while (out >= max - max % n)
+		out %= n
+		return sgn ? -out : out
 	}
 
-	IntN.hypot = function (/** @type {string | any[]} */ ...values) {
+	/**
+	 * Returns the square root of the sum of squares of its arguments.
+	 * @param {...(string | bigint | boolean)} values Values to compute the square root for.
+	 * If no arguments are passed, the result is `0n`.
+	 * If there is only one argument, the result is the absolute value.
+	 * If all arguments are `0n`, the result is `0n`.
+	 * @returns {bigint}
+	 */
+	IntN.hypot = function (...values) {
 		if (values.length == 1)
 			return abs(toIntN(values[0]))
 		let sum = 0n
-		//avoid OOM
+		// avoid OOM
 		for (; values.length; values.length--)
 			sum += toIntN(values[values.length - 1]) ** 2n
 		return sqrt(sum)
@@ -443,13 +512,12 @@ const Lanczos = z => {
 	*/
 	const toSci = function toScientific(radix = 10) {
 		let x = this?.valueOf?.()
-		//JIC someone uses the `call` method
 		if (!isFloat(x))
 			throw new TypeErr('Number.prototype.toScientific requires that `this` be a Number')
 
-		//coerce to primitive if Object-wrapped
+		// coerce to primitive if Object-wrapped
 		x = +x
-		//throw if `BigInt` or `Symbol`, just like `toString` does
+		// throw if `BigInt` or `Symbol`, just like `toString` does
 		radix = +radix
 
 		let exp
@@ -465,13 +533,35 @@ const Lanczos = z => {
 	}
 	defProp(Number.prototype, toSci.name, toSci, 0b101)
 
-	//correction of data descriptors, to make everything equal to vanilla/canon JS
+	// correction of data descriptors, to make everything equal to vanilla/canon JS
 	for (const O of [Number, Math, BigInt])
-		//`for in` is slower and has more potential side-effects
+		// `for in` is slower and has more potential side-effects
 		for (const k of Object.keys(O)) {
 			const isF = typeof O[k] == 'function'
 			defProp(O, k, O[k], +isF && 0b101)
-			if (isF) defProp(O[k], 'name', O[k].name || k, 1) //name all anonymous funcs
+			if (isF) defProp(O[k], 'name', O[k].name || k, 1) // name all anonymous funcs
 		}
 
+
+	const AssertionError = class extends Error {constructor(message) {super(message)}}
+
+	/**
+	ensure that a predicate that's supposed to always be `true` is, in fact, `true`
+	@param {boolean} condition condition to check
+	@param {string} [msg] error `message`, in case it goes wrong
+	*/
+	const assert = (condition, msg) => {if (!condition) throw new AssertionError(msg)}
+
+	const TEST_MODE = false
+
+	if (TEST_MODE) {
+		const IntN = BigInt
+
+		const b = IntN.asIntN(0x40, IntN.random()),
+			e = IntN.random(0xffn),
+			m = IntN.asIntN(0x40, IntN.random()),
+			F = ['euclid', 'floor', 'trunc', 'ceil', 'round', 'roundInf'][Math.random() * 6 |0]
+
+		assert(IntN.modPow(b, e, m, F) == IntN.mod(b ** e, m, F), 'wrong modular exponentiation')
+	}
 }
