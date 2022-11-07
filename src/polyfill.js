@@ -1,11 +1,10 @@
+//@ts-check
+'use strict' //this will take effect when all imports are removed
 /**
 # Related
 - [BigInt Math TC39 proposal](https://github.com/tc39/proposal-bigint-math)
 - [Math Extensions proposal](https://github.com/rwaldron/proposal-math-extensions)
 */
-import './typedefs'
-
-import { isNumber as isFloat } from './mod/type check'
 import { isInt, isInfNaN, isNegZero } from './mod/value check'
 import { toBigInt as toIntN } from './mod/sanitize'
 import { PHI, MAX64 } from './lib/const'
@@ -19,6 +18,19 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 
 {
 	/**
+	check if `x` is either `Number` (object-wrapped) or `number` (primitive)
+	@param {*} x
+
+	@example
+	isNumber(0) //true
+	isNumber(NaN) //true
+	isNumber(Infinity) //true
+	isNumber(new Number) //true
+	isNumber(Object(0)) //true
+	isNumber('0') //false
+	*/
+	const isFloat = x => typeof x?.valueOf?.() == 'number'
+	/**
 	Short edition of `defineProperty`
 	@param {object} O
 	@param {PropertyKey} p
@@ -27,7 +39,7 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 	*/
 	const defProp = (O, p, v, a) => {
 		switch (typeof a) {
-			case 'number': a &= 7; a = [a & 4, a & 2, a & 1]; break
+			case 'number': a &= 7; a = [(a & 4) != 0, (a & 2) != 0, (a & 1) != 0]; break
 			case 'bigint': a &= 7n; a = [a & 4n, a & 2n, a & 1n]; break
 			case 'string': a = [/w/i.test(a), /e/i.test(a), /c/i.test(a)]; break
 			//Linux chmod lol (rwx)
