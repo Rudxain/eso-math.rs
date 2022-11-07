@@ -1,6 +1,6 @@
 {
-  "name": "ntml",
-  "version": "0.0.0",
+  "name": "esomath",
+  "version": "0.0.1",
   "description": "Esoteric Mathematic Library",
   "main": "index.js",
   "scripts": {
@@ -8,14 +8,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Rudxain/NTML.js.git"
+    "url": "git+https://github.com/Rudxain/EsoMath.js.git"
   },
   "author": "Rudxain",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Rudxain/NTML.js/issues"
+    "url": "https://github.com/Rudxain/EsoMath.js/issues"
   },
-  "homepage": "https://github.com/Rudxain/NTML.js#readme",
+  "homepage": "https://github.com/Rudxain/EsoMath.js#readme",
   "devDependencies": {
     "eslint": "^8.24.0"
   }
