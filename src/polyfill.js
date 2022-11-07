@@ -6,11 +6,12 @@
 
 import { isNumber as isFloat } from './helper/type check'
 import { isInt, isInfNaN } from './helper/value check'
-import { toBigInt } from './helper/sanitize'
+import { toBigInt as toIntN } from './helper/sanitize'
 import { PHI, MAX64 } from './lib/const'
 import { abs, sign, logB } from './lib/std'
 import { trunc } from './lib/rounding'
-import { ctz, popCount } from './lib/bitwise'
+import { ctz, popCount, sizeOf } from './lib/bitwise'
+import {M as nthMersenne} from '../lib/Mersenne'
 import { sqrt } from './lib/root'
 import { gcd, lcm } from './lib/factors'
 import { Gosper, Gamma, Lanczos } from './lib/factorial'
@@ -20,7 +21,7 @@ import defProp from '../helper/defProp'
 	const
 		IntN = BigInt, Float = Number,
 		TypeErr = TypeError, RangeErr = RangeError,
-		lb = Math.log2, sine = Math.sin
+		{ log2: lb, sin: sine, random: RNG } = Math
 
 	/**https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/Double.html#MIN_NORMAL*/
 	Float.MIN_NORMAL = 2 ** -1022
@@ -53,13 +54,13 @@ import defProp from '../helper/defProp'
 
 	//lb(bigint)
 	IntN.log2 = function (n) {
-		if ((n = toBigInt(n)) > 0n) return sizeOf(n, 1n, 0n)
+		if ((n = toIntN(n)) > 0n) return sizeOf(n, 1n, 0n)
 		throw new RangeErr('Non-positive logarithmation')
 	}
 
 	//3 is the closest integer to `E`
 	IntN.logB = function (n, b = 3n) {
-		n = toBigInt(n); b = toBigInt(b)
+		n = toIntN(n); b = toIntN(b)
 		if (n < 1n || b < 2n) throw new RangeErr('return value is -Infinity or NaN')
 		return logB(n, b)
 	}
@@ -72,7 +73,7 @@ import defProp from '../helper/defProp'
 	@return {bigint} quotient
 	*/
 	IntN.div = function (n, d, F) {
-		n = toBigInt(n); d = toBigInt(d)
+		n = toIntN(n); d = toIntN(d)
 		const q = n / d
 		//this could be wrong when using "euclid"
 		if (!(n % d)) return q
@@ -102,7 +103,7 @@ import defProp from '../helper/defProp'
 		return n - d * Math[F](n / d)
 	}
 	IntN.mod = function (n, d, F) {
-		n = toBigInt(n); d = toBigInt(d)
+		n = toIntN(n); d = toIntN(d)
 		switch (F = String(F).trim().toLowerCase()) {
 			case 'floor': case 'trunc': case 'ceil': case 'round': case 'expand': break
 			case 'euclid': d = abs(d); default: F = 'floor'
@@ -124,7 +125,7 @@ import defProp from '../helper/defProp'
 		return mod(out * b, m)
 	}
 	IntN.modPow = function (b, e, m) {
-		b = toBigInt(b); e = toBigInt(e); m = toBigInt(m)
+		b = toIntN(b); e = toIntN(e); m = toIntN(m)
 		if (e < 2n) return mod(e < 0n ? 1n / b ** -e : b ** e, m)
 		b = mod(b, m)
 		if (!b) return b
@@ -138,10 +139,10 @@ import defProp from '../helper/defProp'
 	}
 
 	Math.gcd = function (x, y) { return gcd(+x, +y) }
-	BigInt.gcd = function (a, b) { return gcd(toBigInt(a), toBigInt(b)) }
+	BigInt.gcd = function (a, b) { return gcd(toIntN(a), toIntN(b)) }
 
 	Math.lcm = function (x, y) { return lcm(+x, +y) }
-	BigInt.lcm = function (a, b) { return lcm(toBigInt(a), toBigInt(b)) }
+	BigInt.lcm = function (a, b) { return lcm(toIntN(a), toIntN(b)) }
 
 
 	Math.factorial = function (/**@type {number}*/ x) {
@@ -158,7 +159,7 @@ import defProp from '../helper/defProp'
 	}
 	//https://en.wikipedia.org/wiki/Factorial#Properties
 	IntN.factorial = function (/**@type {bigint}*/n) {
-		n = toBigInt(n)
+		n = toIntN(n)
 		if (n < 0n) throw new RangeErr('return value is NaN')
 		let out = 1n
 		while (n > 0n) out *= n--
@@ -167,11 +168,11 @@ import defProp from '../helper/defProp'
 
 	//logarithmic binary search is faster than linear, but the engine will do it for us
 	Math.ctz32 = function (x) { return ctz(+x >>> 0) }
-	IntN.ctz = function (n) { if (n = toBigInt(n)) return ctz(n); throw new RangeErr('return value is Infinity') }
+	IntN.ctz = function (n) { if (n = toIntN(n)) return ctz(n); throw new RangeErr('return value is Infinity') }
 
 	Math.popcnt32 = function (x) { return popCount(+x >>> 0) }
 	IntN.popcnt = function (n) {
-		if ((n = toBigInt(n)) >= 0n) return popCount(n)
+		if ((n = toIntN(n)) >= 0n) return popCount(n)
 		throw new RangeErr('return value is Infinity')
 	}
 
@@ -216,12 +217,46 @@ import defProp from '../helper/defProp'
 		return x == 0 ? 1 : sine(x) / x
 	}
 
+	/**
+	interval [0, n), or (n, 0] if negative. By default, it returns an uInt64
+	*/
+	IntN.random = function (n = 1n << 0x40n) {
+		n = toIntN(n)
+
+		const s = n < 0n
+		if (s) n = -n //abs
+
+		if (n < 2n) {
+			if (n) return 0n
+			throw new RangeErr('requested an int equal and NOT equal to zero')
+		}
+		const n_len = sizeOf(n, 1n, 1n), b = 52n
+		let x, x_len, max
+		do {
+			//in this context, the size of 0 is defined as zero instead of 1
+			x = x_len = 0n
+			do {
+				//build the bigint in `b` blocks, to discard less rand data
+				x <<= b; x_len += b
+				//`crypto.getRandomValues` is probably unnecesary
+				x |= IntN(RNG() * 2 ** 52)
+			} while (x_len <= n_len)
+			//this condition and the `-1` allow `%` to never be no-op
+			const len_d = x_len - n_len - 1n
+			x >>= len_d; x_len -= len_d
+			max = nthMersenne(x_len)
+			//https://stackoverflow.com/a/10984975
+		} while (x >= max - max % n)
+		x %= n
+		return s ? -x : x
+	}
+
 	IntN.hypot = function (...values) {
 		if (values.length == 1)
-			return abs(toBigInt(values[0]))
+			return abs(toIntN(values[0]))
 		let sum = 0n
 		while (values.length--)
-			sum += toBigInt(values[values.length - 1]) ** 2n
+			sum += toIntN(values[values.length - 1]) ** 2n
 		return sqrt(sum)
 	}
 
