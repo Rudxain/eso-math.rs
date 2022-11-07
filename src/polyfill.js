@@ -5,13 +5,13 @@
 */
 
 import { isNumber as isFloat } from './helper/type check'
-import { isInt, isInfNaN } from './helper/value check'
+import { isInt, isInfNaN, isNegZero } from './helper/value check'
 import { toBigInt as toIntN } from './helper/sanitize'
 import { PHI, MAX64 } from './lib/const'
-import { abs, sign, logB } from './lib/std'
-import { trunc } from './lib/rounding'
+import { abs, sign, clamp, logB } from './lib/std'
+import { trunc, expand } from './lib/rounding'
 import { ctz, popCount, sizeOf } from './lib/bitwise'
-import {M as nthMersenne} from '../lib/Mersenne'
+import { M as nthMersenne } from './lib/Mersenne'
 import { sqrt } from './lib/root'
 import { gcd, lcm } from './lib/factors'
 import { Gosper, Gamma, Lanczos } from './lib/factorial'
@@ -63,6 +63,57 @@ import defProp from '../helper/defProp'
 		n = toIntN(n); b = toIntN(b)
 		if (n < 1n || b < 2n) throw new RangeErr('return value is -Infinity or NaN')
 		return logB(n, b)
+	}
+
+	/**
+	https://github.com/zloirock/core-js/blob/master/packages/core-js/modules/esnext.math.signbit.js
+	*/
+	Number.signbit = function (number) {
+		return typeof number == 'number' &&
+			number == number &&
+			number < 0 || isNegZero(number)
+	}
+
+	Math.expand = function (x) { return expand(+x) }
+
+	/**
+	"KahanBabushkaKleinSum". Summation with minimal rounding errors
+	@param {number} values
+	@return {number}
+	*/
+	Math.sum = function (...values) {
+		let sum = 0, cs = 0, ccs = 0, c = 0, cc = 0
+		for (let i = 0; i < values.length; i++) {
+			const v = +values[i]
+			let t = sum + v
+			c = abs(sum) >= abs(v) ? (sum - t) + v : (v - t) + sum
+			sum = t; t = cs + c
+			cc = abs(cs) >= abs(c) ? (cs - t) + c : (c - t) + cs
+			cs = t; ccs = ccs + cc
+		}
+		return sum + cs + ccs
+	}
+
+	IntN.sum = function (...values) {
+		let sum = 0n
+		//avoid out-of-memory error
+		for (; values.length; values.length--)
+			sum += toIntN(values[values.length - 1])
+		return sum
+	}
+
+	Math.clamp = function (x, min, max) { return clamp(+x, +min, +max) }
+	IntN.clamp = function (x, min, max) { return clamp(toIntN(x), toIntN(min), toIntN(max)) }
+
+	/**
+	https://github.com/zloirock/core-js/blob/master/packages/core-js/internals/math-scale.js
+	https://rwaldron.github.io/proposal-math-extensions/#sec-math.scale
+	*/
+	Math.scale = function (x, inLow, inHigh, outLow, outHigh) {
+		if (isInfNaN(x = +x)) return x
+		inLow = +inLow; inHigh = +inHigh
+		outLow = +outLow; outHigh = +outHigh
+		return (x - inLow) * (outHigh - outLow) / (inHigh - inLow) + outLow
 	}
 
 	/**
@@ -139,14 +190,15 @@ import defProp from '../helper/defProp'
 	}
 
 	Math.gcd = function (x, y) { return gcd(+x, +y) }
-	BigInt.gcd = function (a, b) { return gcd(toIntN(a), toIntN(b)) }
+	IntN.gcd = function (a, b) { return gcd(toIntN(a), toIntN(b)) }
 
 	Math.lcm = function (x, y) { return lcm(+x, +y) }
-	BigInt.lcm = function (a, b) { return lcm(toIntN(a), toIntN(b)) }
+	IntN.lcm = function (a, b) { return lcm(toIntN(a), toIntN(b)) }
 
 
 	Math.factorial = function (/**@type {number}*/ x) {
-		if ((x = +x) >= 171) return Infinity
+		x = +x
+		if (x >= 171) return Infinity
 		if (x < 0 || x != x) return NaN
 		/*
 		We could precompute an int lookup table, and use spline interpolation for faster processing.
@@ -157,7 +209,7 @@ import defProp from '../helper/defProp'
 		while (x > 0) out *= x--
 		return out
 	}
-	//https://en.wikipedia.org/wiki/Factorial#Properties
+	//to-do: https://en.wikipedia.org/wiki/Factorial#Properties (optimization)
 	IntN.factorial = function (/**@type {bigint}*/n) {
 		n = toIntN(n)
 		if (n < 0n) throw new RangeErr('return value is NaN')
@@ -255,7 +307,8 @@ import defProp from '../helper/defProp'
 		if (values.length == 1)
 			return abs(toIntN(values[0]))
 		let sum = 0n
-		while (values.length--)
+		//avoid OOM
+		for (; values.length; values.length--)
 			sum += toIntN(values[values.length - 1]) ** 2n
 		return sqrt(sum)
 	}
