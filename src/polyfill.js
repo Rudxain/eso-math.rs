@@ -333,26 +333,33 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 		return sqrt(sum)
 	}
 
-	defProp(Number.prototype, 'toScientific', /** Scientific Notation in base B */ function toScientific(b = 10) {
+	/**
+	Scientific Notation in base B
+	@param radix base
+	*/
+	const toSci = function toScientific(radix = 10) {
 		let x = this?.valueOf?.()
 		//JIC someone uses the `call` method
 		if (!isFloat(x))
 			throw new TypeErr('Number.prototype.toScientific requires that `this` be a Number')
 
-		x = Float(x)
-		b = Float(b)
+		//coerce to primitive if Object-wrapped
+		x = +x
+		//throw if `BigInt` or `Symbol`, just like `toString` does
+		radix = +radix
 
-		let e
+		let exp
 		if (!isInfNaN(x)) {
-			e = x && trunc(logB(abs(x), b))
-			x /= b ** e
+			exp = x && trunc(logB(abs(x), radix))
+			x /= radix ** exp
 		}
 		else {
-			e = x
+			exp = x
 			x = sign(x)
 		}
-		return x.toString(b) + ` * 10^${e.toString(b)} (base 0d${b})`
-	}, 0b101)
+		return x.toString(radix) + ` * 10^${exp.toString(radix)} (base 0d${radix})`
+	}
+	defProp(Number.prototype, toSci.name, toSci, 0b101)
 
 	//correction of data descriptors, to make everything equal to vanilla/canon JS
 	for (const O of [Number, Math, BigInt])
