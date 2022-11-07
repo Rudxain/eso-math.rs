@@ -1,8 +1,19 @@
+/**
+# Related
+- [BigInt Math TC39 proposal](https://github.com/tc39/proposal-bigint-math)
+- [Math Extensions proposal](https://github.com/rwaldron/proposal-math-extensions)
+*/
+
 import { PHI, MAX64 } from './lib/const'
+import { abs } from '../lib/std'
+import { isInt } from './helper/value check'
 import { toBigInt } from './helper/sanitize'
 import { ctz, popCount, clmul } from './lib/bitwise'
-import { isInt } from './helper/value check'
+import { sqrt } from '../lib/root'
+import { gcd, lcm } from './lib/factors'
 import { Gosper, Gamma, Lanczos } from './lib/factorial'
+
+import defProp from '../helper/defProp'
 {
 	const
 		IntN = BigInt, Float = Number,
@@ -124,6 +135,13 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 		return mod(out * b, m)
 	}
 
+	Math.gcd = function (x, y) { return gcd(+x, +y) }
+	BigInt.gcd = function (a, b) { return gcd(toBigInt(a), toBigInt(b)) }
+
+	Math.lcm = function (x, y) { return lcm(+x, +y) }
+	BigInt.lcm = function (a, b) { return lcm(toBigInt(a), toBigInt(b)) }
+
+
 	Math.factorial = function (/**@type {number}*/ x) {
 		if ((x = +x) >= 171) return Infinity
 		if (x < 0 || x != x) return NaN
@@ -221,4 +239,22 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 		x = +x
 		return x == 0 ? 1 : sine(x) / x
 	}
+
+	IntN.hypot = function(...values) {
+		if (values.length == 1)
+			return abs(toBigInt(values[0]))
+		let sum = 0n
+		while (values.length--)
+			sum += toBigInt(values[values.length - 1]) ** 2n
+		return sqrt(sum)
+	}
 }
+
+//correction of data descriptors, to make everything equal to vanilla JS
+for (const O of [Number, Math, BigInt])
+	//`for in` is slower and has more potential side-effects
+	for (const k of Object.keys(O)) {
+		const isF = typeof O[k] == 'function'
+		defProp(O, k, O[k], +isF && 0b101)
+		if (isF) defProp(O[k], 'name', O[k].name || k, 1) //name all anonymous funcs
+	}
