@@ -13,10 +13,10 @@ const IntN = BigInt
 /**
 @param {bigint} n binary numeral to measure
 @param {bigint} [word_size=1n] 1: bit, 8: Byte, 16: word, 32: D-word, 64: Q-word
-@param {numeric} [init=0] initial counter.
+@param {bigint} [init=0] initial counter.
 if `word_size` = 1 then: 0: lb, 1: length (ignore sign), 2: length (include sign)
 */
-export const sizeOf = (n, word_size = 1n, init = 0) => {
+export const sizeOf = (n, word_size = 1n, init = 0n) => {
 	n = abs(n)
 	while (n >>= word_size) init++
 	return init
