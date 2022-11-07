@@ -4,13 +4,13 @@
 - [Math Extensions proposal](https://github.com/rwaldron/proposal-math-extensions)
 */
 
-import {isNumber as isFloat} from './helper/type check'
+import { isNumber as isFloat } from './helper/type check'
 import { isInt, isInfNaN } from './helper/value check'
 import { toBigInt } from './helper/sanitize'
 import { PHI, MAX64 } from './lib/const'
-import {abs, sign, logB} from './lib/std'
-import {trunc} from './lib/rounding'
-import { ctz, popCount, clmul } from './lib/bitwise'
+import { abs, sign, logB } from './lib/std'
+import { trunc } from './lib/rounding'
+import { ctz, popCount } from './lib/bitwise'
 import { sqrt } from './lib/root'
 import { gcd, lcm } from './lib/factors'
 import { Gosper, Gamma, Lanczos } from './lib/factorial'
@@ -208,41 +208,15 @@ import defProp from '../helper/defProp'
 	}
 
 	/**
-	bitwise (logical base 2, not artihmetic) carryless multiplication
-	@param {number} x
-	@param {number} y
-	*/
-	Math.clmul32 = function (x, y) {
-		x = +x >>> 0
-		y = +y >>> 0
-
-		let prod = 0
-		while (y) {
-			prod ^= (y & 1) && x
-			y >>>= 1
-			x <<= 1
-		}
-		return prod >>> 0
-	}
-	//IDK if the naive definition is fast
-	IntN.clmul = function (a, b) {
-		a = toBigInt(a)
-		b = toBigInt(b)
-		//can it be defined?
-		if (a >= 0n && b >= 0n) return clmul(a, b)
-		throw new RangeErr('negative carryless product is undefined')
-	}
-
-	/**
 	https://en.wikipedia.org/wiki/Sinc_function
 	@param {number} x
 	*/
-	Math.sinc = function(x) {
+	Math.sinc = function (x) {
 		x = +x
 		return x == 0 ? 1 : sine(x) / x
 	}
 
-	IntN.hypot = function(...values) {
+	IntN.hypot = function (...values) {
 		if (values.length == 1)
 			return abs(toBigInt(values[0]))
 		let sum = 0n
@@ -259,8 +233,8 @@ import defProp from '../helper/defProp'
 		x = Float(x)
 		b = Float(b)
 		let e
-		if (!isInfNaN(x)) {e = x && trunc(logB(abs(x), b)); x /= b ** e}
-		else {e = x; x = sign(x)}
+		if (!isInfNaN(x)) { e = x && trunc(logB(abs(x), b)); x /= b ** e }
+		else { e = x; x = sign(x) }
 		return x.toString(b) + ` * 10^${e.toString(b)} (base 0d${b})`
 	}, 0b101)
 
