@@ -18,7 +18,12 @@ if `word_size` = 1 then: 0: lb, 1: length (ignore sign), 2: length (include sign
 */
 export const sizeOf = (n, word_size = 1n, init = 0n) => {
 	n = abs(n)
-	while (n >>= word_size) init++
+	// eslint-disable-next-line no-constant-condition
+	while (true) {
+		n >>= word_size
+		if (n == 0n) break
+		init++
+	}
 	return init
 }
 
