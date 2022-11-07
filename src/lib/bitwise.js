@@ -5,7 +5,7 @@ import { isInt, isInfNaN } from '../mod/value check'
 import { autoN, toNumeric } from '../mod/sanitize'
 import { abs } from './std'
 import { trunc } from './rounding'
-import { F64toI64 as castFloat2IntN } from './bit cast'
+import { F64_to_I64 as castFloat2IntN } from './bit cast'
 import { M as nthMersenne } from './Mersenne'
 
 const IntN = BigInt
@@ -16,7 +16,7 @@ const IntN = BigInt
 @param {numeric} [init=0] initial counter.
 if `word_size` = 1 then: 0: lb, 1: length (ignore sign), 2: length (include sign)
 */
-export const sizeOf = (n, word_size=1n, init=0) => {
+export const sizeOf = (n, word_size = 1n, init = 0) => {
 	n = abs(n)
 	while (n >>= word_size) init++
 	return init
