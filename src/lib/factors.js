@@ -17,8 +17,8 @@ check if `n` is strictly divisible by `d`
 @param {*} d divisor/denominator
 */
 export const isDivisible = (n, d) => {
-	n = n?.valueOf()
-	d = d?.valueOf()
+	n = n?.valueOf?.()
+	d = d?.valueOf?.()
 	return typeof n == typeof d &&
 		isInt(n) && isInt(d) &&
 		d != 0 &&
@@ -280,7 +280,7 @@ convert to smallest fraction that represents the same number
 @return {fraction}
 */
 export const toFraction = x => {
-	x = x?.valueOf()
+	x = x.valueOf()
 
 	if (isInt(x) || isNan(x)) return [x, autoN(1, x)]
 

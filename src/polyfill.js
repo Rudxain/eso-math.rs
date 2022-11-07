@@ -334,15 +334,23 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 	}
 
 	defProp(Number.prototype, 'toScientific', /** Scientific Notation in base B */ function toScientific(b = 10) {
-		let x = this?.valueOf()
+		let x = this?.valueOf?.()
 		//JIC someone uses the `call` method
 		if (!isFloat(x))
 			throw new TypeErr('Number.prototype.toScientific requires that `this` be a Number')
+
 		x = Float(x)
 		b = Float(b)
+
 		let e
-		if (!isInfNaN(x)) { e = x && trunc(logB(abs(x), b)); x /= b ** e }
-		else { e = x; x = sign(x) }
+		if (!isInfNaN(x)) {
+			e = x && trunc(logB(abs(x), b))
+			x /= b ** e
+		}
+		else {
+			e = x
+			x = sign(x)
+		}
 		return x.toString(b) + ` * 10^${e.toString(b)} (base 0d${b})`
 	}, 0b101)
 

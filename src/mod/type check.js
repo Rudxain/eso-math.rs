@@ -26,7 +26,7 @@ isNumber(new Number) //true
 isNumber(Object(0)) //true
 isNumber('0') //false
 */
-export const isNumber = x => typeof x?.valueOf() == 'number'
+export const isNumber = x => typeof x?.valueOf?.() == 'number'
 
 /**
 check if `x` can be operated as `BigInt`,
@@ -37,7 +37,7 @@ isBigInt(0n) //true
 isBigInt(Object(0n)) //true
 isBigInt(Number.MAX_VALUE) //false
 */
-export const isBigInt = x => typeof x?.valueOf() == 'bigint'
+export const isBigInt = x => typeof x?.valueOf?.() == 'bigint'
 
 /**
 check if `x` can be operated as a numerical/mathematical value,

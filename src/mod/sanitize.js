@@ -26,16 +26,15 @@ export const autoN = (n, x) => (isIntN(x) ? IntN : Float)(n)
 
 /**
 https://tc39.es/ecma262/multipage/abstract-operations.html#sec-tobigint
-@param {(boolean|string|bigint)} x
+@param {boolean|string|bigint} x
 */
 export const toBigInt = x => {
-	if (
-		new _Set(['boolean', 'string', 'bigint'])
-			.has(typeof x?.valueOf())
-	)
-		return IntN(x)
-
-	throw new TypeErr(`Cannot convert ${x} to BigInt`)
+	switch (typeof x?.valueOf?.()) {
+		case 'boolean': case 'string': case 'bigint':
+			return IntN(x)
+		default:
+			throw new TypeErr(`Cannot convert ${x} to BigInt`)
+	}
 }
 
 /**
@@ -44,12 +43,12 @@ permissive BigInt coercion
 @return {bigint}
 */
 export const anyBigInt = x => {
-	if (isIntN(x)) return x.valueOf()
+	if (isIntN(x)) return x?.valueOf?.()
 	if (isFloat(x)) {
 		x = trunc(+x)
 		return x != 0 ? (isInf(x) ? (x < 0 ? -1n : 1n) : IntN(x)) : 0n
 	}
-	if (!(x && (x = x.valueOf()))) return 0n
+	if (!(x && (x = x?.valueOf?.()))) return 0n
 	if (!isPrim(x)) return 1n
 	return IntN(x)
 }
@@ -63,7 +62,7 @@ DO NOT confuse with ES' `toNumeric` "abstract operation", it's not the same
 export const toNumeric = x => {
 	if (isFloat(x)) return +x; if (isIntN(x)) return IntN(x)
 	if (x === null) return 0
-	if (x === undefined || typeof (x = x.valueOf()) == 'symbol') return NaN
+	if (x === undefined || typeof (x = x?.valueOf?.()) == 'symbol') return NaN
 	if (!isPrim(x)) x = Str(x)
 	if (!+x || abs(+x) < 2 ** 53 ||
 		//I know /\s/ exists, but `trim` is faster and more readable
