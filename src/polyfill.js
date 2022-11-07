@@ -4,12 +4,14 @@
 - [Math Extensions proposal](https://github.com/rwaldron/proposal-math-extensions)
 */
 
-import { PHI, MAX64 } from './lib/const'
-import { abs } from '../lib/std'
-import { isInt } from './helper/value check'
+import {isNumber as isFloat} from './helper/type check'
+import { isInt, isInfNaN } from './helper/value check'
 import { toBigInt } from './helper/sanitize'
+import { PHI, MAX64 } from './lib/const'
+import {abs, sign, logB} from './lib/std'
+import {trunc} from './lib/rounding'
 import { ctz, popCount, clmul } from './lib/bitwise'
-import { sqrt } from '../lib/root'
+import { sqrt } from './lib/root'
 import { gcd, lcm } from './lib/factors'
 import { Gosper, Gamma, Lanczos } from './lib/factorial'
 
@@ -248,6 +250,20 @@ import defProp from '../helper/defProp'
 			sum += toBigInt(values[values.length - 1]) ** 2n
 		return sqrt(sum)
 	}
+
+	defProp(Number.prototype, 'toScientific', /** Scientific Notation in base B */ function toScientific(b = 10) {
+		let x = this?.valueOf()
+		//JIC someone uses the `call` method
+		if (!isFloat(x))
+			throw new TypeErr('Number.prototype.toScientific requires that `this` be a Number')
+		x = Float(x)
+		b = Float(b)
+		let e
+		if (!isInfNaN(x)) {e = x && trunc(logB(abs(x), b)); x /= b ** e}
+		else {e = x; x = sign(x)}
+		return x.toString(b) + ` * 10^${e.toString(b)} (base 0d${b})`
+	}, 0b101)
+
 }
 
 //correction of data descriptors, to make everything equal to vanilla JS
