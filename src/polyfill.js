@@ -13,7 +13,7 @@ import { abs, sign, clamp, logB } from './lib/std'
 import { trunc, expand } from './lib/rounding'
 import { ctz, popCount, sizeOf } from './lib/bitwise'
 import { M as nthMersenne } from './lib/Mersenne'
-import { sqrt } from './lib/root'
+import { root, sqrt } from './lib/root'
 import { gcd, lcm } from './lib/factors'
 import { Gosper, Gamma, Lanczos } from './lib/factorial'
 
@@ -215,6 +215,10 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 	Math.lcm = function (x, y) { return lcm(+x, +y) }
 	IntN.lcm = function (a, b) { return lcm(toIntN(a), toIntN(b)) }
 
+	Math.root = function (x, y = 2) { return root(+x, +y) }
+	IntN.root = function (n, i = 2n) { return root(toIntN(n), toIntN(i)) }
+	IntN.sqrt = function (n) { return sqrt(toIntN(n)) }
+	IntN.cbrt = function (n) { return root(toIntN(n), 3n) }
 
 	Math.factorial = function (/**@type {number}*/ x) {
 		x = +x
