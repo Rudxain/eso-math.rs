@@ -1,7 +1,7 @@
 import '../typedefs'
-import {isBigInt as isIntN} from '../helper/type check'
-import {isInt, isNegZero} from '../helper/value check'
-import {autoN, toNumeric} from '../helper/sanitize'
+import {isBigInt as isIntN} from '../mod/type check'
+import {isInt, isNegZero} from '../mod/value check'
+import {autoN, toNumeric} from '../mod/sanitize'
 import {trunc, floor} from './rounding'
 
 const IntN = BigInt, lb = Math.log2 //in general, lb has better precision and performance than ln

@@ -1,4 +1,4 @@
-import {isInt} from '../helper/value check'
+import {isInt} from '../mod/value check'
 import {trunc} from './rounding'
 
 const Str = String

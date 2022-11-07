@@ -1,4 +1,4 @@
-import { isInt, isInfNaN } from '../helper/value check'
+import { isInt, isInfNaN } from '../mod/value check'
 import { abs } from './std'
 
 /**

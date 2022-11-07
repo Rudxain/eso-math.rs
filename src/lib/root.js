@@ -1,7 +1,7 @@
-import { isInf, isNaN } from '../helper/value check'
+import { isInf, isNaN } from '../mod/value check'
 import { abs, sign } from './std'
 import { sizeOf } from './bitwise'
-import { toNumeric } from '../helper/sanitize'
+import { toNumeric } from '../mod/sanitize'
 
 const Float = Number, IntN = BigInt, RangeErr = RangeError
 

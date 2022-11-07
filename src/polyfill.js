@@ -3,10 +3,11 @@
 - [BigInt Math TC39 proposal](https://github.com/tc39/proposal-bigint-math)
 - [Math Extensions proposal](https://github.com/rwaldron/proposal-math-extensions)
 */
+import './typedefs'
 
-import { isNumber as isFloat } from './helper/type check'
-import { isInt, isInfNaN, isNegZero } from './helper/value check'
-import { toBigInt as toIntN } from './helper/sanitize'
+import { isNumber as isFloat } from './mod/type check'
+import { isInt, isInfNaN, isNegZero } from './mod/value check'
+import { toBigInt as toIntN } from './mod/sanitize'
 import { PHI, MAX64 } from './lib/const'
 import { abs, sign, clamp, logB } from './lib/std'
 import { trunc, expand } from './lib/rounding'
@@ -16,8 +17,27 @@ import { sqrt } from './lib/root'
 import { gcd, lcm } from './lib/factors'
 import { Gosper, Gamma, Lanczos } from './lib/factorial'
 
-import defProp from '../helper/defProp'
 {
+	/**
+	Short edition of `defineProperty`
+	@param {object} O
+	@param {PropertyKey} p
+	@param {*} v value to set
+	@param {([boolean, boolean, boolean] | numeric | string)} a descriptor with format [W, E, C]
+	*/
+	const defProp = (O, p, v, a) => {
+		switch (typeof a) {
+			case 'number': a &= 7; a = [a & 4, a & 2, a & 1]; break
+			case 'bigint': a &= 7n; a = [a & 4n, a & 2n, a & 1n]; break
+			case 'string': a = [/w/i.test(a), /e/i.test(a), /c/i.test(a)]; break
+			//Linux chmod lol (rwx)
+		}
+		return Object.defineProperty(O, p, {
+			value: v,
+			writable: !!a[0], enumerable: !!a[1], configurable: !!a[2]
+		})
+	}
+
 	const
 		IntN = BigInt, Float = Number,
 		TypeErr = TypeError, RangeErr = RangeError,
@@ -326,13 +346,13 @@ import defProp from '../helper/defProp'
 		return x.toString(b) + ` * 10^${e.toString(b)} (base 0d${b})`
 	}, 0b101)
 
-}
+	//correction of data descriptors, to make everything equal to vanilla/canon JS
+	for (const O of [Number, Math, BigInt])
+		//`for in` is slower and has more potential side-effects
+		for (const k of Object.keys(O)) {
+			const isF = typeof O[k] == 'function'
+			defProp(O, k, O[k], +isF && 0b101)
+			if (isF) defProp(O[k], 'name', O[k].name || k, 1) //name all anonymous funcs
+		}
 
-//correction of data descriptors, to make everything equal to vanilla JS
-for (const O of [Number, Math, BigInt])
-	//`for in` is slower and has more potential side-effects
-	for (const k of Object.keys(O)) {
-		const isF = typeof O[k] == 'function'
-		defProp(O, k, O[k], +isF && 0b101)
-		if (isF) defProp(O[k], 'name', O[k].name || k, 1) //name all anonymous funcs
-	}
+}

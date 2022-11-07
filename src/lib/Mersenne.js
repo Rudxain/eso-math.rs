@@ -1,5 +1,5 @@
-import {isBigInt as isIntN} from '../helper/type check'
-import {isInt} from '../helper/value check'
+import {isBigInt as isIntN} from '../mod/type check'
+import {isInt} from '../mod/value check'
 import {isPow2} from './power'
 
 /**

@@ -1,7 +1,7 @@
 import '../typedefs'
 
-import { isInt, isNan, isInfNaN } from '../helper/value check'
-import { autoN, toNumeric } from '../helper/sanitize'
+import { isInt, isNan, isInfNaN } from '../mod/value check'
+import { autoN, toNumeric } from '../mod/sanitize'
 import { abs, isEven } from './std'
 import { trunc } from './rounding'
 import { ctz, ctztrim, trim, sizeOf } from './bitwise'

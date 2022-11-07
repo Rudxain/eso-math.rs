@@ -1,8 +1,8 @@
 import '../typedefs'
 
-import { isBigInt as isIntN } from '../helper/type check'
-import { isInt, isInfNaN } from '../helper/value check'
-import { autoN, toNumeric } from '../helper/sanitize'
+import { isBigInt as isIntN } from '../mod/type check'
+import { isInt, isInfNaN } from '../mod/value check'
+import { autoN, toNumeric } from '../mod/sanitize'
 import { abs } from './std'
 import { trunc } from './rounding'
 import { F64toI64 as castFloat2IntN } from './bit cast'

@@ -1,6 +1,6 @@
-import {isBigInt as isIntN} from '../helper/type check'
-import {isInfNaN} from '../helper/value check'
-import {autoN, toNumeric} from '../helper/sanitize'
+import {isBigInt as isIntN} from '../mod/type check'
+import {isInfNaN} from '../mod/value check'
+import {autoN, toNumeric} from '../mod/sanitize'
 import {trunc, floor} from './rounding'
 import {sizeOf} from './bitwise'
 

@@ -6,7 +6,7 @@ Most math libs are focused on arithmetic and algebra, and practical applications
 
 ## Usage
 
-If you want to import individual modules, import from [`lib`](./src/lib). If you want the whole lib, import [main `index`](./src/index.js). The [`helper`](./src/helper) dir is for *internal use* only, **don't import** it.
+If you want to import individual modules, import from [`lib`](./src/lib). If you want the whole lib, import [main `index`](./src/index.js). The [`mod`](./src/mod) dir is for *internal use* only, **don't import** it.
 
 ## ⚠DISCLAIMER
 

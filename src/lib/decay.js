@@ -1,4 +1,4 @@
-import {isBigInt as isIntN} from '../helper/type check'
+import {isBigInt as isIntN} from '../mod/type check'
 import {signabs} from './std'
 
 //Division by repeated subtraction, but the divisor gets decremented each iteration

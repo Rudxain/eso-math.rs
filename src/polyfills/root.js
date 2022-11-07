@@ -1,4 +1,4 @@
-import {toBigInt} from '../helper/sanitize'
+import {toBigInt} from '../mod/sanitize'
 import {root, sqrt} from '../lib/root'
 
 Math.root = function(x, y = 2) {return root(+x, +y)}

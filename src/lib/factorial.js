@@ -1,5 +1,5 @@
-import { isInfNaN, isNaN } from '../helper/value check'
-import { autoN, toNumeric } from '../helper/sanitize'
+import { isInfNaN, isNaN } from '../mod/value check'
+import { autoN, toNumeric } from '../mod/sanitize'
 import { abs, sign, signabs } from './std'
 import { trunc } from './rounding'
 import { sqrt } from './root'

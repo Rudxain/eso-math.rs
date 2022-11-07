@@ -1,5 +1,5 @@
-import {isBigInt as isIntN} from '../helper/type check'
-import {isInt} from '../helper/value check'
+import {isBigInt as isIntN} from '../mod/type check'
+import {isInt} from '../mod/value check'
 import {abs} from './std'
 import {trunc} from './rounding'
 import {sizeOf, ctz} from './bitwise'
