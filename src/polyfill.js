@@ -41,11 +41,19 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 	const
 		IntN = BigInt, Float = Number,
 		TypeErr = TypeError, RangeErr = RangeError,
-		{ log2: lb, sin: sine, random: RNG } = Math
+		{ PI, log2: lb, sin: sine, random: RNG } = Math
 
-	/**https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/Double.html#MIN_NORMAL*/
-	Float.MIN_NORMAL = 2 ** -1022
-	Math.TAU = 2 * Math.PI
+	/** 2pi */
+	const TAU = 2 * PI
+
+	/**
+	https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/Double.html#MIN_NORMAL
+	*/const MIN_NORMAL = 2 ** -1022
+	Float.MIN_NORMAL = MIN_NORMAL
+
+	const { MAX_SAFE_INTEGER } = Float
+
+	Math.TAU = TAU
 	Math.SQRT5 = Math.sqrt(5)
 	Math.PHI = PHI
 
@@ -53,6 +61,11 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 	IntN.MAX_INT64 = MAX64 >> 1n
 	IntN.MIN_INT64 = -1n << 63n
 
+	Float.isSafeNumber = function (number) {
+		return typeof number == 'number' &&
+			abs(number) >= MIN_NORMAL &&
+			abs(number) <= MAX_SAFE_INTEGER
+	}
 
 	Math.logB = function (x, y = E) { return logB(+x, +y) }
 
@@ -336,6 +349,31 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 			sum += toIntN(values[values.length - 1]) ** 2n
 		return sqrt(sum)
 	}
+
+
+	/**
+	converts degrees to radians by default
+	@param {number} x
+	@param {number} [y=360] the input scale.
+	360: degrees
+	1: Tau radians
+	*/
+	Math.toRadians = function (x, y = 360) { return TAU / +y * +x }
+
+	/**
+	converts radians to degrees by default
+	@param {number} x
+	@param {number} [y=360] the output scale.
+	360: degrees
+	1: Tau radians
+	*/
+	Math.fromRadians = function (x, y = 360) { return +x / (TAU / +y) }
+
+	/**
+	bouncing sine waveform (periodic parabola)
+	@param {number} x
+	*/
+	Math.sinAbs = function (x) { return abs(sine((+x + PI / 3) / 2)) * 2 - 1 }
 
 	/**
 	Scientific Notation in base B
