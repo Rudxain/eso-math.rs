@@ -543,14 +543,14 @@ import { gcd, lcm } from './lib/factors'
 		}
 
 
-	const AssertionError = class extends Error {constructor(message) {super(message)}}
+	const AssertionError = class extends Error { constructor(message) { super(message) } }
 
 	/**
 	ensure that a predicate that's supposed to always be `true` is, in fact, `true`
 	@param {boolean} condition condition to check
 	@param {string} [msg] error `message`, in case it goes wrong
 	*/
-	const assert = (condition, msg) => {if (!condition) throw new AssertionError(msg)}
+	const assert = (condition, msg) => { if (!condition) throw new AssertionError(msg) }
 
 	const TEST_MODE = false
 
@@ -560,7 +560,7 @@ import { gcd, lcm } from './lib/factors'
 		const b = IntN.asIntN(0x40, IntN.random()),
 			e = IntN.random(0xffn),
 			m = IntN.asIntN(0x40, IntN.random()),
-			F = ['euclid', 'floor', 'trunc', 'ceil', 'round', 'roundInf'][Math.random() * 6 |0]
+			F = ['euclid', 'floor', 'trunc', 'ceil', 'round', 'roundInf'][Math.random() * 6 | 0]
 
 		assert(IntN.modPow(b, e, m, F) == IntN.mod(b ** e, m, F), 'wrong modular exponentiation')
 	}
