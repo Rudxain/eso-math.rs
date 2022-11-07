@@ -1,9 +1,8 @@
-//@ts-check
 'use strict' //this will take effect when all imports are removed
 /**
 # Related
-- [BigInt Math TC39 proposal](https://github.com/tc39/proposal-bigint-math)
 - [Math Extensions proposal](https://github.com/rwaldron/proposal-math-extensions)
+- [BigInt Math TC39 proposal](https://github.com/tc39/proposal-bigint-math)
 */
 import { isInt, isInfNaN, isNegZero } from './mod/value check'
 import { toBigInt as toIntN } from './mod/sanitize'
@@ -14,7 +13,6 @@ import { ctz, popCount, sizeOf } from './lib/bitwise'
 import { M as nthMersenne } from './lib/Mersenne'
 import { root, sqrt } from './lib/root'
 import { gcd, lcm } from './lib/factors'
-import { Gosper, Gamma, Lanczos } from './lib/factorial'
 
 {
 	/**
@@ -53,7 +51,7 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 	const
 		IntN = BigInt, Float = Number,
 		TypeErr = TypeError, RangeErr = RangeError,
-		{ PI, log2: lb, sin: sine, random: RNG } = Math
+		{ PI, E, log2: lb, exp, sin: sine, random: RNG } = Math
 
 	/** 2pi */
 	const TAU = 2 * PI
@@ -73,17 +71,17 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 	IntN.MAX_INT64 = MAX64 >> 1n
 	IntN.MIN_INT64 = -1n << 63n
 
-	Float.isSafeNumber = function (number) {
+	Float.isSafeNumber = function (/** @type {numeric} */ number) {
 		return typeof number == 'number' &&
 			abs(number) >= MIN_NORMAL &&
 			abs(number) <= MAX_SAFE_INTEGER
 	}
 
-	Math.logB = function (x, y = E) { return logB(+x, +y) }
+	Math.logB = function (/** @type {string | number} */ x, y = E) { return logB(+x, +y) }
 
 	Math.LOG2PHI = lb(PHI); Math.LNPHI = Math.log(PHI); Math.LOG10PHI = Math.log10(PHI)
 
-	Math.logPHI = function (x) { return logB(+x, PHI) }
+	Math.logPHI = function (/** @type {string | number} */ x) { return logB(+x, PHI) }
 
 	Math.LOGPHI2 = Math.logPHI(2); Math.LOGPHIE = Math.logPHI(E); Math.LOGPHI10 = Math.logPHI(10)
 
@@ -91,40 +89,45 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 	Math.LN3 = Math.log(3); Math.LOG2_3 = lb(3)
 	Math.LOG10_3 = Math.log10(3); Math.LOGPHI3 = Math.logPHI(3)
 	//ternary lives also matter
-	Math.log3 = function (x) { return logB(+x, 3) }
+	Math.log3 = function (/** @type {string | number} */ x) { return logB(+x, 3) }
 	//stop discriminating the number 3
 	Math.LOG3_2 = Math.log3(2); Math.LOG3E = Math.log3(E)
 	Math.LOG3_10 = Math.log3(10); Math.LOG3PHI = Math.log3(PHI)
 	//join The Order of The Triangle Of Power: https://youtu.be/sULa9Lc4pck
 
 	//lb(bigint)
-	IntN.log2 = function (n) {
+	IntN.log2 = function (/** @type {string | bigint | boolean} */ n) {
 		if ((n = toIntN(n)) > 0n) return sizeOf(n, 1n, 0n)
 		throw new RangeErr('Non-positive logarithmation')
 	}
 
 	//3 is the closest integer to `E`
-	IntN.logB = function (n, b = 3n) {
+	IntN.logB = function (/** @type {string | boolean | numeric} */ n, b = 3n) {
 		n = toIntN(n); b = toIntN(b)
 		if (n < 1n || b < 2n) throw new RangeErr('return value is -Infinity or NaN')
 		return logB(n, b)
 	}
 
 	/**
-	https://github.com/zloirock/core-js/blob/master/packages/core-js/modules/esnext.math.signbit.js
+	https://github.com/tc39/proposal-Math.signbit/issues/7
+	@param {unknown} number
 	*/
 	Number.signbit = function (number) {
-		return typeof number == 'number' &&
-			number == number &&
-			number < 0 || isNegZero(number)
+		const n = number
+		return typeof n == 'number' &&
+			n == n &&
+			n < 0 || isNegZero(n)
 	}
 
+	/**
+	Round away from `0` (to +-`Infinity`)
+	@param {number} x
+	*/
 	Math.expand = function (x) { return expand(+x) }
 
 	/**
 	"KahanBabushkaKleinSum". Summation with minimal rounding errors
-	@param {number} values
-	@return {number}
+	@param {number[]} values
 	*/
 	Math.sum = function (...values) {
 		let sum = 0, cs = 0, ccs = 0, c = 0, cc = 0
@@ -139,7 +142,7 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 		return sum + cs + ccs
 	}
 
-	IntN.sum = function (...values) {
+	IntN.sum = function (/** @type {string | any[]} */ ...values) {
 		let sum = 0n
 		//avoid out-of-memory error
 		for (; values.length; values.length--)
@@ -147,14 +150,14 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 		return sum
 	}
 
-	Math.clamp = function (x, min, max) { return clamp(+x, +min, +max) }
-	IntN.clamp = function (x, min, max) { return clamp(toIntN(x), toIntN(min), toIntN(max)) }
+	Math.clamp = function (/** @type {string | number} */ x, /** @type {string | number} */ min, /** @type {string | number} */ max) { return clamp(+x, +min, +max) }
+	IntN.clamp = function (/** @type {string | bigint | boolean} */ x, /** @type {string | bigint | boolean} */ min, /** @type {string | bigint | boolean} */ max) { return clamp(toIntN(x), toIntN(min), toIntN(max)) }
 
 	/**
 	https://github.com/zloirock/core-js/blob/master/packages/core-js/internals/math-scale.js
 	https://rwaldron.github.io/proposal-math-extensions/#sec-math.scale
 	*/
-	Math.scale = function (x, inLow, inHigh, outLow, outHigh) {
+	Math.scale = function (/** @type {number} */ x, /** @type {number} */ inLow, /** @type {number} */ inHigh, /** @type {number} */ outLow, /** @type {number} */ outHigh) {
 		if (isInfNaN(x = +x)) return x
 		inLow = +inLow; inHigh = +inHigh
 		outLow = +outLow; outHigh = +outHigh
@@ -186,10 +189,10 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 
 	//Standard Mathematical Modulo (floor). NOT remainder
 	//if args are floats, it can have precision errors, similarly to the naive divison-based definition
-	const mod = (n, d) => (n % d + d) % d
+	const mod = (/** @type {number | bigint} */ n, /** @type {number} */ d) => (n % d + d) % d
 
 	//en.wikipedia.org/wiki/Modulo_operation#Variants_of_the_definition
-	Math.mod = function (n, d, F) {
+	Math.mod = function (/** @type {number} */ n, /** @type {numeric} */ d, /** @type {string} */ F) {
 		n = +n; d = +d
 		//fallback to 'floor' if 'F' is "euclid" or just invalid
 		switch (F = String(F).trim().toLowerCase()) {
@@ -198,7 +201,7 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 		}
 		return n - d * Math[F](n / d)
 	}
-	IntN.mod = function (n, d, F) {
+	IntN.mod = function (/** @type {string | number | bigint | boolean} */ n, /** @type {string | boolean | numeric} */ d, /** @type {string} */ F) {
 		n = toIntN(n); d = toIntN(d)
 		switch (F = String(F).trim().toLowerCase()) {
 			case 'floor': case 'trunc': case 'ceil': case 'round': case 'expand': break
@@ -207,7 +210,7 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 		return n - d * IntN.div(n, d, F)
 	}
 
-	Math.modPow = function (b, e, m) {
+	Math.modPow = function (/** @type {number} */ b, /** @type {numeric} */ e, /** @type {number} */ m) {
 		if (isNan(b = +b) || isNan(e = +e) || isNan(m = +m)) return NaN
 		if (e < 2 || e % 1) return mod(b ** e, m)
 		b = mod(b, m)
@@ -220,7 +223,7 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 		} while (e > 1)
 		return mod(out * b, m)
 	}
-	IntN.modPow = function (b, e, m) {
+	IntN.modPow = function (/** @type {string | number | bigint | boolean} */ b, /** @type {string | number | bigint | boolean} */ e, /** @type {string | bigint | boolean} */ m) {
 		b = toIntN(b); e = toIntN(e); m = toIntN(m)
 		if (e < 2n) return mod(e < 0n ? 1n / b ** -e : b ** e, m)
 		b = mod(b, m)
@@ -234,16 +237,63 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 		return mod(out * b, m)
 	}
 
-	Math.gcd = function (x, y) { return gcd(+x, +y) }
-	IntN.gcd = function (a, b) { return gcd(toIntN(a), toIntN(b)) }
+	Math.gcd = function (/** @type {string | number} */ x, /** @type {string | number} */ y) { return gcd(+x, +y) }
+	IntN.gcd = function (/** @type {string | bigint | boolean} */ a, /** @type {string | bigint | boolean} */ b) { return gcd(toIntN(a), toIntN(b)) }
 
-	Math.lcm = function (x, y) { return lcm(+x, +y) }
-	IntN.lcm = function (a, b) { return lcm(toIntN(a), toIntN(b)) }
+	Math.lcm = function (/** @type {string | number} */ x, /** @type {string | number} */ y) { return lcm(+x, +y) }
+	IntN.lcm = function (/** @type {string | bigint | boolean} */ a, /** @type {string | bigint | boolean} */ b) { return lcm(toIntN(a), toIntN(b)) }
 
-	Math.root = function (x, y = 2) { return root(+x, +y) }
-	IntN.root = function (n, i = 2n) { return root(toIntN(n), toIntN(i)) }
-	IntN.sqrt = function (n) { return sqrt(toIntN(n)) }
-	IntN.cbrt = function (n) { return root(toIntN(n), 3n) }
+	Math.root = function (/** @type {string | number} */ x, y = 2) { return root(+x, +y) }
+	IntN.root = function (/** @type {string | bigint | boolean} */ n, i = 2n) { return root(toIntN(n), toIntN(i)) }
+	IntN.sqrt = function (/** @type {string | bigint | boolean} */ n) { return sqrt(toIntN(n)) }
+	IntN.cbrt = function (/** @type {string | bigint | boolean} */ n) { return root(toIntN(n), 3n) }
+
+
+//factorial approximations for non-ints.
+//These 3 are trash, none make use of full precision. I need help to make these more accurate
+/**
+improvement of Stirling approximation
+@param {number} x
+*/
+const Gosper = x => Math.sqrt((x + 1 / 6) * TAU) * (x / E) ** x
+
+/**
+Gamma Function (+1) defined as Summation instead of Integration
+@param {number} x
+*/
+const Gamma = x => {
+	let t = 1, s0, s1 = 0 ** x
+	do {
+		s0 = s1
+		s1 += t ** x * exp(-t)
+		t++
+	}
+	while (s0 != s1)
+	return s0
+}
+
+/**
+https://en.wikipedia.org/wiki/Lanczos_approximation#Simple_implementation
+@param {number} z
+@return {number}
+*/
+const Lanczos = z => {
+	const p = [
+		676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059,
+		12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7
+	]
+
+	if (z < 0.5) return PI / (sine(PI * z) * Lanczos(1 - z))
+
+	z--
+	let x = 0.99999999999980993
+
+	for (let i = 0; i < p.length; i++)
+		x += p[i] / (z + i + 1)
+
+	const t = z - 0.5 + p.length
+	return sqrt(TAU) * t ** (z + 0.5) * exp(-t) * x
+}
 
 	Math.factorial = function (/**@type {number}*/ x) {
 		x = +x
@@ -268,17 +318,17 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 	}
 
 	//logarithmic binary search is faster than linear, but the engine will do it for us
-	Math.ctz32 = function (x) { return ctz(+x >>> 0) }
-	IntN.ctz = function (n) { if (n = toIntN(n)) return ctz(n); throw new RangeErr('return value is Infinity') }
+	Math.ctz32 = function (/** @type {string | number} */ x) { return ctz(+x >>> 0) }
+	IntN.ctz = function (/** @type {string | boolean | numeric} */ n) { if (n = toIntN(n)) return ctz(n); throw new RangeErr('return value is Infinity') }
 
-	Math.popcnt32 = function (x) { return popCount(+x >>> 0) }
-	IntN.popcnt = function (n) {
+	Math.popcnt32 = function (/** @type {string | number} */ x) { return popCount(+x >>> 0) }
+	IntN.popcnt = function (/** @type {string | bigint | boolean} */ n) {
 		if ((n = toIntN(n)) >= 0n) return popCount(n)
 		throw new RangeErr('return value is Infinity')
 	}
 
 	//reverse the order of bits using "binary chop"
-	Math.rev32 = function (x) {
+	Math.rev32 = function (/** @type {number} */ x) {
 		x = +x | 0
 		x = ((x & 0xffff0000) >>> 0x10) | ((x & 0x0000ffff) << 0x10)
 		x = ((x & 0xff00ff00) >>> 8) | ((x & 0x00ff00ff) << 8)
@@ -352,7 +402,7 @@ import { Gosper, Gamma, Lanczos } from './lib/factorial'
 		return s ? -x : x
 	}
 
-	IntN.hypot = function (...values) {
+	IntN.hypot = function (/** @type {string | any[]} */ ...values) {
 		if (values.length == 1)
 			return abs(toIntN(values[0]))
 		let sum = 0n
