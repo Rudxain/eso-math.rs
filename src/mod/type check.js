@@ -1,4 +1,3 @@
-//@ts-check
 /**
 check if `x` is a primitive (non-object) type.
 `null` is primitive, despite being an `object`
