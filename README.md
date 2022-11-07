@@ -17,6 +17,10 @@ This is still in the process of migrating from IIFE format to ESM format, so cur
 
 The API is unstable, expect breaking changes.
 
+The polyfills will be moved to a nee repo, once I finish the "base".
+
+I'll remove a lot of features, to keep only the stuff that hasn't been already done.
+
 ## Related
 
 * [BigInt Math TC39 proposal](https://github.com/tc39/proposal-bigint-math)
