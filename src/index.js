@@ -47,7 +47,7 @@ const modules = [
 	ve
 ]
 
-const NTML = {}
+const EsoMath = {}
 for (const O of modules)
-	Object.assign(NTML, O)
-export default NTML
+	Object.assign(EsoMath, O)
+export default EsoMath
