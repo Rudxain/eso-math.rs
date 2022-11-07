@@ -11,7 +11,6 @@ import { trunc } from '../lib/rounding'
 const
 	Float = Number, IntN = BigInt,
 	Str = String,
-	_Set = Set,
 	TypeErr = TypeError
 
 /**
