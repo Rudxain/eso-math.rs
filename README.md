@@ -9,17 +9,15 @@ Most math libs are focused on arithmetic and algebra, and practical applications
 I want this to be used for recreational math, NT, and educational stuff, with a few practical use cases.
 ## Usage and directory tree
 
-If you want to import individual modules, import from [`lib`](./src/lib). If you want the whole lib, import [main `index`](./src/index.js). For polyfills related with the lib use [`polyfills`](./src/polyfill.js). The [`helper`](./src/helper) dir is for *internal use* only, **don't import** it.
+If you want to import individual modules, import from [`lib`](./src/lib). If you want the whole lib, import [main `index`](./src/index.js). The [`helper`](./src/helper) dir is for *internal use* only, **don't import** it.
 
 ### ⚠DISCLAIMER
 
 This is still in the process of migrating from IIFE format to ESM format, so currently **A LOT** of files in this repo are unfinished, in need of refactoring, or all at the same time (sorry lol). If you're unsure and want to avoid problems, just read the Issues tab, most bugs and unfinished stuff are described there.
 
-The API is unstable, expect breaking changes.
+The API is **extremely unstable** right now, expect many breaking changes.
 
-The polyfills will be moved to a nee repo, once I finish the "base".
-
-I'll remove a lot of features, to keep only the stuff that hasn't been already done.
+I'll remove a lot of features, to keep only the stuff that hasn't been already done. See [issue 32](https://github.com/Rudxain/NTML.js/issues/32).
 
 ## Related
 
