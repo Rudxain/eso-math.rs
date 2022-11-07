@@ -1,7 +1,7 @@
 {
   "name": "ntml",
   "version": "0.0.0",
-  "description": "Number Theory Math Library. Includes some polyfills not available in core-js",
+  "description": "Esoteric Mathematic Library",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
