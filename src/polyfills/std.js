@@ -19,11 +19,6 @@ Math.expand = function(x) {return expand(+x)}
 */
 Math.sum = function(...values) {
 	let sum = 0, cs = 0, ccs = 0, c = 0, cc = 0
-	/*
-	iterators can be replaced by using `ITERABLE.prototype[Symbol.iterator]`
-	where "ITERABLE" can be an array, string, or any other object (it also allows adding an iterator)
-	so `for ... of` loops must be avoided
-	*/
 	for (let i = 0; i < values.length; i++) {
 		const v = +values[i]
 		let t = sum + v
@@ -47,8 +42,10 @@ BigInt.sum = function() {
 Math.clamp = function(x, min, max) {return clamp(+x, +min, +max)}
 BigInt.clamp = function(x, min, max) {return clamp(toBigInt(x), toBigInt(min), toBigInt(max))}
 
-//https://github.com/zloirock/core-js/blob/master/packages/core-js/internals/math-scale.js
-//https://rwaldron.github.io/proposal-math-extensions/#sec-math.scale
+/**
+https://github.com/zloirock/core-js/blob/master/packages/core-js/internals/math-scale.js
+https://rwaldron.github.io/proposal-math-extensions/#sec-math.scale
+*/
 Math.scale = function(x, inLow, inHigh, outLow, outHigh) {
 	if (isInfNaN(x = +x)) return x
 	inLow = +inLow; inHigh = +inHigh
