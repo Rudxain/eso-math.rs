@@ -30,8 +30,9 @@ export const sizeOf = (n, word_size = 1n, init = 0n) => {
 /**
 count trailing zeros in binary.
 extended to non-ints, so negative exponents are supported.
-@param {numeric} n
-@return {numeric[]} a 2-tuple containing CTZ and trimmed `n`
+@template {numeric} T
+@param {T} n
+@return {[T, T]} 2-tuple format [CTZ, trimmed `n`]
 */
 export const ctztrim = n => {
 	n = toNumeric(n)
@@ -43,7 +44,8 @@ export const ctztrim = n => {
 	let c = autoN(0, n)
 
 	if (!B && !isInt(+n)) {
-		if (isInfNaN(n = +n)) return [NaN, n]
+		n = +n
+		if (isInfNaN(n)) return [NaN, n]
 		n %= 1
 		do { c--; n *= 2 } while (n < 1)
 	}

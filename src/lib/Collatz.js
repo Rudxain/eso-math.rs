@@ -10,7 +10,9 @@ const Float = Number, Arr = Array
 /**
 generalized Collatz
 https://en.wikipedia.org/wiki/Collatz_conjecture#Undecidable_generalizations
-@param {Object} kwargs arguments bag.
+@template {numeric} T
+@template {fraction} F
+@param {{x: T, a: [F, F], b: [F, F], P: T}} kwargs arguments bag.
 */
 export const Hailstone_general = function* (kwargs)
 {

@@ -8,28 +8,42 @@ const IntN = BigInt, lb = Math.log2 //in general, lb has better precision and pe
 
 /**
 absolute value
-@param {numeric} x
+@template {numeric} T
+@param {T} x
+@return {T}
 */
 export const abs = x => x < 0 || isNegZero(x) ? -x : x
 
-/**@param {numeric} x*/
+/**
+@template {numeric} T
+@param {T} x
+@return {T}
+*/
 export const sign = x => x == 0 ? autoN(0, x) : (x < 0 ? autoN(-1, x) : autoN(1, x))
+
 /**
 get a 2-tuple with both the sign and absolute value of `x`. similar to `divrem`
-@param {numeric} x*/
+@template {numeric} T
+@param {T} x
+@return {[T, T]}
+*/
 export const signabs = x => [sign(x), abs(x)]
 
 /**
 calculate truncated division with remainder, returning both values in a 2-tuple
-@param {numeric} n dividend/numerator
-@param {numeric} d divisor/denominator
+@template {numeric} T
+@param {T} n dividend/numerator
+@param {T} d divisor/denominator
+@return {T}
 */
 export const divrem = (n, d) => [trunc(n / d), n % d]
 
 /**
 calculate Euclidean division with remainder, returning both values in a 2-tuple
-@param {numeric} n dividend/numerator
-@param {numeric} d divisor/denominator
+@template {numeric} T
+@param {T} n dividend/numerator
+@param {T} d divisor/denominator
+@return {T}
 */
 export const divEuclid = (n, d) => floor(n / abs(d)) * sign(d) //this is incorrect for `BigInt`s
 

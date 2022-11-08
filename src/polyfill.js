@@ -75,7 +75,7 @@ import { gcd, lcm } from './lib/factors'
 	IntN.MAX_INT64 = MAX64 >> 1n
 	IntN.MIN_INT64 = -1n << 63n
 
-	Float.isSafeNumber = function (/** @type {numeric} */ number) {
+	Float.isSafeNumber = function (number) {
 		return typeof number == 'number' &&
 			abs(number) >= MIN_NORMAL &&
 			abs(number) <= MAX_SAFE_INTEGER
@@ -117,20 +117,19 @@ import { gcd, lcm } from './lib/factors'
 
 	/**
 	 * Returns the base 2 logarithm of a bigint.
-	 * @param {string | boolean | numeric} n
-	 * @param {string | boolean | numeric} b
-	 * @returns {bigint}
+	 * @param {bigint} n
+	 * @return {bigint}
 	 */
-	IntN.log2 = function (/** @type {string | bigint | boolean} */ n) {
+	IntN.log2 = function (n) {
 		if ((n = toIntN(n)) > 0n) return sizeOf(n, 1n, 0n)
 		throw new RangeErr('Non-positive logarithmation')
 	}
 
 	/**
 	 * Returns the base `b` logarithm of a bigint.
-	 * @param {string | boolean | numeric} n
-	 * @param {string | boolean | numeric} b
-	 * @returns {bigint}
+	 * @param {bigint} n
+	 * @param {bigint} b
+	 * @return {bigint}
 	 */
 	IntN.logB = function (n, b) {
 		n = toIntN(n); b = toIntN(b)
@@ -158,7 +157,7 @@ import { gcd, lcm } from './lib/factors'
 
 	/**
 	"KahanBabushkaKleinSum". Summation with minimal rounding errors
-	@param {number[]} values
+	@param {...number} values
 	*/
 	Math.sum = function (...values) {
 		let sum = 0, cs = 0, ccs = 0, c = 0, cc = 0
@@ -173,7 +172,7 @@ import { gcd, lcm } from './lib/factors'
 		return sum + cs + ccs
 	}
 
-	IntN.sum = function (/** @type {string | any[]} */ ...values) {
+	IntN.sum = function (/** @type {...bigint} */ ...values) {
 		let sum = 0n
 		// avoid out-of-memory error
 		for (; values.length; values.length--)
@@ -181,15 +180,36 @@ import { gcd, lcm } from './lib/factors'
 		return sum
 	}
 
-	Math.clamp = function (/** @type {string | number} */ x, /** @type {string | number} */ min, /** @type {string | number} */ max) { return clamp(+x, +min, +max) }
-	IntN.clamp = function (/** @type {string | bigint | boolean} */ x, /** @type {string | bigint | boolean} */ min, /** @type {string | bigint | boolean} */ max) { return clamp(toIntN(x), toIntN(min), toIntN(max)) }
+	/**
+	 *
+	 * @param {number} x
+	 * @param {number} min
+	 * @param {number} max
+	 * @return {number}
+	 */
+	Math.clamp = function (x, min, max) { return clamp(+x, +min, +max) }
 
 	/**
-	https://github.com/zloirock/core-js/blob/master/packages/core-js/internals/math-scale.js
-	https://rwaldron.github.io/proposal-math-extensions/#sec-math.scale
-	*/
-	Math.scale = function (/** @type {number} */ x, /** @type {number} */ inLow, /** @type {number} */ inHigh, /** @type {number} */ outLow, /** @type {number} */ outHigh) {
-		if (isInfNaN(x = +x)) return x
+	 *
+	 * @param {bigint} x
+	 * @param {bigint} min
+	 * @param {bigint} max
+	 * @return {bigint}
+	 */
+	IntN.clamp = function (x, min, max) { return clamp(toIntN(x), toIntN(min), toIntN(max)) }
+
+	/**
+	 * https://github.com/zloirock/core-js/blob/master/packages/core-js/internals/math-scale.js
+	 * https://rwaldron.github.io/proposal-math-extensions/#sec-math.scale
+	 * @param {number} x
+	 * @param {number} inLow
+	 * @param {number} inHigh
+	 * @param {number} outLow
+	 * @param {number} outHigh
+	 */
+	Math.scale = function (x, inLow, inHigh, outLow, outHigh) {
+		x = +x
+		if (isInfNaN(x)) return x
 		inLow = +inLow; inHigh = +inHigh
 		outLow = +outLow; outHigh = +outHigh
 		return (x - inLow) * (outHigh - outLow) / (inHigh - inLow) + outLow
@@ -199,7 +219,7 @@ import { gcd, lcm } from './lib/factors'
 	All the integer division defnitions
 	@param {bigint} n numerator | dividend
 	@param {bigint} d denominator | divisor
-	@param {string} F function or variant
+	@param {'floor' | 'trunc' | 'ceil' | 'round' | 'expand' | 'euclid'} F function or variant
 	@return {bigint} quotient
 	*/
 	IntN.div = function (n, d, F) {
@@ -218,9 +238,16 @@ import { gcd, lcm } from './lib/factors'
 		}
 	}
 
-	// Standard Mathematical Modulo (floor). NOT remainder
-	// if args are floats, it can have precision errors, similarly to the naive divison-based definition
-	const mod = (/** @type {number | bigint} */ n, /** @type {number} */ d) => (n % d + d) % d
+	/**
+	Standard Mathematical Modulo (floor). NOT remainder.
+	If args are floats, it can have precision errors, similarly to the naive divison-based definition
+
+	@template {numeric} T
+	@param {T} n
+	@param {T} d
+	@return {T}
+	*/
+	const mod = (n, d) => (n % d + d) % d
 
 	// https://en.wikipedia.org/wiki/Modulo_operation#Variants_of_the_definition
 	/**
@@ -243,7 +270,13 @@ import { gcd, lcm } from './lib/factors'
 		}
 		return n - d * Math[F](n / d)
 	}
-	IntN.mod = function (/** @type {string | number | bigint | boolean} */ n, /** @type {string | boolean | numeric} */ d, /** @type {string} */ F) {
+	/**
+	 *
+	 * @param {bigint} n
+	 * @param {bigint} d
+	 * @param {'floor' | 'trunc' | 'ceil' | 'round' | 'expand' | 'euclid'} F
+	 */
+	IntN.mod = function (n, d, F) {
 		n = toIntN(n); d = toIntN(d)
 		switch (F = String(F).trim().toLowerCase()) {
 			case 'floor': case 'trunc': case 'ceil': case 'round': case 'expand':
@@ -257,7 +290,7 @@ import { gcd, lcm } from './lib/factors'
 		return n - d * IntN.div(n, d, F)
 	}
 
-	Math.modPow = function (/** @type {number} */ b, /** @type {numeric} */ e, /** @type {number} */ m) {
+	Math.modPow = function (/** @type {number} */ b, /** @type {number} */ e, /** @type {number} */ m) {
 		if (isNaN(b = +b) || isNaN(e = +e) || isNaN(m = +m)) return NaN
 		if (e < 2 || e % 1) return mod(b ** e, m)
 		b = mod(b, m)
@@ -270,7 +303,13 @@ import { gcd, lcm } from './lib/factors'
 		} while (e > 1)
 		return mod(out * b, m)
 	}
-	IntN.modPow = function (/** @type {string | number | bigint | boolean} */ b, /** @type {string | number | bigint | boolean} */ e, /** @type {string | bigint | boolean} */ m) {
+	/**
+	 *
+	 * @param {bigint} b
+	 * @param {bigint} e
+	 * @param {bigint} m
+	 */
+	IntN.modPow = function (b, e, m) {
 		b = toIntN(b); e = toIntN(e); m = toIntN(m)
 		if (e < 2n) return mod(e < 0n ? 1n / b ** -e : b ** e, m)
 		b = mod(b, m)
@@ -284,16 +323,16 @@ import { gcd, lcm } from './lib/factors'
 		return mod(out * b, m)
 	}
 
-	Math.gcd = function (/** @type {string | number} */ x, /** @type {string | number} */ y) { return gcd(+x, +y) }
-	IntN.gcd = function (/** @type {string | bigint | boolean} */ a, /** @type {string | bigint | boolean} */ b) { return gcd(toIntN(a), toIntN(b)) }
+	Math.gcd = function (/** @type {number} */ x, /** @type {number} */ y) { return gcd(+x, +y) }
+	IntN.gcd = function (/** @type {bigint} */ a, /** @type {bigint} */ b) { return gcd(toIntN(a), toIntN(b)) }
 
-	Math.lcm = function (/** @type {string | number} */ x, /** @type {string | number} */ y) { return lcm(+x, +y) }
-	IntN.lcm = function (/** @type {string | bigint | boolean} */ a, /** @type {string | bigint | boolean} */ b) { return lcm(toIntN(a), toIntN(b)) }
+	Math.lcm = function (/** @type {number} */ x, /** @type {number} */ y) { return lcm(+x, +y) }
+	IntN.lcm = function (/** @type {bigint} */ a, /** @type {bigint} */ b) { return lcm(toIntN(a), toIntN(b)) }
 
-	Math.root = function (/** @type {string | number} */ x, y = 2) { return root(+x, +y) }
-	IntN.root = function (/** @type {string | bigint | boolean} */ n, i = 2n) { return root(toIntN(n), toIntN(i)) }
-	IntN.sqrt = function (/** @type {string | bigint | boolean} */ n) { return sqrt(toIntN(n)) }
-	IntN.cbrt = function (/** @type {string | bigint | boolean} */ n) { return root(toIntN(n), 3n) }
+	Math.root = function (/** @type {number} */ x, y = 2) { return root(+x, +y) }
+	IntN.root = function (/** @type {bigint} */ n, i = 2n) { return root(toIntN(n), toIntN(i)) }
+	IntN.sqrt = function (/** @type {bigint} */ n) { return sqrt(toIntN(n)) }
+	IntN.cbrt = function (/** @type {bigint} */ n) { return root(toIntN(n), 3n) }
 
 
 	// factorial approximations for non-ints.
@@ -370,14 +409,14 @@ import { gcd, lcm } from './lib/factors'
 	}
 
 	Math.ctz32 = function (/** @type {number} */ x) { return ctz(+x >>> 0) }
-	IntN.ctz = function (/** @type {string | boolean | numeric} */ n) {
+	IntN.ctz = function (/** @type {bigint} */ n) {
 		n = toIntN(n)
 		if (n) return ctz(n)
 		throw new RangeErr('return value is Infinity')
 	}
 
 	Math.popcnt32 = function (/** @type {number} */ x) { return popCount(+x >>> 0) }
-	IntN.popcnt = function (/** @type {string | bigint | boolean} */ n) {
+	IntN.popcnt = function (/** @type {bigint} */ n) {
 		if ((n = toIntN(n)) >= 0n) return popCount(n)
 		throw new RangeErr('return value is Infinity')
 	}
@@ -465,7 +504,7 @@ import { gcd, lcm } from './lib/factors'
 
 	/**
 	 * Returns the square root of the sum of squares of its arguments.
-	 * @param {...(string | bigint | boolean)} values Values to compute the square root for.
+	 * @param {...bigint} values Values to compute the square root for.
 	 * If no arguments are passed, the result is `0n`.
 	 * If there is only one argument, the result is the absolute value.
 	 * If all arguments are `0n`, the result is `0n`.

@@ -3,28 +3,33 @@ import { abs } from './std'
 
 /**
 round towards `0`
-@param {numeric} x
-@return {numeric}
+@template {numeric} T
+@param {T} x
+@return {T}
 */
 export const trunc = x => isInt(x) ? x : x - x % 1
 
 /**
 round towards `-Infinity`
-@param {numeric} x
-@return {numeric}
+@template {numeric} T
+@param {T} x
+@return {T}
 */
 export const floor = x => isInt(x) ? x : trunc(x) - (x < 0 ? 1 : 0)
 
 /**
 round towards `+Infinity`
-@param {numeric} x
-@return {numeric}
+@template {numeric} T
+@param {T} x
+@return {T}
 */
 export const ceil = x => isInt(x) ? x : trunc(x) + (x > 0 ? 1 : 0)
 
 /**
 round towards nearest int
-@param {numeric} x
+@template {numeric} T
+@param {T} x
+@return {T}
 */
 export const round = x =>
 	isInt(x) || isInfNaN(x)
@@ -37,6 +42,8 @@ export const round = x =>
 /**
 round towards unsigned (any) `Infinity`.
 "complement" of `trunc`.
-@param {numeric} x
+@template {numeric} T
+@param {T} x
+@return {T}
 */
 export const expand = x => (x < 0 ? floor : ceil)(x)

@@ -17,15 +17,17 @@ const
 `copyType` (like `copySign`), but only for Numericals.
 This is like type-inference
 
+@template {numeric} T
 @param {*} n value to coerce
-@param {numeric} x from which the type is copied
-@return {numeric}
+@param {T} x from which the type is copied
+@return {T}
 */
+// @ts-ignore
 export const autoN = (n, x) => (isIntN(x) ? IntN : Float)(n)
 
 /**
 https://tc39.es/ecma262/multipage/abstract-operations.html#sec-tobigint
-@param {boolean|string|bigint} x
+@param {boolean | string | bigint} x
 */
 export const toBigInt = x => {
 	switch (typeof x?.valueOf?.()) {

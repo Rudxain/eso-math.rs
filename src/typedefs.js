@@ -9,5 +9,6 @@ any strictly numerical value
 
 /**
 2-tuple of format [numerator, denominator]
-@typedef {[numeric, numeric]} fraction
+@template {numeric} T
+@typedef {[T , T]} fraction
 */
