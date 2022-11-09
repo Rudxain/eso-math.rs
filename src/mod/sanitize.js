@@ -9,7 +9,8 @@ import { abs } from '../lib/std'
 import { trunc } from '../lib/rounding'
 
 const
-	Float = Number, IntN = BigInt,
+	Float = Number,
+	IntN = BigInt,
 	Str = String,
 	TypeErr = TypeError
 
@@ -55,15 +56,21 @@ export const anyBigInt = x => {
 
 /**
 Coerce to numeric by using the least invasive/intrusive algorithm I know.
-DO NOT confuse with ES' `toNumeric` "abstract operation", it's not the same
+DO NOT confuse with ES' `toNumeric` "abstract operation", it's not the same.
 @param {*} x value to coerce
 @return {numeric}
 */
 export const toNumeric = x => {
-	if (isFloat(x)) return +x; if (isIntN(x)) return IntN(x)
+	if (isFloat(x)) return +x
+	if (isIntN(x)) return IntN(x)
 	if (x === null) return 0
-	if (x === undefined || typeof (x = x?.valueOf?.()) == 'symbol') return NaN
+
+	x = x?.valueOf?.()
+	if (x === undefined || typeof x == 'symbol')
+		return NaN
+
 	if (!isPrim(x)) x = Str(x)
+
 	if (!+x || abs(+x) < 2 ** 53 ||
 		//I know /\s/ exists, but `trim` is faster and more readable
 		/^[-+]?Infinity$/.test(Str(x).trim())) return +x

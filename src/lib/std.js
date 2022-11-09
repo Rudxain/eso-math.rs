@@ -47,6 +47,7 @@ calculate Euclidean division with remainder, returning both values in a 2-tuple
 */
 export const divEuclid = (n, d) => floor(n / abs(d)) * sign(d) //this is incorrect for `BigInt`s
 
+
 export const isEven = x => isInt(x) && x % autoN(2, x) == 0
 //`!isEven` is wrong, because `NaN` is none of them
 export const isOdd = x => isInt(x) && x % autoN(2, x) != 0
@@ -74,18 +75,16 @@ export const minmax = (arr, op, f) => {
 
 /**
 Logarithm in any base
-@param {numeric} x get exponent of this
-@param {numeric} [b=2] base of logarithm
-@return {numeric}
+@template {numeric} T
+@param {T} x get exponent of this
+@param {T} b base of logarithm
+@return {T}
 */
-export const logB = (x, b = 2) => {
-	x = toNumeric(x)
-	b = toNumeric(b)
-
+export const logB = (x, b) => {
 	if (x < 0 || b == 0 || b == 1) return NaN
 	if (x == 0) return -Infinity
 	if (x == 1) return autoN(0, x)
-	if (!isIntN(x)) return lb(x) / lb(b)
+	if (typeof x != 'bigint') return lb(x) / lb(b)
 
 	b = IntN(b)
 	let i = 0n
