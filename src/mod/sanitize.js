@@ -22,7 +22,6 @@ This is like type-inference
 @param {T} x from which the type is copied
 @return {T}
 */
-// @ts-ignore
 export const autoN = (n, x) => (isIntN(x) ? IntN : Float)(n)
 
 /**
