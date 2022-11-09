@@ -65,7 +65,7 @@ The Collatz Function. Applies 1 iteration of The Collatz Algorithm
 export const Collatz_fn = x => isOdd(x = toNumeric(x)) ? autoN(3,x) * x + autoN(1,x) : x / autoN(2,x)
 
 /**
-Returns (Hailstone) seq of n. Supports signed integers.
+Yields (Hailstone) seq of n. Supports signed integers.
 @param {numeric} x seed
 @param {boolean} skip_even
 https://en.wikipedia.org/wiki/Collatz_conjecture
