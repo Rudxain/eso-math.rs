@@ -16,8 +16,8 @@ const
 
 /**
 check if `n` is strictly divisible by `d`
-@param {?} n dividend/numerator
-@param {?} d divisor/denominator
+@param {unknown} n dividend/numerator
+@param {unknown} d divisor/denominator
 */
 export const isDivisible = (n, d) => {
 	n = n?.valueOf?.()

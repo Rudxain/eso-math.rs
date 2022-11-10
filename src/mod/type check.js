@@ -3,9 +3,9 @@ check if `x` is a primitive (non-object) type.
 `null` is primitive, despite being an `object`
 @type {{
 	(x: primitive): true;
-	(x: ?): false;
+	(x: unknown): false;
 }}
-@param {?} x
+@param {unknown} x
 
 @example
 isPrimitive(0) //true
@@ -24,7 +24,7 @@ check if `x` is either `Number` (object-wrapped) or `number` (primitive)
 	(x: number | {valueOf(): number}): true;
 	(x: unknown): false;
 }}
-@param {?} x
+@param {unknown} x
 
 @example
 isNumber(0) //true
@@ -42,7 +42,7 @@ check if `x` is either `BigInt` (object-wrapped) or `bigint` (primitive)
 	(x: bigint | {valueOf(): bigint}): true;
 	(x: unknown): false;
 }}
-@param {?} x
+@param {unknown} x
 
 @example
 isBigInt(0n) //true
@@ -58,7 +58,7 @@ regardless if it's object-wrapped, or non-finite.
 	(x: numeric): true;
 	(x: unknown): false;
 }}
-@param {?} x
+@param {unknown} x
 
 @example
 is_numeric(0n) //true

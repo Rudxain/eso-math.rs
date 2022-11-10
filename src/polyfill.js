@@ -18,7 +18,7 @@ import { gcd, lcm } from './lib/factors'
 {
 	/**
 	check if `x` is either `Number` (object-wrapped) or `number` (primitive)
-	@param {?} x
+	@param {unknown} x
 
 	@example
 	isNumber(0) //true
@@ -33,7 +33,7 @@ import { gcd, lcm } from './lib/factors'
 	 * Short edition of `defineProperty`.
 	 * @param {object} O
 	 * @param {PropertyKey} p
-	 * @param {?} v value to set
+	 * @param {unknown} v value to set
 	 * @param {([boolean, boolean, boolean] | numeric | string)} a descriptor with format [W, E, C]
 	 */
 	const defProp = (O, p, v, a) => {
@@ -140,7 +140,7 @@ import { gcd, lcm } from './lib/factors'
 
 	/**
 	https://github.com/tc39/proposal-Math.signbit/issues/7
-	@param {?} number
+	@param {unknown} number
 	*/
 	Number.signbit = function (number) {
 		const n = number
