@@ -23,7 +23,7 @@ This is like type-inference
 @param {T} x from which the type is copied
 @return {T}
 */
-export const autoN = (n, x) => (isIntN(x) ? IntN : Float)(n)
+export const autoN = (n, x) => (typeof x == 'bigint' ? IntN : Float)(n)
 
 /**
 https://tc39.es/ecma262/multipage/abstract-operations.html#sec-tobigint
@@ -44,7 +44,7 @@ permissive BigInt coercion
 @return {bigint}
 */
 export const anyBigInt = x => {
-	if (isIntN(x)) return x?.valueOf?.()
+	if (isIntN(x)) return IntN(x)
 	if (isFloat(x)) {
 		x = trunc(+x)
 		return x != 0 ? (isInf(x) ? (x < 0 ? -1n : 1n) : IntN(x)) : 0n

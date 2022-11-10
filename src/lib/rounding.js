@@ -1,4 +1,4 @@
-import { isInt, isInfNaN } from '../mod/value check'
+import { isInt, isInfNAN } from '../mod/value check'
 import { abs } from './std'
 
 /**
@@ -32,7 +32,7 @@ round towards nearest int
 @return {T}
 */
 export const round = x =>
-	isInt(x) || isInfNaN(x)
+	isInt(x) || isInfNAN(x)
 		? x
 		: x < 0 && x >= -0.5
 			? -0

@@ -1,5 +1,5 @@
 import {isBigInt as isIntN} from '../mod/type check'
-import {isInfNaN} from '../mod/value check'
+import {isInfNAN} from '../mod/value check'
 import {autoN, toNumeric} from '../mod/sanitize'
 import {trunc, floor} from './rounding'
 import {sizeOf} from './bitwise'
@@ -15,7 +15,7 @@ Hyper-operations
 */
 export const HyperOP = (n, b, e) => {
 	n = trunc(Float(n))
-	if (n < 0 || isInfNaN(n)) return NaN
+	if (n < 0 || isInfNAN(n)) return NaN
 	const n1 = autoN(1,e)
 	//`switch` is overrated
 	if (n < 4) return [e + n1, b + e, b * e, b ** e][n]

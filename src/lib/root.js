@@ -1,9 +1,10 @@
-import { isInf, isNaN } from '../mod/value check'
+import { isInf } from '../mod/value check'
 import { abs, sign } from './std'
 import { sizeOf } from './bitwise'
-import { toNumeric } from '../mod/sanitize'
 
-const Float = Number, IntN = BigInt, RangeErr = RangeError
+const
+	Float = Number, IntN = BigInt, RangeErr = RangeError,
+	{ isNaN } = Float
 
 /**
 ith (degree i) root of x
@@ -12,7 +13,6 @@ ith (degree i) root of x
 @return {numeric}
 */
 export const root = (x, i = 2) => {
-	x = toNumeric(x)
 	if (i == 1) return x
 
 	if (typeof x == 'bigint') {
@@ -85,8 +85,6 @@ calculate square root
 @return {numeric}
 */
 export const sqrt = x => {
-	x = toNumeric(x)
-
 	if (typeof x != 'bigint')
 		return x && x ** 0.5 //preserve `-0`
 

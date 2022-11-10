@@ -1,7 +1,7 @@
 /**
 check if `x` is a primitive (non-object) type.
 `null` is primitive, despite being an `object`
-@param {*} x
+@param {unknown} x
 
 @example
 isPrimitive(0) //true
@@ -16,7 +16,7 @@ export const isPrimitive = x => x === null || !(typeof x == 'object' || typeof x
 
 /**
 check if `x` is either `Number` (object-wrapped) or `number` (primitive)
-@param {*} x
+@param {unknown} x
 
 @example
 isNumber(0) //true
@@ -30,7 +30,7 @@ export const isNumber = x => typeof x?.valueOf?.() == 'number'
 
 /**
 check if `x` is either `BigInt` (object-wrapped) or `bigint` (primitive)
-@param {*} x
+@param {unknown} x
 
 @example
 isBigInt(0n) //true
@@ -42,14 +42,14 @@ export const isBigInt = x => typeof x?.valueOf?.() == 'bigint'
 /**
 check if `x` can be operated as a numerical/mathematical value,
 regardless if it's object-wrapped, or non-finite.
-@param {*} x
+@param {unknown} x
 
 @example
 isNumeric(0n) //true
-isNumeric(Object(0n)) //true
+isNumeric(Object(0n)) //false
 isNumeric(0) //true
 isNumeric(NaN) //true
-isNumeric(Object(Infinity)) //true
+isNumeric(Object(Infinity)) //false
 isNumeric('0') //false
 */
-export const isNumeric = x => isNumber(x) || isBigInt(x)
+export const is_numeric = x => typeof x == 'number' || typeof x == 'bigint'

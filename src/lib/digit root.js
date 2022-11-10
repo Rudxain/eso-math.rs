@@ -1,5 +1,5 @@
 import {isBigInt as isIntN} from '../mod/type check'
-import {isInfNaN} from '../mod/value check'
+import {isInfNAN} from '../mod/value check'
 import {abs, signabs} from './std'
 import {trunc} from './rounding'
 import {isM as isMersenne} from './Mersenne'
@@ -23,7 +23,7 @@ export const dig_sum = (x, b) => {
 	{
 		x = +x
 		b = +b
-		if (isInfNaN(x) || isInfNaN(b) || b === 0) return x / b
+		if (isInfNAN(x) || isInfNAN(b) || b === 0) return x / b
 		sum = 0
 		if (abs(b) === 1) return sum
 		while (x) {sum += x % b; x = trunc(x / b)}

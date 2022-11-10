@@ -5,7 +5,7 @@
 - [Math Extensions proposal](https://github.com/rwaldron/proposal-math-extensions)
 - [BigInt Math TC39 proposal](https://github.com/tc39/proposal-bigint-math)
 */
-import { isInt, isInfNaN, isNegZero } from './mod/value check'
+import { isInt, isInfNAN, isNegZero } from './mod/value check'
 import { toBigInt as toIntN } from './mod/sanitize'
 import { PHI, MAX64 } from './lib/const'
 import { abs, sign, clamp, logB } from './lib/std'
@@ -18,7 +18,7 @@ import { gcd, lcm } from './lib/factors'
 {
 	/**
 	check if `x` is either `Number` (object-wrapped) or `number` (primitive)
-	@param {*} x
+	@param {unknown} x
 
 	@example
 	isNumber(0) //true
@@ -33,7 +33,7 @@ import { gcd, lcm } from './lib/factors'
 	 * Short edition of `defineProperty`.
 	 * @param {object} O
 	 * @param {PropertyKey} p
-	 * @param {*} v value to set
+	 * @param {unknown} v value to set
 	 * @param {([boolean, boolean, boolean] | numeric | string)} a descriptor with format [W, E, C]
 	 */
 	const defProp = (O, p, v, a) => {
@@ -53,7 +53,7 @@ import { gcd, lcm } from './lib/factors'
 		IntN = BigInt, Float = Number,
 		TypeErr = TypeError, RangeErr = RangeError,
 		{ PI, E, log2: lb, exp, sin: sine, random: RNG } = Math,
-		{ MAX_SAFE_INTEGER, isNaN } = Float
+		{ MAX_SAFE_INTEGER, isNAN } = Float
 
 	/** Ratio of the circumference of a circle to its radius. */
 	const TAU = 2 * PI
@@ -145,7 +145,7 @@ import { gcd, lcm } from './lib/factors'
 	Number.signbit = function (number) {
 		const n = number
 		return typeof n == 'number' &&
-			isNaN(n) &&
+			isNAN(n) &&
 			n < 0 || isNegZero(n)
 	}
 
@@ -209,7 +209,7 @@ import { gcd, lcm } from './lib/factors'
 	 */
 	Math.scale = function (x, inLow, inHigh, outLow, outHigh) {
 		x = +x
-		if (isInfNaN(x)) return x
+		if (isInfNAN(x)) return x
 		inLow = +inLow; inHigh = +inHigh
 		outLow = +outLow; outHigh = +outHigh
 		return (x - inLow) * (outHigh - outLow) / (inHigh - inLow) + outLow
@@ -291,7 +291,7 @@ import { gcd, lcm } from './lib/factors'
 	}
 
 	Math.modPow = function (/** @type {number} */ b, /** @type {number} */ e, /** @type {number} */ m) {
-		if (isNaN(b = +b) || isNaN(e = +e) || isNaN(m = +m)) return NaN
+		if (isNAN(b = +b) || isNAN(e = +e) || isNAN(m = +m)) return NaN
 		if (e < 2 || e % 1) return mod(b ** e, m)
 		b = mod(b, m)
 		if (!b) return b
@@ -388,7 +388,7 @@ import { gcd, lcm } from './lib/factors'
 	Math.factorial = function (x) {
 		x = +x
 		if (x >= 171) return Infinity
-		if (x < 0 || isNaN(x)) return NaN
+		if (x < 0 || isNAN(x)) return NaN
 		/*
 		We could precompute an int lookup table, and use spline interpolation for faster processing.
 		The problem is that if `x` is at the extreme, the output would be `NaN` unless we use extrapolation
@@ -560,7 +560,7 @@ import { gcd, lcm } from './lib/factors'
 		radix = +radix
 
 		let exp
-		if (!isInfNaN(x)) {
+		if (!isInfNAN(x)) {
 			exp = x && trunc(logB(abs(x), radix))
 			x /= radix ** exp
 		}

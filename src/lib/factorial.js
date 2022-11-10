@@ -1,24 +1,39 @@
-import { isInfNaN, isNaN } from '../mod/value check'
-import { autoN, toNumeric } from '../mod/sanitize'
+import { isInfNAN } from '../mod/value check'
+import { autoN } from '../mod/sanitize'
 import { abs, sign, signabs } from './std'
 import { trunc } from './rounding'
 
-//if k > 1 returns multifactorial of that degree
+const { isNaN } = Number
+
+/**
+@template {numeric} T
+@param {T} x
+@param {T} k multifactorial degree. `k = 1` is standard
+@return {T}
+*/
 export const nthFactorial = (x, k = 1) => {
-	let s;[s, x] = signabs(toNumeric(x))
-	k = trunc(toNumeric(k)) * s
-	let out = autoN(1, x)
-	for (let i = k, len = 1n; len <= x && !isInfNaN(out); i += k) { out *= i; len++ }
+	const [x_sgn, x_abs] = signabs(x)
+	k = trunc(k) * x_sgn
+	let out = autoN(1, x_abs)
+	for (let i = k, len = 1n; len <= x_abs && !isInfNAN(out); i += k) {
+		out *= i
+		len++
+	}
 	return out
 }
 
 //export const iterFactorial (WIP)
 
-//iterative inverse int Fact
-//if k > 1 returns corresponding inv multifactorial
+/**
+iterative inverse int Fact
+@template {numeric} T
+@param {T} n
+@param {T} k multifactorial degree. `k = 1` is standard
+@return {T}
+*/
 export const invFactorial = (n, k = 1) => {
-	if (!(n = toNumeric(n)) || isNaN(k = toNumeric(k))) return NaN
-	if (isInfNaN(n)) return n
+	if (!n || isNaN(k)) return NaN
+	if (isInfNAN(n)) return n
 	let out = sign(n)
 	if (!k) return out
 	while (abs(n) > 1) { n /= out; out += k }

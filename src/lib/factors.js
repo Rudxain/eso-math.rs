@@ -1,7 +1,7 @@
 import '../typedefs'
 
-import { isInt, isNan, isInfNaN } from '../mod/value check'
-import { autoN, toNumeric } from '../mod/sanitize'
+import { isInt, isInfNAN } from '../mod/value check'
+import { autoN } from '../mod/sanitize'
 import { abs, isEven } from './std'
 import { trunc } from './rounding'
 import { ctz, ctztrim, trim, sizeOf } from './bitwise'
@@ -9,12 +9,15 @@ import { M as nthMersenne, isM as isMersenne } from './Mersenne'
 import { isSquare, isCube } from './power'
 import { sqrt, cbrt } from './root'
 
-const Float = Number, lb =  Math.log2
+const
+	Float = Number,
+	{ isNaN } = Float,
+	lb =  Math.log2
 
 /**
 check if `n` is strictly divisible by `d`
-@param {*} n dividend/numerator
-@param {*} d divisor/denominator
+@param {unknown} n dividend/numerator
+@param {unknown} d divisor/denominator
 */
 export const isDivisible = (n, d) => {
 	n = n?.valueOf?.()
@@ -28,28 +31,31 @@ export const isDivisible = (n, d) => {
 /**
 Euclidean algorithm for finding Highest Common Factor.
 returns correct values for some non-ints (rounding errors can happen)
-@param {numeric} a
-@param {numeric} b
-@return {numeric}
+@template {numeric} T
+@param {T} a
+@param {T} b
+@return {T}
 */
 const Euclid = (a, b) => { while (b) [a, b] = [b, a % b]; return abs(a) }
 
 /**
 Calculate Greatest Common Divisor of `a` & `b`
 returns correct values for some non-ints (rounding errors can happen)
-@param {numeric} a
-@param {numeric} b
-@return {numeric}
+@template {numeric} T
+@param {T} a
+@param {T} b
+@return {T}
 */
 export const gcd = (a, b) => {//should be variadic
-	a = abs(toNumeric(a))
-	b = abs(toNumeric(b))
+	a = abs(a)
+	b = abs(b)
 
 	if (typeof a == 'bigint' && typeof b == 'bigint') {
-		if (a == b || !a) return b; if (!b) return a
+		if (a == b || !a) return b
+		if (!b) return a
 		if (abs(a - b) == 1n) return 1n //does this improve speed?
 
-		let /**@type {numeric}*/ i, /**@type {numeric}*/ j
+		let /**@type {T}*/ i, /**@type {T}*/ j
 		[i, a] = ctztrim(a);
 		[j, b] = ctztrim(b)
 		const k = i < j ? i : j
@@ -78,7 +84,7 @@ export const gcd = (a, b) => {//should be variadic
 		if (isMersenne(a) && isMersenne(b))
 			return nthMersenne(gcd(sizeOf(a, 1n, 1n), sizeOf(b, 1n, 1n))) << k
 
-		//set base ("Beta") of Lehmer's algo to `2 ** (2 ** BIN)`
+		/** sets base ("Beta") of Lehmer's algo to `2n ** (2n ** BIN)` */
 		const BIN = 8n
 
 		if (b > a) [a, b] = [b, a]
@@ -144,32 +150,32 @@ export const gcd = (a, b) => {//should be variadic
 		return a << k
 	}
 	else {
-		let x = a, y = b
-		if (isNan(x) || isNan(y)) return NaN
-		if (!isInt(x) || !isInt(y)) return Euclid(x, y)
+		if (isNaN(a) || isNaN(b)) return NaN
+		if (!isInt(a) || !isInt(b)) return Euclid(a, b)
 		//borrowed from Stein, lol
 		const
-			i = ctz(x), j = ctz(y),
+			i = ctz(a), j = ctz(b),
 			k = i < j ? i : j //min
 		//ensure the max length is 53b
-		x /= 2 ** i; y /= 2 ** j
+		a /= 2 ** i; b /= 2 ** j
 		return (
-			isMersenne(x) && isMersenne(y)
-				? 2 ** gcd(trunc(lb(x)) + 1, trunc(lb(y)) + 1) - 1
-				: Euclid(x, y)
+			isMersenne(a) && isMersenne(b)
+				? 2 ** gcd(trunc(lb(a)) + 1, trunc(lb(b)) + 1) - 1
+				: Euclid(a, b)
 		) * 2 ** k
 	}
 }
 //should `abs` be a tail-call in all of these (GCDs and LCMs)? it seems better to use it at the start
 /**
 Calculate Lowest Common Multiple.
-@param {numeric} a
-@param {numeric} b
-@return {numeric}
+@template {numeric} T
+@param {T} a
+@param {T} b
+@return {T}
 */
 export const lcm = (a, b) => {
-	a = abs(toNumeric(a))
-	b = abs(toNumeric(b))
+	a = abs(a)
+	b = abs(b)
 	return a == 0 && b == 0
 		? a ^ b //auto-type `0`
 		: a / gcd(a, b) * b
@@ -178,12 +184,14 @@ export const lcm = (a, b) => {
 
 /**
 2nd lowest common divisor. the 1st is always `1`
-@param {numeric} a
-@param {numeric} b
+@template {numeric} T
+@param {T} a
+@param {T} b
+@return {T}
 */
 export const lcd = (a, b) => {
-	a = abs(toNumeric(a))
-	b = abs(toNumeric(b))
+	a = abs(a)
+	b = abs(b)
 
 	const rt = sqrt(a * b), n1 = autoN(1, a)
 
@@ -194,20 +202,31 @@ export const lcd = (a, b) => {
 
 //returns ALL divisors of x, proper and trivial
 //it's a generator, because arrays are too expensive for memory
+/**
+@template {numeric} T
+@param {T} x
+*/
 export const divisors = function* (x) {
-	x = trunc(abs(toNumeric(x)))
-	if (isInfNaN(x)) return
-	yield autoN(1, x)
-	const n2 = autoN(2, x)
+	x = trunc(abs(x))
+	if (isInfNAN(x)) return
+
+	const
+		n1 = autoN(1, x),
+		n2 = autoN(2, x),
+		n3 = autoN(3, x)
+
+	yield n1
+
 	if (isEven(x)) yield n2
-	for (let i = autoN(3, x); i <= x; i += n2)
+
+	for (let i = n3; i <= x; i += n2)
 		if (!(x % i)) yield i
 }
 
 const
-	/**array of sorted Primes, no gaps (dense)*/
+	/** array of sorted Primes, no gaps (dense) */
 	Pa = [3, 5], //2 is unnecessary because CTZ
-	/**Primality "dictionary", any order, gaps allowed (sparse)*/
+	/** Primality "dictionary", any order, gaps allowed (sparse) */
 	Pd = new Set([2, 3, 5])
 /**find next prime and store it*/
 const addP = () => {
@@ -228,10 +247,10 @@ calculate prime factorization of `x`
 @return {Map<number, number>|undefined}
 */
 export const factorize = x => {
-	x = trunc(abs(Float(x)))
+	x = trunc(abs(x))
 
 	//returning `undefined` is "more correct"
-	if (isInfNaN(x)) return
+	if (isInfNAN(x)) return
 
 	const out = new Map, tz = ctz(x)
 
@@ -282,7 +301,7 @@ convert to smallest fraction that represents the same number
 export const toFraction = x => {
 	x = x.valueOf()
 
-	if (isInt(x) || isNan(x)) return [x, autoN(1, x)]
+	if (isInt(x) || isNaN(x)) return [x, autoN(1, x)]
 
 	const s = x < 0
 	if (s) x = -x //abs
