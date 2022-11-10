@@ -16,8 +16,8 @@ const
 
 /**
 check if `n` is strictly divisible by `d`
-@param {unknown} n dividend/numerator
-@param {unknown} d divisor/denominator
+@param {?} n dividend/numerator
+@param {?} d divisor/denominator
 */
 export const isDivisible = (n, d) => {
 	n = n?.valueOf?.()
@@ -329,6 +329,6 @@ export const toFraction = x => {
 }
 
 /*
-to-do: add function to test if number equals sum of divisors
+to-do: add fn to test if number equals sum of divisors
 with the option to include or exclude 1
 */

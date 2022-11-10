@@ -56,7 +56,7 @@ export const root = (x, i = 2) => {
 		}
 		return x0 * s
 	}
-	else //I hate the complexity of this entire function
+	else //I hate the complexity of this entire fn
 	{
 		i = Float(i)
 		if (isInf(x ** (1 / i))) return x ** (1 / i)

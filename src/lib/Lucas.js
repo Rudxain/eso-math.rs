@@ -51,7 +51,7 @@ export const iterFib = function*(x){
 }
 
 //en.wikipedia.org/wiki/Lucas_sequence
-//co-recursive Lucas function
+//co-recursive Lucas fn
 //If F is falsy (default) then "U", else "V"
 export const Lucas = function*(P = 1, Q = -1, F) {
 	P = toNumeric(P); Q = toNumeric(Q)

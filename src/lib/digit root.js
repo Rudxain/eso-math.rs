@@ -64,7 +64,7 @@ export const dig_rt_m = (x, b) => {
 	return x
 }
 /*
-to-do: add a function that tests if the sum of the digit sum and digit product
+to-do: add a fn that tests if the sum of the digit sum and digit product
 are equal to the input itself.
 Example in decimal: 69 = 6*9 + 6+9
 */

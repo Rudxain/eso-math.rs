@@ -58,7 +58,7 @@ It's only proven correct for ints that satisfy `n <= 1n << 68n && n > -(1n << 33
 export const CYCLES = new Set([1, 1n, 0, 0n, -1, -1n, -5, -5n, -17, -17n, Infinity, -Infinity, NaN])
 
 /**
-The Collatz Function. Applies 1 iteration of The Collatz Algorithm
+The Collatz Fn. Applies 1 iteration of The Collatz Algorithm
 @param {numeric} x number to apply fn
 @return {numeric} next num in the Hailstone sequence
 */
