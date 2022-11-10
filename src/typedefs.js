@@ -17,9 +17,3 @@ any strictly numerical value
 https://developer.mozilla.org/en-US/docs/Glossary/Primitive
 @typedef {numstr|boolean|undefined|null|symbol} primitive
 */
-
-/**
-https://developer.mozilla.org/en-US/docs/Glossary/Primitive
-@template T
-@typedef {T extends primitive ? never : T} NonPrimitive
-*/
