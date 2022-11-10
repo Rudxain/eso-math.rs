@@ -75,10 +75,9 @@ export const minmax = (arr, op, f) => {
 
 /**
 Logarithm in any base
-@template {numeric} T
-@param {T} x get exponent of this
-@param {T} b base of logarithm
-@return {T}
+@param {numeric} x get exponent of this
+@param {numeric} b base of logarithm
+@return {numeric}
 */
 export const logB = (x, b) => {
 	if (x < 0 || b == 0 || b == 1) return NaN
