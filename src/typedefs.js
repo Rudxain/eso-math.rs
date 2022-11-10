@@ -20,5 +20,6 @@ https://developer.mozilla.org/en-US/docs/Glossary/Primitive
 
 /**
 https://developer.mozilla.org/en-US/docs/Glossary/Primitive
-@typedef {!primitive} NonPrimitive
+@template T
+@typedef {T extends primitive ? never : T} NonPrimitive
 */
