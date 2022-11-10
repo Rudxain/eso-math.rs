@@ -81,8 +81,9 @@ export const root = (x, i = 2) => {
 //I defined this dedicated (instead of just `root(x, 2)`) `sqrt` because of performance and bug concerns
 /**
 calculate square root
-@param {numeric} x
-@return {numeric}
+@template {numeric} T
+@param {T} x
+@return {T}
 */
 export const sqrt = x => {
 	if (typeof x != 'bigint')
