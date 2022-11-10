@@ -34,6 +34,8 @@ int Geometric Progression where ratio between terms approaches `1 / RecurPronicC
 */
 export const iterRecurPConstInv = function* () {
 	let p = 2
-	yield p
-	while (true) yield p = round(p / RecurPronicCONST)
+	while (true) {
+		yield p
+		p = round(p / RecurPronicCONST)
+	}
 }
