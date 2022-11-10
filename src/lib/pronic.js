@@ -24,12 +24,14 @@ export const isPronic = x => {
 }
 
 /**
+get `n`th Pronic number using closed-form expression
 @template {numeric} T
 @param {T} n
 @return {T extends number ? number : bigint}
 */
 export const nthP = n => n * ++n
 
+/** Pronic sequence */
 export const iterP = function*() {
 	let sum = 2n, p = 0n
 	while (true) {
@@ -39,7 +41,7 @@ export const iterP = function*() {
 	}
 }
 
-/** list recursive Pronics */
+/** recursive Pronics */
 export const iterRecurP = function* () {
 	let p = 2n
 	yield p
