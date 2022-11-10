@@ -5,28 +5,55 @@ check if primitive integer
 
 this is not future proof:
 if `BigFloat`s are added, this will return `false` for any of them
-@param {unknown} x
+@type {{
+	(x: bigint): true;
+	(x: number): boolean;
+	(x: unknown): false;
+}}
+@param {?} x
 */
 export const isInt = x => (typeof x == 'number' && x % 1 == 0) || typeof x == 'bigint'
 
 /**
 check if either `Infinity` sign
-@param {unknown} x
+@type {{
+	(x: number): boolean;
+	(x: unknown): false;
+}} there's no `+-Infinity` literals: https://github.com/microsoft/TypeScript/issues/32277
+@param {?} x
 */
 export const isInf = x => x === +Infinity || x === -Infinity
 
-const { isNaN } = Number
+/**
+same as `Number.isNaN` but with richer type checking
+@type {{
+	(x: number): boolean;
+	(x: unknown): false;
+}} there's no `NaN` literal: https://github.com/microsoft/TypeScript/issues/32277
+@param {?} x
+*/
+//eslint-disable-next-line no-self-compare
+export const isNAN = x => typeof x == 'number' && x != x
+
 /**
 check if either `Infinity` or `NaN`
-@param {unknown} x
+@type {{
+	(x: number): boolean;
+	(x: unknown): false;
+}}
+@param {?} x
 */
-export const isInfNAN = x => isInf(x) || isNaN(x)
+export const isInfNAN = x => isInf(x) || isNAN(x)
 
 /**
 check if signed/negative/minus zero `-0`
 
 unlike `Object.is`, this fn is 100% pure
-@param {unknown} x
+@type {{
+	(x: -0): boolean;
+	(x: unknown): false;
+}} since `-0` and `0` are considered equal by TS, we can't just use `true`
+@param {?} x
 */
 export const isNegZero = x => x === 0 && 1 / x == -Infinity
 

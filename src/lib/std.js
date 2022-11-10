@@ -1,5 +1,4 @@
 import '../typedefs'
-import {isBigInt as isIntN} from '../mod/type check'
 import {isInt, isNegZero} from '../mod/value check'
 import {autoN} from '../mod/sanitize'
 import {trunc, floor} from './rounding'
@@ -53,16 +52,17 @@ export const isEven = x => isInt(x) && x % autoN(2, x) == 0
 export const isOdd = x => isInt(x) && x % autoN(2, x) != 0
 
 /**
-@param {numstr} x
-@param {numstr} min
-@param {numstr} max
+@template {numstr} T
+@param {T} x
+@param {T} min
+@param {T} max
 */
 export const clamp = (x, min, max) => x > max ? max : x < min ? min : x
 
 /**
 @param {(numeric|string)[]} arr values to compare
 @param {boolean} op falsy: min, truthy: max
-@param {function} f type coercion fn, eg. `Number`, `BigInt`, `String`
+@param {NumberConstructor | BigIntConstructor | StringConstructor} f type coercion fn
 */
 export const minmax = (arr, op, f) => {
 	let i = 0, v = f(arr[i]), m = v
