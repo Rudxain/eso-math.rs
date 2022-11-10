@@ -1,17 +1,42 @@
 /** https://en.wikipedia.org/wiki/Pronic_number */
+import { is_numeric } from '../mod/type check'
+import { isSigned } from '../mod/value check'
 import { take } from '../mod/iter'
-import { round } from './rounding'
+import { isEven } from './std'
+import { round, trunc } from './rounding'
+import { sqrt } from './root'
 
 const Float = Number
 
-export const isPronic = x => { }
+/**
+@type {{
+	(x: numeric): boolean;
+	(x: unknown): false;
+}}
+@param {unknown} x
+*/
+export const isPronic = x => {
+	if (!is_numeric(x) || isSigned(x) || !isEven(x))
+		return false
 
-export const nthP = n => n * ++n //supports any numeric type
-export const iterP = function* (b) {
-	const n2 = b ? 2 : 2n
-	let sum = n2, p = n2 ^ n2 //auto 0
-	yield p
-	while (true) { yield p += sum; sum += n2 }
+	const rt = trunc(sqrt(x))
+	return rt * rt + rt == x
+}
+
+/**
+@template {numeric} T
+@param {T} n
+@return {T extends number ? number : bigint}
+*/
+export const nthP = n => n * ++n
+
+export const iterP = function*() {
+	let sum = 2n, p = 0n
+	while (true) {
+		yield p
+		p += sum
+		sum += 2n
+	}
 }
 
 /** list recursive Pronics */
@@ -24,6 +49,7 @@ export const iterRecurP = function* () {
 /** the Doubly-Pronic (recursive) constant */
 export const RecurPronicCONST = (() => {
 	let sum = 0
+	//7 is more than enough to reach max precision
 	for (const x of take(iterRecurP(), 7n))
 		sum += 1 / Float(x)
 	return sum
