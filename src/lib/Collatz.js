@@ -11,16 +11,13 @@ const Float = Number, Arr = Array
 generalized Collatz
 https://en.wikipedia.org/wiki/Collatz_conjecture#Undecidable_generalizations
 @template {numeric} T
-@template {fraction} F
+@template {fraction<T>} F
 @param {{x: T, a: [F, F], b: [F, F], P: T}} kwargs arguments bag.
 */
 export const Hailstone_general = function* (kwargs)
 {
 	let {x, a = [[1, 2], [3, 1]], b = [[0, 1], [1, 1]], P = 2} = kwargs
-	x = toNumeric(x)
-	a = Arr(a).map(x => Arr(x).map(toNumeric))
-	b = Arr(b).map(x => Arr(x).map(toNumeric))
-	P = trunc(toNumeric(P))
+	P = trunc(P)
 
 	/**
 	add 2 fractions. format is [num, den]
