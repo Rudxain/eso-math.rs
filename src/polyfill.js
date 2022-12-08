@@ -1,4 +1,3 @@
-//@ts-nocheck
 'use strict' // this will take effect when all imports are removed
 /**
 # Related
@@ -18,7 +17,8 @@ import { gcd, lcm } from './lib/factors'
 {
 	/**
 	check if `x` is either `Number` (object-wrapped) or `number` (primitive)
-	@param {unknown} x
+	@template T
+	@param {T} x
 
 	@example
 	isNumber(0) //true
@@ -28,7 +28,10 @@ import { gcd, lcm } from './lib/factors'
 	isNumber(Object(0)) //true
 	isNumber('0') //false
 	*/
-	const isFloat = x => typeof x?.valueOf?.() == 'number'
+	const isFloat = x => /**@type {T extends number | {valueOf(): number} ? true : false}*/(
+		typeof x?.valueOf?.() == 'number'
+	)
+
 	/**
 	 * Short edition of `defineProperty`.
 	 * @param {object} O
