@@ -34,19 +34,19 @@ import { gcd, lcm } from './lib/factors'
 
 	/**
 	 * Short edition of `defineProperty`.
-	 * @param {object} O
+	 * @param {object} o
 	 * @param {PropertyKey} p
 	 * @param {unknown} v value to set
 	 * @param {([boolean, boolean, boolean] | numeric | string)} a descriptor with format [W, E, C]
 	 */
-	const defProp = (O, p, v, a) => {
+	const defProp = (o, p, v, a) => {
 		switch (typeof a) {
 			case 'number': a &= 7; a = [(a & 4) != 0, (a & 2) != 0, (a & 1) != 0]; break
-			case 'bigint': a &= 7n; a = [a & 4n, a & 2n, a & 1n]; break
+			case 'bigint': a &= 7n; a = [(a & 4n) != 0n, (a & 2n) != 0n, (a & 1n) != 0n]; break
 			case 'string': a = [/w/i.test(a), /e/i.test(a), /c/i.test(a)]; break
 			// Linux chmod lol (rwx)
 		}
-		return Object.defineProperty(O, p, {
+		return Object.defineProperty(o, p, {
 			value: v,
 			writable: !!a[0], enumerable: !!a[1], configurable: !!a[2]
 		})
@@ -56,7 +56,7 @@ import { gcd, lcm } from './lib/factors'
 		IntN = BigInt, Float = Number,
 		TypeErr = TypeError, RangeErr = RangeError,
 		{ PI, E, log2: lb, exp, sin: sine, random: RNG } = Math,
-		{ MAX_SAFE_INTEGER, isNAN } = Float
+		{ MAX_SAFE_INTEGER, isNaN } = Float
 
 	/** Ratio of the circumference of a circle to its radius. */
 	const TAU = 2 * PI
@@ -65,13 +65,17 @@ import { gcd, lcm } from './lib/factors'
 	https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/Double.html#MIN_NORMAL
 	*/
 	const MIN_NORMAL = 2 ** -1022
+	//@ts-ignore
 	Float.MIN_NORMAL = MIN_NORMAL
 
-	/** max bits per RNG call */
+	/** max bits per {@link RNG} call */
 	const MAX_ENTROPY = 52
 
+	//@ts-ignore
 	Math.TAU = TAU
+	//@ts-ignore
 	Math.SQRT5 = Math.sqrt(5)
+	//@ts-ignore
 	Math.PHI = PHI
 
 	IntN.MAX_UINT64 = MAX64
@@ -148,7 +152,7 @@ import { gcd, lcm } from './lib/factors'
 	Number.signbit = function (number) {
 		const n = number
 		return typeof n == 'number' &&
-			isNAN(n) &&
+			isNaN(n) &&
 			n < 0 || isNegZero(n)
 	}
 
@@ -294,7 +298,7 @@ import { gcd, lcm } from './lib/factors'
 	}
 
 	Math.modPow = function (/** @type {number} */ b, /** @type {number} */ e, /** @type {number} */ m) {
-		if (isNAN(b = +b) || isNAN(e = +e) || isNAN(m = +m)) return NaN
+		if (isNaN(b = +b) || isNaN(e = +e) || isNaN(m = +m)) return NaN
 		if (e < 2 || e % 1) return mod(b ** e, m)
 		b = mod(b, m)
 		if (!b) return b
@@ -391,7 +395,7 @@ import { gcd, lcm } from './lib/factors'
 	Math.factorial = function (x) {
 		x = +x
 		if (x >= 171) return Infinity
-		if (x < 0 || isNAN(x)) return NaN
+		if (x < 0 || isNaN(x)) return NaN
 		/*
 		We could precompute an int lookup table, and use spline interpolation for faster processing.
 		The problem is that if `x` is at the extreme, the output would be `NaN` unless we use extrapolation
