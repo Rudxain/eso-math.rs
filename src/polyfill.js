@@ -6,6 +6,7 @@
 */
 import { isInt, isInfNAN, isNegZero } from './mod/value check'
 import { toBigInt as toIntN } from './mod/sanitize'
+import { MANTISSA_SIZE } from './mod/const'
 import { PHI, MAX64 } from './lib/const'
 import { abs, sign, clamp, logB } from './lib/std'
 import { trunc, expand } from './lib/rounding'
@@ -69,7 +70,7 @@ import { gcd, lcm } from './lib/factors'
 	Float.MIN_NORMAL = MIN_NORMAL
 
 	/** max bits per {@link RNG} call */
-	const MAX_ENTROPY = 52
+	const MAX_ENTROPY = MANTISSA_SIZE
 
 	//@ts-ignore
 	Math.TAU = TAU
