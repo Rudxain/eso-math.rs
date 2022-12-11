@@ -89,16 +89,21 @@ Logarithm in any base
 @template {numeric} T
 @param {T} x get exponent of this
 @param {T} b base of logarithm
-@return {numeric}
+@return {T extends number ? number : numeric}
 */
 export const logB = (x, b) => {
+	//@ts-ignore
 	if (x < 0 || b == 0 || b == 1) return NaN
+	//@ts-ignore
 	if (x == 0) return -Infinity
+	//@ts-ignore
 	if (x == 1) return autoN(0, x)
-	if (typeof x != 'bigint') return lb(x) / lb(/**@type {number}*/(b))
+	//@ts-ignore
+	if (typeof x != 'bigint') return lb(x) / lb(b)
 
 	const b_int = IntN(b)
 	let i = 0n
 	while (/**@type {bigint}*/(x) /= b_int) i++
+	//@ts-ignore
 	return i
 }
