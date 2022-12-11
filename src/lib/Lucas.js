@@ -16,6 +16,8 @@ export const isFib = x => {
 	//https://en.wikipedia.org/wiki/Fibonacci_number#Identification
 	//@ts-ignore
 	x_int *= autoN(5, x_int) * x_int
+	// to-do: use `satisfies` when available: https://github.com/microsoft/TypeScript/issues/51086
+	//@ts-ignore
 	return isSquare(x_int + n4) || isSquare(x_int - n4)
 }
 
