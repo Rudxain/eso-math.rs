@@ -1,63 +1,114 @@
-import {isBigInt as isIntN} from '../mod/type check'
-import {isInt} from '../mod/value check'
-import {autoN, toNumeric} from '../mod/sanitize'
-import {signabs} from './std'
-import {isSquare} from './power'
-import {round, floor} from './rounding'
-import {SQRT5, PHI} from './const'
+import { isInt } from '../mod/value check'
+import { autoN } from '../mod/sanitize'
+import { logB, signabs } from './std'
+import { isSquare } from './power'
+import { round, floor } from './rounding'
+import { SQRT5, PHI } from '../mod/const'
 
+/**
+@template T
+@param {T} x
+*/
 export const isFib = x => {
 	if (!isInt(x)) return false
-	const n4 = autoN(4, x)
+	let x_int = /**@type {T extends numeric ? T : never}*/(x)
+	const n4 = autoN(4, x_int)
 	//https://en.wikipedia.org/wiki/Fibonacci_number#Identification
-	x *= autoN(5, x) * x
-	return isSquare(x + n4) || isSquare(x - n4)
+	//@ts-ignore
+	x_int *= autoN(5, x_int) * x_int
+	return isSquare(x_int + n4) || isSquare(x_int - n4)
 }
 
+/**@return {matrix2x2<bigint>}*/
+const identity_matrix = () => [1n, 0n, 0n, 1n]
+
+/**
+@param {matrix2x2<bigint>} A
+@param {matrix2x2<bigint>} B
+@return {matrix2x2<bigint>}
+*/
+const matrix_multiply = (A, B) => [
+	A[0] * B[0] + A[1] * B[2], A[0] * B[1] + A[1] * B[3],
+	A[2] * B[0] + A[3] * B[2], A[2] * B[1] + A[3] * B[3]
+]
+
+/**@param {matrix2x2<bigint>} A*/
+const matrix_square = A => matrix_multiply(A, A)
+
+/**
+@template {numeric} T
+@param {T} x
+*/
 export const nthFib = x => {
-	x = toNumeric(x)
-	let s; [s, x] = signabs(x)
+	const [x_sgn, x_abs] = signabs(x)
+
 	//https://en.wikipedia.org/wiki/Generalizations_of_Fibonacci_numbers#Extension_to_negative_integers
-	if (!isIntN(x)) return round(PHI ** x / SQRT5) * (s == -1 && x % 2 == 0 ? -1 : 1)
-	const e = !(x & 1n)
-	if (x < 2n) return x
+	if (typeof x_abs != 'bigint') return round(PHI ** x_abs / SQRT5) * (x_sgn == -1 && x_abs % 2 == 0 ? -1 : 1)
+
+	const e = !(x_abs & 1n)
+	if (x_abs < 2n) return x_abs
 	//https://en.wikipedia.org/wiki/Fibonacci_number#Matrix_form
-	let A = [1n,1n,1n,0n], //Fib matrix
-		B = [1n,0n,0n,1n] //identity matrix
+	/**
+	Fib matrix
+	@type {matrix2x2<bigint>}
+	*/
+	let A = [1n, 1n, 1n, 0n]
+	let B = identity_matrix()
 
-	const mm = (A, B) => [ //multiply 2x2 matrices
-		A[0]*B[0] + A[1]*B[2], A[0]*B[1] + A[1]*B[3],
-		A[2]*B[0] + A[3]*B[2], A[2]*B[1] + A[3]*B[3]
-	]
+	let x_uint = /**@type {bigint}*/(x_abs)
 	do {
-		if (x & 1n) B = mm(B, A)
-		x >>= 1n
-		A = mm(A,A)
-	} while (x > 1n)
-	return mm(A, B)[1] * (s && e ? -1n : 1n)
+		if (x_uint & 1n) B = matrix_multiply(B, A)
+		x_uint >>= 1n
+		A = matrix_square(A)
+	} while (x_uint > 1n)
+	return matrix_multiply(A, B)[1] * (x_sgn && e ? -1n : 1n)
 }
 
-//get index of a Fib
+/**
+get index of a Fib
+@param {number} x
+*/
 export const invFib = x => {
-	let s; [s, x] = signabs(Number(x))
-	const i = floor(logB(x * SQRT5 + 0.5, PHI))
-	return !(i % 2) && s == -1 ? NaN : i * s
+	const
+		[x_sgn, x_abs] = signabs(x),
+		i = floor(logB(x_abs * SQRT5 + 0.5, PHI))
+	return !(i % 2) && x_sgn == -1 ? NaN : i * x_sgn
 }
 
-export const iterFib = function*(x){
-	let a = x ? 0 : 0n,
-		b = x ? 1 : 1n
-	while (true) { yield a; [a, b] = [b, a + b] }
+/**
+@template {boolean} T
+@param {T} x
+*/
+export const iterFib = function* (x) {
+	let
+		a = /**@type {T extends true ? number : bigint}*/(x ? 0 : 0n),
+		b = /**@type {T extends true ? number : bigint}*/(x ? 1 : 1n)
+	while (true) {
+		yield a;
+		//@ts-ignore
+		[a, b] = [b, a + b]
+	}
 }
 
-//en.wikipedia.org/wiki/Lucas_sequence
-//co-recursive Lucas fn
-//If F is falsy (default) then "U", else "V"
-export const Lucas = function*(P = 1, Q = -1, F) {
-	P = toNumeric(P); Q = toNumeric(Q)
-	//this XOR is used to throw early when values are not same-type
-	const n0 = P^P^Q^Q, n1 = n0**n0, n2 = n1+n1
+/**
+co-recursive Lucas fn
+
+@param {numeric} P
+@param {numeric} Q
+@param F if falsy (default) then "U", else "V"
+@see https://en.wikipedia.org/wiki/Lucas_sequence
+*/
+export const Lucas = function* (P = 1, Q = -1, F = false) {
+	//@ts-ignore
+	const n0 = /**@type {numeric}*/(P ^ P ^ Q ^ Q) // throw early when values are not same-type
+	//@ts-ignore
+	const n1 = n0 ** n0
+	const n2 = n1 + n1
 
 	let [a, b] = F ? [n2, P] : [n0, n1]
-	while (true) { yield a; [a, b] = [b, P * b - Q * a] }
+	while (true) {
+		yield a;
+		//@ts-ignore
+		[a, b] = [b, P * b - Q * a]
+	}
 }
