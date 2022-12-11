@@ -93,12 +93,16 @@ import { gcd, lcm } from './lib/factors'
 
 	Math.logB = function (x, y = E) { return /**@type {number}*/(logB(+x, +y)) }
 
+	//@ts-ignore
 	Math.LOG2PHI = lb(PHI)
+	//@ts-ignore
 	Math.LNPHI = Math.log(PHI)
+	//@ts-ignore
 	Math.LOG10PHI = Math.log10(PHI)
 
 	Math.logPHI = function (x) { return logB(+x, PHI) }
 
+	//@ts-ignore
 	Math.LOGPHI2 = Math.logPHI(2)
 	Math.LOGPHIE = Math.logPHI(E)
 	Math.LOGPHI10 = Math.logPHI(10)
@@ -108,34 +112,24 @@ import { gcd, lcm } from './lib/factors'
 	Math.LOG2_3 = lb(3)
 	Math.LOG10_3 = Math.log10(3)
 	Math.LOGPHI3 = Math.logPHI(3)
+
 	// ternary lives also matter
-	/**
-	 * Returns the base 3 logarithm of a number.
-	 * @param {number} x
-	 * @return {number}
-	 */
+
 	Math.log3 = function (x) { return logB(+x, 3) }
 	// stop discriminating the number 3
-	Math.LOG3_2 = Math.log3(2); Math.LOG3E = Math.log3(E)
-	Math.LOG3_10 = Math.log3(10); Math.LOG3PHI = Math.log3(PHI)
+	Math.LOG3_2 = Math.log3(2)
+	Math.LOG3E = Math.log3(E)
+
+	Math.LOG3_10 = Math.log3(10)
+	Math.LOG3PHI = Math.log3(PHI)
 	// join The Order of The Triangle Of Power: https://youtu.be/sULa9Lc4pck
 
-	/**
-	 * Returns the base 2 logarithm of a bigint.
-	 * @param {bigint} n
-	 * @return {bigint}
-	 */
 	IntN.log2 = function (n) {
-		if ((n = toIntN(n)) > 0n) return sizeOf(n, 1n, 0n)
+		n = toIntN(n)
+		if (n > 0n) return sizeOf(n, 1n, 0n)
 		throw new RangeErr('Non-positive logarithmation')
 	}
 
-	/**
-	 * Returns the base `b` logarithm of a bigint.
-	 * @param {bigint} n
-	 * @param {bigint} b
-	 * @return {bigint}
-	 */
 	IntN.logB = function (n, b) {
 		n = toIntN(n); b = toIntN(b)
 		if (n < 1n || b < 2n)

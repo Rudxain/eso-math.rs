@@ -24,11 +24,30 @@ interface Math {
 	 */
 	readonly PHI: number
 
+	/** The base-2 logarithm of Phi. */
+	readonly LOG2PHI: number
+
+	/** The natural logarithm of Phi. */
+    readonly LNPHI: number;
+
+	/** The base-10 logarithm of Phi. */
+	readonly LOG10PHI: number
+
+	/** The base-Phi logarithm of 2. */
+	readonly LOGPHI2: number
+
 	/**
-     * Returns the base y logarithm of a number.
+     * Returns the base y logarithm of a number x.
+     * @param x A numeric expression.
+	 * @param y Base.
+     */
+    logB(x: number, y?: number): number;
+
+	/**
+     * Returns the base Phi logarithm of a number.
      * @param x A numeric expression.
      */
-    logB(x: number): number;
+    logPHI(x: number): number;
 }
 
 interface BigIntConstructor {
@@ -48,4 +67,17 @@ interface BigIntConstructor {
      * The value of BigInt.MAX_INT64 is 9223372036854775807n (-(2^63)).
      */
 	readonly MIN_INT64: bigint
+
+	/**
+     * Returns the base 2 logarithm of a bigint.
+     * @param n A numeric expression.
+     */
+    log2(n: bigint): bigint;
+
+	/**
+     * Returns the base b logarithm of a bigint x.
+     * @param n A numeric expression.
+	 * @param b Base.
+     */
+    logB(n: bigint, b: bigint): bigint;
 }
