@@ -96,16 +96,18 @@ import { gcd, lcm } from './lib/factors'
 	//@ts-ignore
 	Math.LOG2PHI = lb(PHI)
 	//@ts-ignore
-	Math.LNPHI = Math.log(PHI)
+	Math.LN_PHI = Math.log(PHI)
 	//@ts-ignore
 	Math.LOG10PHI = Math.log10(PHI)
 
 	Math.logPHI = function (x) { return logB(+x, PHI) }
 
 	//@ts-ignore
-	Math.LOGPHI2 = Math.logPHI(2)
-	Math.LOGPHIE = Math.logPHI(E)
-	Math.LOGPHI10 = Math.logPHI(10)
+	Math.LOG_PHI2 = Math.logPHI(2)
+	//@ts-ignore
+	Math.LOG_PHI_E = Math.logPHI(E)
+	//@ts-ignore
+	Math.LOG_PHI10 = Math.logPHI(10)
 
 	Math.SQRT3 = sqrt(3)
 	Math.LN3 = Math.log(3)
