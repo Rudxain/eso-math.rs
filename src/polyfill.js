@@ -78,8 +78,11 @@ import { gcd, lcm } from './lib/factors'
 	//@ts-ignore
 	Math.PHI = PHI
 
+	//@ts-ignore
 	IntN.MAX_UINT64 = MAX64
+	//@ts-ignore
 	IntN.MAX_INT64 = MAX64 >> 1n
+	//@ts-ignore
 	IntN.MIN_INT64 = -1n << 63n
 
 	Float.isSafeNumber = function (number) {
@@ -88,18 +91,13 @@ import { gcd, lcm } from './lib/factors'
 			abs(number) <= MAX_SAFE_INTEGER
 	}
 
-	/**
-	 * Returns the base `y` logarithm of a number.
-	 * @param {number} x
-	 * @return {number}
-	 */
-	Math.logB = function (x, y = E) { return logB(+x, +y) }
+	Math.logB = function (x, y = E) { return /**@type {number}*/(logB(+x, +y)) }
 
 	Math.LOG2PHI = lb(PHI)
 	Math.LNPHI = Math.log(PHI)
 	Math.LOG10PHI = Math.log10(PHI)
 
-	Math.logPHI = function (/** @type {string | number} */ x) { return logB(+x, PHI) }
+	Math.logPHI = function (x) { return logB(+x, PHI) }
 
 	Math.LOGPHI2 = Math.logPHI(2)
 	Math.LOGPHIE = Math.logPHI(E)

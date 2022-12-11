@@ -21,8 +21,9 @@ const MAX_SAFE_INT = /**@type {9007199254740991}*/(Float.MAX_SAFE_INTEGER)
 `copyType` (like `copySign`), but only for Numericals.
 This is like type-inference
 
+@template {numstr|boolean} N
 @template {numeric} T
-@param {numstr|boolean} n value to coerce
+@param {N} n value to coerce
 @param {T} x from which the type is copied
 */
 export const autoN = (n, x) => /**@type {T}*/((typeof x == 'bigint' ? IntN : Float)(n))

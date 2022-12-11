@@ -1,7 +1,7 @@
 import '../typedefs'
-import {isInt, isNegZero} from '../mod/value check'
-import {autoN} from '../mod/sanitize'
-import {trunc, floor} from './rounding'
+import { isInt, isNegZero } from '../mod/value check'
+import { autoN } from '../mod/sanitize'
+import { trunc, floor } from './rounding'
 
 const IntN = BigInt, lb = Math.log2 //in general, lb has better precision and performance than ln
 
@@ -9,9 +9,8 @@ const IntN = BigInt, lb = Math.log2 //in general, lb has better precision and pe
 absolute value
 @template {numeric} T
 @param {T} x
-@return {T}
 */
-export const abs = x => x < 0 || isNegZero(x) ? -x : x
+export const abs = x => /**@type {T}*/(x < 0 || isNegZero(x) ? -x : x)
 
 /**
 @template {numeric} T
@@ -33,22 +32,27 @@ calculate truncated division with remainder, returning both values in a 2-tuple
 @template {numeric} T
 @param {T} n dividend/numerator
 @param {T} d divisor/denominator
-@return {T}
 */
-export const divrem = (n, d) => [trunc(n / d), n % d]
+export const divrem = (n, d) => /**@type {[T, T]}*/([trunc(n / d), n % d])
 
 /**
-calculate Euclidean division with remainder, returning both values in a 2-tuple
+calculate Euclidean division with remainder, returning both values in a 2-tuple.
+
+Currently, this is incorrect for `BigInt`s
 @template {numeric} T
 @param {T} n dividend/numerator
 @param {T} d divisor/denominator
-@return {T}
 */
-export const divEuclid = (n, d) => floor(n / abs(d)) * sign(d) //this is incorrect for `BigInt`s
+export const divEuclid = (n, d) => /**@type {T}*/(floor(n / abs(d)) * sign(d))
 
-
+/**
+@param {*} x
+*/
 export const isEven = x => isInt(x) && x % autoN(2, x) == 0
-//`!isEven` is wrong, because `NaN` is none of them
+
+/**
+@param {*} x
+*/
 export const isOdd = x => isInt(x) && x % autoN(2, x) != 0
 
 /**
@@ -60,14 +64,21 @@ export const isOdd = x => isInt(x) && x % autoN(2, x) != 0
 export const clamp = (x, min, max) => x > max ? max : x < min ? min : x
 
 /**
-@param {(numeric|string)[]} arr values to compare
+@template {NumberConstructor | BigIntConstructor | StringConstructor} T
+@param {numstr[]} arr values to compare
 @param {boolean} op falsy: min, truthy: max
-@param {NumberConstructor | BigIntConstructor | StringConstructor} f type coercion fn
+@param {T} f type coercion fn
 */
 export const minmax = (arr, op, f) => {
-	let i = 0, v = f(arr[i]), m = v
+	let i = 0
+	let v = /**@type {T extends NumberConstructor ? number : T extends BigIntConstructor ? bigint : string}*/(
+		f(arr[i])
+	)
+	let m = v
 	while (++i < arr.length) {
-		v = f(arr[i])
+		v = /**@type {T extends NumberConstructor ? number : T extends BigIntConstructor ? bigint : string}*/(
+			f(arr[i])
+		)
 		if (op ? v > m : v < m) m = v
 	}
 	return m
@@ -75,18 +86,19 @@ export const minmax = (arr, op, f) => {
 
 /**
 Logarithm in any base
-@param {numeric} x get exponent of this
-@param {numeric} b base of logarithm
+@template {numeric} T
+@param {T} x get exponent of this
+@param {T} b base of logarithm
 @return {numeric}
 */
 export const logB = (x, b) => {
 	if (x < 0 || b == 0 || b == 1) return NaN
 	if (x == 0) return -Infinity
 	if (x == 1) return autoN(0, x)
-	if (typeof x != 'bigint') return lb(x) / lb(b)
+	if (typeof x != 'bigint') return lb(x) / lb(/**@type {number}*/(b))
 
-	b = IntN(b)
+	const b_int = IntN(b)
 	let i = 0n
-	while (x /= b) i++
+	while (/**@type {bigint}*/(x) /= b_int) i++
 	return i
 }
