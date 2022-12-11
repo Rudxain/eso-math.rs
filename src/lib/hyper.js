@@ -2,7 +2,7 @@ import { isBigInt as isIntN } from '../mod/type check'
 import { isInfNAN } from '../mod/value check'
 import { autoN } from '../mod/sanitize'
 import { trunc, floor } from './rounding'
-import { sizeOf } from './bitwise'
+import { sizeOf } from '../mod/bitwise'
 import { MANTISSA_SIZE } from '../mod/const'
 
 const IntN = BigInt, lb = Math.log2

@@ -2,7 +2,7 @@ import '../typedefs'
 import {autoN, toNumeric} from '../mod/sanitize'
 import {isOdd} from '../mod/std'
 import {trunc} from './rounding'
-import {trim} from './bitwise'
+import {trim} from '../mod/bitwise'
 import {lcm} from './factors'
 
 const Float = Number, Arr = Array

@@ -1,6 +1,6 @@
 import { isInf } from '../mod/value check'
 import { abs, sign } from '../mod/std'
-import { sizeOf } from './bitwise'
+import { sizeOf } from '../mod/bitwise'
 
 const
 	Float = Number, IntN = BigInt, RangeErr = RangeError,
