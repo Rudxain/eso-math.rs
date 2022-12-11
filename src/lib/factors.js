@@ -1,6 +1,6 @@
 import '../typedefs'
 
-import { isInt, isInfNAN } from '../mod/value check'
+import { isInt, isInfNAN, isNAN } from '../mod/value check'
 import { autoN } from '../mod/sanitize'
 import { abs, isEven } from '../mod/std'
 import { trunc } from './rounding'
@@ -9,10 +9,7 @@ import { M as nthMersenne, isM as isMersenne } from './Mersenne'
 import { isSquare, isCube } from './power'
 import { sqrt, cbrt } from './root'
 
-const
-	Float = Number,
-	{ isNaN } = Float,
-	lb =  Math.log2
+const lb = Math.log2
 
 /**
 check if `n` is strictly divisible by `d`
@@ -25,6 +22,7 @@ export const isDivisible = (n, d) => {
 	return typeof n == typeof d &&
 		isInt(n) && isInt(d) &&
 		d != 0 &&
+		//@ts-ignore
 		n % d == 0
 }
 
@@ -134,9 +132,9 @@ export const gcd = (a, b) => {//should be variadic
 					A, B, x,
 					C, D, y
 				] = [
-					C, D, y,
-					A - w * C, B - w * D, x - w * y
-				]
+						C, D, y,
+						A - w * C, B - w * D, x - w * y
+					]
 				if (B) continue
 			}
 			if (!B) {
@@ -150,7 +148,7 @@ export const gcd = (a, b) => {//should be variadic
 		return a << k
 	}
 	else {
-		if (isNaN(a) || isNaN(b)) return NaN
+		if (isNAN(a) || isNAN(b)) return NaN
 		if (!isInt(a) || !isInt(b)) return Euclid(a, b)
 		//borrowed from Stein, lol
 		const
@@ -301,7 +299,7 @@ convert to smallest fraction that represents the same number
 export const toFraction = x => {
 	x = x.valueOf()
 
-	if (isInt(x) || isNaN(x)) return [x, autoN(1, x)]
+	if (isInt(x) || isNAN(x)) return [x, autoN(1, x)]
 
 	const s = x < 0
 	if (s) x = -x //abs
