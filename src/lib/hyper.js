@@ -1,4 +1,3 @@
-import { isBigInt as isIntN } from '../mod/type check'
 import { isInfNAN } from '../mod/value check'
 import { autoN } from '../mod/sanitize'
 import { trunc, floor } from './rounding'
