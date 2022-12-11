@@ -42,6 +42,9 @@ interface Math {
 	/** The base-Phi logarithm of 10. */
 	readonly LOG_PHI10: number
 
+	/** The square root of 3. */
+	readonly SQRT3: number
+
 	/**
 	 * Returns the base y logarithm of a number x.
 	 * @param x A numeric expression.

@@ -109,22 +109,20 @@ import { gcd, lcm } from './lib/factors'
 	//@ts-ignore
 	Math.LOG_PHI10 = Math.logPHI(10)
 
+	//@ts-ignore
 	Math.SQRT3 = sqrt(3)
 	Math.LN3 = Math.log(3)
 	Math.LOG2_3 = lb(3)
 	Math.LOG10_3 = Math.log10(3)
-	Math.LOGPHI3 = Math.logPHI(3)
-
-	// ternary lives also matter
+	Math.LOG_PHI3 = Math.logPHI(3)
 
 	Math.log3 = function (x) { return logB(+x, 3) }
-	// stop discriminating the number 3
+
 	Math.LOG3_2 = Math.log3(2)
 	Math.LOG3E = Math.log3(E)
 
 	Math.LOG3_10 = Math.log3(10)
 	Math.LOG3PHI = Math.log3(PHI)
-	// join The Order of The Triangle Of Power: https://youtu.be/sULa9Lc4pck
 
 	IntN.log2 = function (n) {
 		n = toIntN(n)
