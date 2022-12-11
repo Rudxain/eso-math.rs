@@ -1,10 +1,8 @@
-import { isInf } from '../mod/value check'
+import { isInf, isNAN } from '../mod/value check'
 import { abs, sign } from '../mod/std'
 import { sizeOf } from '../mod/bitwise'
 
-const
-	Float = Number, IntN = BigInt, RangeErr = RangeError,
-	{ isNaN } = Float
+const Float = Number, IntN = BigInt, RangeErr = RangeError
 
 /**
 ith (degree i) root of x
@@ -60,7 +58,7 @@ export const root = (x, i = 2) => {
 	{
 		i = Float(i)
 		if (isInf(x ** (1 / i))) return x ** (1 / i)
-		if (isNaN(x) || isNaN(i)) return NaN
+		if (isNAN(x) || isNAN(i)) return NaN
 		if (i === -1) return 1 / x
 		if (!i) return 0
 
@@ -87,11 +85,12 @@ calculate square root
 */
 export const sqrt = x => {
 	if (typeof x != 'bigint')
+		//@ts-ignore
 		return x && x ** 0.5 //preserve `-0`
 
 	if (x < 2n) {
-		if (x < 0n) throw new RangeErr('return value is Complex number')
-		return x
+		if (x >= 0n) return x
+		throw new RangeErr('return value is Complex number')
 	}
 	let
 		x0 = x >> (sizeOf(x, 1n, 0n) >> 1n),
@@ -100,6 +99,7 @@ export const sqrt = x => {
 		x0 = x1
 		x1 = (x / x1 + x1) >> 1n
 	}
+	//@ts-ignore
 	return x0
 }
 
