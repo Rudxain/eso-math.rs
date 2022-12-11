@@ -5,7 +5,7 @@ import {
 	isBigInt as isIntN
 } from './type check'
 import { isInf } from './value check'
-import { abs } from '../lib/std'
+import { abs } from './std'
 import { trunc } from '../lib/rounding'
 
 const

@@ -1,6 +1,6 @@
 import '../typedefs'
 import {autoN, toNumeric} from '../mod/sanitize'
-import {isOdd} from './std'
+import {isOdd} from '../mod/std'
 import {trunc} from './rounding'
 import {trim} from './bitwise'
 import {lcm} from './factors'

@@ -7,7 +7,7 @@ https://en.wikipedia.org/wiki/1_%2B_2_%2B_3_%2B_4_%2B_%E2%8B%AF
 import { isBigInt as isIntN } from '../mod/type check'
 import { isInt } from '../mod/value check'
 import { autoN } from '../mod/sanitize'
-import { abs, divrem } from './std'
+import { abs, divrem } from '../mod/std'
 import { sqrt } from './root'
 import { isSquare } from './power'
 

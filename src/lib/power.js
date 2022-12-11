@@ -1,6 +1,6 @@
 import {isBigInt as isIntN} from '../mod/type check'
 import {isInt} from '../mod/value check'
-import {abs} from './std'
+import {abs} from '../mod/std'
 import {trunc} from './rounding'
 import {sizeOf, ctz} from './bitwise'
 import {root, sqrt, cbrt} from './root'

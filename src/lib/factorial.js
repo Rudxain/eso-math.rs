@@ -1,6 +1,6 @@
 import { isInfNAN } from '../mod/value check'
 import { autoN } from '../mod/sanitize'
-import { abs, sign, signabs } from './std'
+import { abs, sign, signabs } from '../mod/std'
 import { trunc } from './rounding'
 
 const { isNaN } = Number

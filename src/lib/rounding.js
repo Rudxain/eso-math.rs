@@ -1,5 +1,5 @@
 import { isInt, isInfNAN } from '../mod/value check'
-import { abs } from './std'
+import { abs } from '../mod/std'
 
 /**
 round towards `0`

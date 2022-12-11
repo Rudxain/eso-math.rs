@@ -1,5 +1,5 @@
 import { TAU } from "../mod/const"
-import { abs, sign } from "./std"
+import { abs, sign } from "../mod/std"
 import { floor } from "./rounding"
 import { sqrt } from "./root"
 import { mod } from "../mod/factors"

@@ -3,9 +3,9 @@ import '../typedefs'
 import { MANTISSA_SIZE } from '../mod/const'
 import { isInt, isInfNAN } from '../mod/value check'
 import { autoN } from '../mod/sanitize'
-import { abs } from './std'
+import { abs } from '../mod/std'
 import { trunc } from './rounding'
-import { F64_to_I64 as castFloat2IntN } from './bit cast'
+import { F64_to_I64 as castFloat2IntN } from '../mod/bit cast'
 import { M as nthMersenne } from './Mersenne'
 
 const IntN = BigInt, RangeErr = RangeError

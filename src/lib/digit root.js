@@ -1,6 +1,6 @@
 import {isBigInt as isIntN} from '../mod/type check'
 import {isInfNAN} from '../mod/value check'
-import {abs, signabs} from './std'
+import {abs, signabs} from '../mod/std'
 import {trunc} from './rounding'
 import {isM as isMersenne} from './Mersenne'
 

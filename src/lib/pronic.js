@@ -2,7 +2,7 @@
 import { is_numeric } from '../mod/type check'
 import { isSigned } from '../mod/value check'
 import { take } from '../mod/iter'
-import { isEven } from './std'
+import { isEven } from '../mod/std'
 import { round, trunc } from './rounding'
 import { sqrt } from './root'
 

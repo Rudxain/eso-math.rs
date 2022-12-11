@@ -1,5 +1,5 @@
 import { isInf } from '../mod/value check'
-import { abs, sign } from './std'
+import { abs, sign } from '../mod/std'
 import { sizeOf } from './bitwise'
 
 const

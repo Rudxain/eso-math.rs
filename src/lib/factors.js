@@ -2,7 +2,7 @@ import '../typedefs'
 
 import { isInt, isInfNAN } from '../mod/value check'
 import { autoN } from '../mod/sanitize'
-import { abs, isEven } from './std'
+import { abs, isEven } from '../mod/std'
 import { trunc } from './rounding'
 import { ctz, ctztrim, trim, sizeOf } from './bitwise'
 import { M as nthMersenne, isM as isMersenne } from './Mersenne'

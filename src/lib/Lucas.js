@@ -1,6 +1,6 @@
 import { isInt } from '../mod/value check'
 import { autoN } from '../mod/sanitize'
-import { logB, signabs } from './std'
+import { logB, signabs } from '../mod/std'
 import { isSquare } from './power'
 import { round, floor } from './rounding'
 import { SQRT5, PHI } from '../mod/const'

@@ -1,6 +1,6 @@
 import '../typedefs'
 import {autoN, toNumeric} from '../mod/sanitize'
-import {abs} from './std'
+import {abs} from '../mod/std'
 import {trunc} from './rounding'
 /**
 generalized Van Eck seq.
