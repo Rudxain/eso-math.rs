@@ -245,9 +245,9 @@ import { gcd, lcm } from './lib/factors'
 	@template {numeric} T
 	@param {T} n
 	@param {T} d
-	@return {T}
 	*/
-	const mod = (n, d) => (n % d + d) % d
+	//@ts-ignore
+	const mod = (n, d) => /**@type {T}*/((n % d + d) % d)
 
 	// https://en.wikipedia.org/wiki/Modulo_operation#Variants_of_the_definition
 	/**
