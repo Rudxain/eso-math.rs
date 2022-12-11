@@ -7,7 +7,7 @@
 import { isInt, isInfNAN, isNegZero } from './mod/value check'
 import { toBigInt as toIntN } from './mod/sanitize'
 import { MANTISSA_SIZE } from './mod/const'
-import { PHI, MAX64 } from './lib/const'
+import { PHI, MAX64 } from './mod/const'
 import { abs, sign, clamp, logB } from './lib/std'
 import { trunc, expand } from './lib/rounding'
 import { ctz, popCount, sizeOf } from './lib/bitwise'
