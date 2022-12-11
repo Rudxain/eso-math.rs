@@ -136,7 +136,7 @@ import { gcd, lcm } from './lib/factors'
 		n = toIntN(n); b = toIntN(b)
 		if (n < 1n || b < 2n)
 			throw new RangeErr('return value is -Infinity or NaN')
-		return logB(n, b)
+		return /**@type {bigint}*/(logB(n, b))
 	}
 
 	/**
