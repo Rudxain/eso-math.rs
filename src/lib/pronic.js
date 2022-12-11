@@ -4,7 +4,7 @@ import { isSigned } from '../mod/value check'
 import { take } from '../mod/iter'
 import { isEven } from '../mod/std'
 import { round, trunc } from './rounding'
-import { sqrt } from './root'
+import { sqrt } from '../mod/root'
 
 const Float = Number
 

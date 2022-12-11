@@ -3,7 +3,7 @@ import { isInt } from '../mod/value check'
 import { abs } from '../mod/std'
 import { trunc } from './rounding'
 import { sizeOf, ctz } from '../mod/bitwise'
-import { root, sqrt, cbrt } from './root'
+import { root, sqrt, cbrt } from '../mod/root'
 
 const lb = Math.log2
 

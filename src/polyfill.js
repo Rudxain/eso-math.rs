@@ -12,7 +12,7 @@ import { abs, sign, clamp, logB } from './mod/std'
 import { trunc, expand } from './lib/rounding'
 import { ctz, popCount, sizeOf } from './mod/bitwise'
 import { M as nthMersenne } from './lib/Mersenne'
-import { root, sqrt } from './lib/root'
+import { root, sqrt } from './mod/root'
 import { gcd, lcm } from './mod/factors'
 
 {

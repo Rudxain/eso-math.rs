@@ -1,6 +1,6 @@
 import { autoN } from "../mod/sanitize"
 import { abs } from "../mod/std"
-import { sqrt } from "./root"
+import { sqrt } from "../mod/root"
 
 /**
 2nd lowest common divisor. the 1st is always `1`

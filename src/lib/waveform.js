@@ -1,7 +1,7 @@
 import { TAU } from "../mod/const"
 import { abs, sign } from "../mod/std"
 import { floor } from "./rounding"
-import { sqrt } from "./root"
+import { sqrt } from "../mod/root"
 import { mod } from "../mod/factors"
 
 const { PI } = Math

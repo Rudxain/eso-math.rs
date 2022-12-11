@@ -8,7 +8,7 @@ import { isBigInt as isIntN } from '../mod/type check'
 import { isInt } from '../mod/value check'
 import { autoN } from '../mod/sanitize'
 import { abs, divrem } from '../mod/std'
-import { sqrt } from './root'
+import { sqrt } from '../mod/root'
 import { isSquare } from './power'
 
 export const isTriNum = x => {

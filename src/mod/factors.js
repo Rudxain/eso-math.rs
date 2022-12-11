@@ -7,7 +7,7 @@ import { trunc } from '../lib/rounding'
 import { ctz, ctztrim, trim, sizeOf } from './bitwise'
 import { M as nthMersenne, isM as isMersenne } from '../lib/Mersenne'
 import { isSquare, isCube } from '../lib/power'
-import { sqrt, cbrt } from '../lib/root'
+import { sqrt, cbrt } from './root'
 
 const lb = Math.log2
 

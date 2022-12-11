@@ -1,6 +1,6 @@
-import { isInf, isNAN } from '../mod/value check'
-import { abs, sign } from '../mod/std'
-import { sizeOf } from '../mod/bitwise'
+import { isInf, isNAN } from './value check'
+import { abs, sign } from './std'
+import { sizeOf } from './bitwise'
 
 const Float = Number, IntN = BigInt, RangeErr = RangeError
 
