@@ -23,6 +23,7 @@ export const isM = x => {
 	//@ts-ignore
 	return isPow2(x + 1)
 }
+
 /*WIP
 export const invM = (m, b) => {
 	if (!isBigInt(m)) {const n = lb(+m + 1); return b ? [isM(m), n] : n}
@@ -30,6 +31,7 @@ export const invM = (m, b) => {
 
 }
 */
+
 export const iterM = function*() {
 	let n = 1n
 	while (true) {yield n; n <<= 1n; n |= 1n}
