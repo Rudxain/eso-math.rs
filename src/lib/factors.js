@@ -9,6 +9,8 @@ import { M as nthMersenne, isM as isMersenne } from './Mersenne'
 import { isSquare, isCube } from './power'
 import { sqrt, cbrt } from './root'
 
+import { Euclid } from '../mod/factors'
+
 const lb = Math.log2
 
 /**
@@ -25,16 +27,6 @@ export const isDivisible = (n, d) => {
 		//@ts-ignore
 		n % d == 0
 }
-
-/**
-Euclidean algorithm for finding Highest Common Factor.
-returns correct values for some non-ints (rounding errors can happen)
-@template {numeric} T
-@param {T} a
-@param {T} b
-@return {T}
-*/
-const Euclid = (a, b) => { while (b) [a, b] = [b, a % b]; return abs(a) }
 
 /**
 Calculate Greatest Common Divisor of `a` & `b`
