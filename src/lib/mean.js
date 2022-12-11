@@ -1,9 +1,12 @@
-const Float = Number
-
-//Arithmetic-Geometric Mean. This is just an approximation, because of rounding errors
+/**
+Arithmetic-Geometric Mean.
+This is just an approximation, because of rounding errors
+@param {number} x
+@param {number} y
+*/
 export const agm = (x, y) => {
 	//avoid round-errors and increase efficiency
-	if ((x = Float(x)) == (y = Float(y))) return x
+	if (x == y) return x
 	let a
 	do [x, y, a] = [(x + y) / 2, (x * y) ** 0.5, x]
 	while (x != a && x == x) /*
