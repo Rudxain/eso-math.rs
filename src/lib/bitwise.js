@@ -1,6 +1,6 @@
 import '../typedefs'
 
-import { isBigInt as isIntN } from '../mod/type check'
+import { MANTISSA_SIZE } from '../mod/const'
 import { isInt, isInfNAN } from '../mod/value check'
 import { autoN } from '../mod/sanitize'
 import { abs } from './std'
@@ -8,7 +8,15 @@ import { trunc } from './rounding'
 import { F64_to_I64 as castFloat2IntN } from './bit cast'
 import { M as nthMersenne } from './Mersenne'
 
-const IntN = BigInt
+const IntN = BigInt, RangeErr = RangeError
+
+/**
+maximum float exponent
+{@link Math.log2}({@link Number.MAX_VALUE}) = ilb(2^1024 - 1) + 1
+*/
+const MAX_EXP = 0x400
+
+const MANTISSA_MASK = /**@type {0xfffffffffffffn}*/(IntN(nthMersenne(MANTISSA_SIZE)))
 
 /**
 @param {bigint} n binary numeral to measure
@@ -21,12 +29,6 @@ export const sizeOf = (n, word_size = 1n, init = 0n) => {
 	while (n >>= word_size) init++
 	return init
 }
-
-/**
-maximum float exponent
-{@link Math.log2}({@link Number.MAX_VALUE}) = ilb(2^1024 - 1) + 1
-*/
-const MAX_EXP = 0x400
 
 /**
 count trailing zeros in binary.
@@ -96,20 +98,17 @@ export const popCount = x => {
 
 	x = abs(trunc(x))
 	//mantissa popcnt, because exponent doesn't matter
-	return Number(popcnt(castFloat2IntN(/**@type {number}*/(x)) & nthMersenne(52n)) + 1n)
+	return Number(popcnt(castFloat2IntN(/**@type {number}*/(x)) & MANTISSA_MASK) + 1n)
 }
 
 /**
 carryless multiplication
-@param {numeric} a
-@param {numeric} b
-@return {numeric} `NaN` for negatives
+@param {bigint} a
+@param {bigint} b
 */
 export const clmul = (a, b) => {
-	if (a < 0 || b < 0 || isInfNAN(a) || isInfNAN(b))
-		return NaN
-	a = IntN(trunc(a))
-	b = IntN(trunc(b))
+	if (a < 0n || b < 0n)
+		throw new RangeErr('negative CLMul is undefined')
 
 	let prod = 0n
 	while (b) {
@@ -118,5 +117,4 @@ export const clmul = (a, b) => {
 		a <<= 1n
 	}
 	return prod
-
 }
