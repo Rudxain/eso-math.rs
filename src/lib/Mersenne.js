@@ -14,13 +14,13 @@ export const M = n => /**@type {T}*/(isIntN(n) ? ~(-1n << /**@type {bigint}*/(n)
 @return {T extends numeric ? boolean : false}
 */
 export const isM = x => {
-	// @ts-ignore
+	//@ts-ignore
 	if (!isInt(x) || x < 1) return false
-	// @ts-ignore
+	//@ts-ignore
 	if (isIntN(x)) return !(x & (x + 1n))
-	// @ts-ignore
+	//@ts-ignore
 	if (x >= 2 ** 53) return false //every "unsafe" int has trailing zeros
-	// @ts-ignore
+	//@ts-ignore
 	return isPow2(x + 1)
 }
 /*WIP
