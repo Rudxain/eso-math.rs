@@ -35,24 +35,39 @@ count trailing zeros in binary.
 extended to non-ints, so negative exponents are supported.
 @template {numeric} T
 @param {T} n
-@return {[numeric, T]} 2-tuple format [CTZ, trimmed `n`]
+@return {[T extends bigint ? numeric : number, T]} 2-tuple format [CTZ, trimmed `n`]
 */
 export const ctztrim = n => {
-	if (n === 0) return [MAX_EXP, n]
-	if (n === 0n) return [Infinity, n]
+	if (n === 0)
+		//@ts-ignore
+		return [MAX_EXP, n]
+	if (n === 0n)
+		//@ts-ignore
+		return [Infinity, n]
 
-	const B = typeof n == 'bigint'
-	const n1 = /**@type {T extends bigint ? 1n : 1}*/(B ? 1n : 1)
+	const isIntN = typeof n == 'bigint'
+	const n1 = /**@type {T extends bigint ? 1n : 1}*/(isIntN ? 1n : 1)
 	let c = autoN(0, n)
 
-	if (!B && !isInt(+n)) {
-		n = +n
-		if (isInfNAN(n)) return [NaN, n]
+	if (isInt(n))
+		while (!(n & n1)) {
+			c++
+			//@ts-ignore
+			n = isIntN ? n >> 1n : n / 2
+		}
+	else {
+		if (isInfNAN(n))
+			//@ts-ignore
+			return [NaN, n]
+		//@ts-ignore
 		n %= 1
-		do { c--; n *= 2 } while (n < 1)
+		do {
+			c--
+			//@ts-ignore
+			n *= 2
+		} while (n < 1)
 	}
-	else
-		while (!(n & n1)) { c++; n = B ? n >> 1n : n / 2 }
+	//@ts-ignore
 	return [c, n]
 }
 

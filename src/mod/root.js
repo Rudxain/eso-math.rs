@@ -1,21 +1,22 @@
 import { isInf, isNAN } from './value check'
 import { abs, sign } from './std'
 import { sizeOf } from './bitwise'
+import { autoN } from './sanitize'
 
-const Float = Number, IntN = BigInt, RangeErr = RangeError
+const RangeErr = RangeError
 
 /**
 ith (degree i) root of x
-@param {numeric} x
-@param {numeric} i
-@return {numeric}
+@template {numeric} T
+@param {T} x
+@param {T} [i]
 */
-export const root = (x, i = 2) => {
+export const root = (x, i) => {
+	if (i === undefined) i = autoN(2, x)
+
 	if (i == 1) return x
 
 	if (typeof x == 'bigint') {
-		i = IntN(i)
-
 		if (i == -1n) return 1n / x
 
 		if (!i) {
@@ -27,7 +28,7 @@ export const root = (x, i = 2) => {
 		const s = sign(x)
 		x = abs(x)
 
-		if (s === -1n && !(i & 1n))
+		if (s === -1n && !(/**@type {bigint}*/(i) & 1n))
 			throw new RangeErr('return value is a Complex number')
 		if (i < 0n) {
 			if (!x) throw new RangeErr('return value is Infinity')
@@ -36,34 +37,33 @@ export const root = (x, i = 2) => {
 
 		if (x === 0n) return x
 
-		if (x === 1n) return s === -1n ? s ** i : x
+		if (x === 1n) return s === -1n ? s ** /**@type {bigint}*/(i) : x
 
-		//identity: a ^ (1 / k) = b ^ (log_b(a) / k)
-		const j = i - 1n, lbx = sizeOf(x, 1n, 0n)
+		const j = /**@type {bigint}*/(i) - 1n
 
-		//using the MSBs instead of generating a power of 2 is a better approximation
-		/**@type {bigint}*/
+		// identity: a ^ (1 / k) = b ^ (log_b(a) / k)
+		const lbx = sizeOf(x, 1n, 0n)
+
+		// using the MSBs instead of generating a power of 2 is a better approximation
 		let
-			x0 = x >> (lbx - lbx / i - 1n),
-			x1 = (x0 * j + x / x0 ** j) / i
+			x0 = /**@type {bigint}*/(x) >> (lbx - lbx / j),
+			x1 = (x0 * j + /**@type {bigint}*/(x) / x0 ** j) / /**@type {bigint}*/(i)
 
-		//Heron/Newton/Babylonian Method, thanks to https://stackoverflow.com/a/30869049
+		// Heron/Newton/Babylonian Method, thanks to https://stackoverflow.com/a/30869049
 		while (x1 < x0) {
 			x0 = x1
-			x1 = (x1 * j + x / x1 ** j) / i
+			x1 = (x1 * j + /**@type {bigint}*/(x) / x1 ** j) / /**@type {bigint}*/(i)
 		}
 		return x0 * s
 	}
-	else //I hate the complexity of this entire fn
+	else // I hate the complexity of this entire fn
 	{
-		i = Float(i)
 		if (isInf(x ** (1 / i))) return x ** (1 / i)
 		if (isNAN(x) || isNAN(i)) return NaN
 		if (i === -1) return 1 / x
 		if (!i) return 0
 
-		/**@type {number}*/
-		const s = sign(x)
+		const s = sign(/**@type {number}*/(x))
 		x = abs(x)
 
 		if (s === -1 && !(i % 2)) return NaN
@@ -81,12 +81,10 @@ export const root = (x, i = 2) => {
 calculate square root
 @template {numeric} T
 @param {T} x
-@return {T}
 */
 export const sqrt = x => {
 	if (typeof x != 'bigint')
-		//@ts-ignore
-		return x && x ** 0.5 //preserve `-0`
+		return /**@type {T}*/(x && x ** 0.5) //preserve `-0`
 
 	if (x < 2n) {
 		if (x >= 0n) return x
@@ -99,12 +97,12 @@ export const sqrt = x => {
 		x0 = x1
 		x1 = (x / x1 + x1) >> 1n
 	}
-	//@ts-ignore
-	return x0
+	return /**@type {T}*/(x0)
 }
 
 /**
-calculate cubic root
-@param {numeric} x
+cubic root
+@template {numeric} T
+@param {T} x
 */
-export const cbrt = x => root(x, 3)
+export const cbrt = x => root(x, autoN(3, x))
