@@ -1,8 +1,9 @@
+import { MANTISSA_SIZE } from '../mod/const'
 import { isInfNAN } from '../mod/value check'
 import { autoN } from '../mod/sanitize'
 import { trunc, floor } from './rounding'
+import { mod } from '../mod/factors'
 import { sizeOf } from '../mod/bitwise'
-import { MANTISSA_SIZE } from '../mod/const'
 
 const IntN = BigInt, lb = Math.log2
 
@@ -37,6 +38,22 @@ The modern Ackermann-Péter fn
 @param {bigint} n
 */
 export const Ackermann = (m, n) => /**@type {bigint}*/(HyperOP(m, 2n, n + 3n)) - 3n
+
+/**
+Modular (wrapping) Ack-fn
+@param {bigint} m
+@param {bigint} n
+@param {bigint} modulo
+*/
+export const Ackermann_mod = (m, n, modulo) => {
+	m = mod(m, modulo)
+	n = mod(n, modulo)
+	while (m) {// manual TCO
+		n = n ? Ackermann_mod(m, n - 1n, modulo) : 1n % modulo
+		m = mod(m - 1n, modulo)
+	}
+	return mod(n + 1n, modulo)
+}
 
 /**
 https://en.wikipedia.org/wiki/Ackermann_function#Inverse
