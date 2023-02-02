@@ -93,6 +93,25 @@ export const iterFib = function* (x) {
 }
 
 /**
+@template {numeric} T
+@param {T} a
+@param {T} b
+@param {boolean[]} ops
+@see https://en.wikipedia.org/wiki/Random_Fibonacci_sequence
+*/
+export const iter_custom_Fib = function* (a, b, ops) {
+	let i = 0
+	while (true) {
+		yield a
+		const len = ops.length
+		const op = len ? ops[i] : Math.random() < 0.5
+		i = (i + 1) % len;
+		//@ts-ignore
+		[a, b] = [b, op ? b + a : b - a]
+	}
+}
+
+/**
 co-recursive Lucas fn
 
 @param {numeric} P
