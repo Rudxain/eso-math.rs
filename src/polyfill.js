@@ -355,14 +355,16 @@ import { gcd, lcm } from './mod/factors'
 	 */
 	Math.factorial = function (x) {
 		x = +x
-		//if (x >= 171) return Infinity
-		if (isNaN(x)) return x
 		// https://youtu.be/v_HeaeUUOnc?t=1258
-		const N = 1 << 12
-		let out = (N + x / 2) ** (x - 1)
-		for (let n = 1; n < N; n++)
-			out *= (n + 1) / (n + x)
-		return out
+		const N = 1 << 16
+		let out0 = (N + x / 2) ** (x - 1), out1 = NaN
+		for (let i = 1; i < N; i++) {
+			out1 = out0
+			out0 *= (i + 1) / (i + x)
+			// speed
+			if (out0 == out1) break
+		}
+		return out0
 	}
 
 	// to-do: https://en.wikipedia.org/wiki/Factorial#Properties (optimization)
