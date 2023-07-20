@@ -358,10 +358,10 @@ import { gcd, lcm } from './mod/factors'
 	const Gosper = x => Math.sqrt((x + 1 / 6) * TAU) * (x / E) ** x
 
 	/**
-	Gamma Function (+1) defined as Summation instead of Integration
+	Gamma(x+1), using summation instead of integration
 	@param {number} x
 	*/
-	const Gamma = x => {
+	const Pifn = x => {
 		let t = 1, s0 = NaN, s1 = 0 ** x
 		do {
 			s0 = s1
@@ -396,7 +396,7 @@ import { gcd, lcm } from './mod/factors'
 	}
 
 	/**
-	 * Gamma + 1
+	 * Analytic Continuation based on PI-function
 	 * @param {number} x
 	 */
 	Math.factorial = function (x) {
@@ -407,7 +407,7 @@ import { gcd, lcm } from './mod/factors'
 		We could precompute an int lookup table, and use spline interpolation for faster processing.
 		The problem is that if `x` is at the extreme, the output would be `NaN` unless we use extrapolation
 		*/
-		if (!isInt(x)) return [Gosper, Gamma, Lanczos][2](x)
+		if (!isInt(x)) return [Gosper, Pifn, Lanczos][1](x)
 		let out = 1
 		while (x > 0) out *= x--
 		return out
