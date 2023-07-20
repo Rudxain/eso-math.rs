@@ -365,10 +365,10 @@ import { gcd, lcm } from './mod/factors'
 	}
 
 	const FACTORIALS = (()=>{
-		const f = [1]
-		while (f.length < 171)
-			f.push(f.at(-1) * f.length)
-		return f
+		const f = [1n]
+		while (f.length < 0x100)
+			f.push(f.at(-1) * IntN(f.length))
+		return Object.freeze(f)
 	})()
 
 	/**
@@ -378,18 +378,18 @@ import { gcd, lcm } from './mod/factors'
 	Math.factorial = function (x) {
 		x = +x
 		if (isNaN(x)) return x // preserve sign bit
-		if (x >= 171) return Infinity // speed
+		if (x > 171) return Infinity // speed
 		if (x < 0 || !isInt(x)) return Bernoulli(x)
 		// x is now guaranteed to be `Uint8` (ignoring `-0`)
-		return FACTORIALS[x]
+		return Float(FACTORIALS[x])
 	}
 
 	// to-do: https://en.wikipedia.org/wiki/Factorial#Properties (optimization)
 	IntN.factorial = function (/**@type {bigint}*/n) {
 		n = toIntN(n)
 		if (n < 0n) throw new RangeErr('return value is NaN')
-		let out = 1n
-		while (n > 0n) out *= n--
+		let out = FACTORIALS[min(n, FACTORIALS.length-1)]
+		while (n >= FACTORIALS.length) out *= n--
 		return out
 	}
 
