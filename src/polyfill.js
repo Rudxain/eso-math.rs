@@ -355,6 +355,7 @@ import { gcd, lcm } from './mod/factors'
 	 */
 	Math.factorial = function (x) {
 		x = +x
+		if (x == Infinity) return x
 		// https://youtu.be/v_HeaeUUOnc?t=1258
 		const N = 1 << 16
 		let out0 = (N + x / 2) ** (x - 1), out1 = NaN
