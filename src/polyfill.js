@@ -349,67 +349,19 @@ import { gcd, lcm } from './mod/factors'
 	IntN.cbrt = function (/** @type {bigint} */ n) { return root(toIntN(n), 3n) }
 
 
-	// factorial approximations for non-ints.
-	// These 3 are trash, none make use of full precision. I need help to make these more accurate
-	/**
-	improvement of Stirling approximation
-	@param {number} x
-	*/
-	const Gosper = x => Math.sqrt((x + 1 / 6) * TAU) * (x / E) ** x
-
-	/**
-	Gamma(x+1), using summation instead of integration
-	@param {number} x
-	*/
-	const Pifn = x => {
-		let t = 1, s0 = NaN, s1 = 0 ** x
-		do {
-			s0 = s1
-			s1 += t ** x * exp(-t)
-			t++
-		}
-		while (s0 != s1)
-		return s0
-	}
-
-	/**
-	https://en.wikipedia.org/wiki/Lanczos_approximation#Simple_implementation
-	@param {number} z
-	@return {number}
-	*/
-	const Lanczos = z => {
-		const p = [
-			676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059,
-			12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7
-		]
-
-		if (z < 0.5) return PI / (sine(PI * z) * Lanczos(1 - z))
-
-		z--
-		let x = 0.99999999999980993
-
-		for (let i = 0; i < p.length; i++)
-			x += p[i] / (z + i + 1)
-
-		const t = z - 0.5 + p.length
-		return sqrt(TAU) * t ** (z + 0.5) * exp(-t) * x
-	}
-
 	/**
 	 * Analytic Continuation based on PI-function
 	 * @param {number} x
 	 */
 	Math.factorial = function (x) {
 		x = +x
-		if (x >= 171) return Infinity
-		if (x < 0 || isNaN(x)) return NaN
-		/*
-		We could precompute an int lookup table, and use spline interpolation for faster processing.
-		The problem is that if `x` is at the extreme, the output would be `NaN` unless we use extrapolation
-		*/
-		if (!isInt(x)) return [Gosper, Pifn, Lanczos][1](x)
-		let out = 1
-		while (x > 0) out *= x--
+		//if (x >= 171) return Infinity
+		if (isNaN(x)) return x
+		// https://youtu.be/v_HeaeUUOnc?t=1258
+		const N = 1 << 12
+		let out = (N + x / 2) ** (x - 1)
+		for (let n = 1; n < N; n++)
+			out *= (n + 1) / (n + x)
 		return out
 	}
 
