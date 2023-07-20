@@ -362,7 +362,7 @@ import { gcd, lcm } from './mod/factors'
 	@param {number} x
 	*/
 	const Gamma = x => {
-		let t = 1, s0, s1 = 0 ** x
+		let t = 1, s0 = NaN, s1 = 0 ** x
 		do {
 			s0 = s1
 			s1 += t ** x * exp(-t)
