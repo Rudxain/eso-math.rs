@@ -69,7 +69,21 @@ import { gcd, lcm } from './mod/factors'
 	//@ts-ignore
 	Float.MIN_NORMAL = MIN_NORMAL
 
-	/** max bits per {@link RNG} call */
+	/**
+	Max bits per {@link RNG} call.
+
+	***WARNING:** this is just an approximation!
+
+	[According to ES, this is implementation-defined](https://tc39.es/ecma262/multipage/numbers-and-dates.html#sec-math.random),
+	so it could be as high as `53` (implicit-bit included),
+	on some platforms.
+
+	It's unsafe to assume it's always {@link MANTISSA_SIZE},
+	because there's a chance `!isInt(RNG() * 2 ** 52)`.
+
+	However, assuming it's always `53`
+	has the disadvantage of introducing undesired 0s when shifting.
+	*/
 	const MAX_ENTROPY = MANTISSA_SIZE
 
 	//@ts-ignore
@@ -479,18 +493,17 @@ import { gcd, lcm } from './mod/factors'
 			if (n) return 0n
 			throw new RangeErr('requested an int equal and NOT equal to zero')
 		}
-		const n_len = sizeOf(n, 1n, 1n), bits_per_block = IntN(MAX_ENTROPY)
+		const n_len = sizeOf(n, 1n, 1n)
+		const bits_per_block = IntN(MAX_ENTROPY)
 		let out, out_len, max
 		do {
-			// in this context, the size of 0 is defined as zero instead of 1
+			// in this context, `size_of(0) = 0` is more appropiate than `1`
 			out = out_len = 0n
 			do {
 				// build the bigint in `bits_per_block`b blocks, to discard less rand data
 				out <<= bits_per_block
 				out_len += bits_per_block
-
-				// `crypto.getRandomValues` is unnecesary
-				out |= IntN(RNG() * 2 ** MAX_ENTROPY)
+				out |= IntN(trunc(RNG() * 2 ** MAX_ENTROPY))
 			} while (out_len <= n_len)
 			// this condition and the `-1` allow `%` to never be no-op
 			const len_d = out_len - n_len - 1n
