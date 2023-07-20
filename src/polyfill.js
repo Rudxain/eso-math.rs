@@ -491,7 +491,7 @@ import { gcd, lcm } from './mod/factors'
 
 		if (n < 2n) {
 			if (n) return 0n
-			throw new RangeErr('requested an int equal and NOT equal to zero')
+			throw new RangeErr('requested int equal and unequal to 0')
 		}
 		const n_len = sizeOf(n, 1n, 1n)
 		const bits_per_block = IntN(MAX_ENTROPY)
