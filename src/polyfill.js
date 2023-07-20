@@ -364,6 +364,13 @@ import { gcd, lcm } from './mod/factors'
 		return out0
 	}
 
+	const FACTORIALS = (()=>{
+		const f = [1]
+		while (f.length < 171)
+			f.push(f.at(-1) * f.length)
+		return f
+	})()
+
 	/**
 	 * Analytic Continuation based on PI-function
 	 * @param {number} x
@@ -374,9 +381,7 @@ import { gcd, lcm } from './mod/factors'
 		if (x >= 171) return Infinity // speed
 		if (x < 0 || !isInt(x)) return Bernoulli(x)
 		// x is now guaranteed to be `Uint8` (ignoring `-0`)
-		let out = 1
-		while (x > 0) out *= x--
-		return out
+		return FACTORIALS[x]
 	}
 
 	// to-do: https://en.wikipedia.org/wiki/Factorial#Properties (optimization)
