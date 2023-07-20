@@ -348,6 +348,21 @@ import { gcd, lcm } from './mod/factors'
 	IntN.sqrt = function (/** @type {bigint} */ n) { return sqrt(toIntN(n)) }
 	IntN.cbrt = function (/** @type {bigint} */ n) { return root(toIntN(n), 3n) }
 
+	/**
+	https://youtu.be/v_HeaeUUOnc?t=1258
+	@param {number} x
+	*/
+	const Bernoulli = x => {
+		const MAX_ITER = 1 << 16
+		let
+			out0 = (MAX_ITER + x / 2) ** (x - 1),
+			out1 = NaN
+		for (let i = 1; i < MAX_ITER && out0 != out1; i++) {
+			out1 = out0
+			out0 *= (i + 1) / (i + x)
+		}
+		return out0
+	}
 
 	/**
 	 * Analytic Continuation based on PI-function
@@ -355,17 +370,13 @@ import { gcd, lcm } from './mod/factors'
 	 */
 	Math.factorial = function (x) {
 		x = +x
-		if (x == Infinity) return x
-		// https://youtu.be/v_HeaeUUOnc?t=1258
-		const N = 1 << 16
-		let out0 = (N + x / 2) ** (x - 1), out1 = NaN
-		for (let i = 1; i < N; i++) {
-			out1 = out0
-			out0 *= (i + 1) / (i + x)
-			// speed
-			if (out0 == out1) break
-		}
-		return out0
+		if (isNaN(x)) return x // preserve sign bit
+		if (x >= 171) return Infinity // speed
+		if (x < 0 || !isInt(x)) return Bernoulli(x)
+		// x is now guaranteed to be `Uint8` (ignoring `-0`)
+		let out = 1
+		while (x > 0) out *= x--
+		return out
 	}
 
 	// to-do: https://en.wikipedia.org/wiki/Factorial#Properties (optimization)
