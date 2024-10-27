@@ -1,4 +1,4 @@
-# EsoMath
+# Eso-Math
 
 > [!important]
 > See [#36](https://github.com/Rudxain/eso-math.ts/pull/36)
