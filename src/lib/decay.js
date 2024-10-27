@@ -1,7 +1,9 @@
 import {isBigInt as isIntN} from '../mod/type check'
 import {signabs} from '../mod/std'
 
-//Division by repeated subtraction, but the divisor gets decremented each iteration
+/**
+Division by repeated subtraction, but the divisor gets decremented each iteration
+*/
 export const decayDiv = (n, d) => {
 	[n, d] = [signabs(n), signabs(d)]
 
