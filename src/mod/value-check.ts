@@ -6,12 +6,12 @@ check if primitive integer
 
 this is not future proof:
 if `BigFloat`s are added, this will return `false` for any of them
-@template T
-@param {T} x
 */
-export const isInt = x => /**@type {T extends bigint ? true : T extends number ? boolean : false}*/(
-	(typeof x == 'number' && x % 1 == 0) || typeof x == 'bigint'
-)
+export function isInt(x: bigint): true
+export function isInt(x: unknown): boolean
+export function isInt(x: unknown) {
+	return (typeof x == 'number' && x % 1 == 0) || typeof x == 'bigint'
+}
 
 /**
 check if either `Infinity` sign
